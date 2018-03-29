@@ -29,6 +29,17 @@ int main(const int /*argc*/, const char * const /*argv*/[]) {
 				container.put("john", "doer");
 				dotest(container.get("john") == "doe");
 			}
+			{
+				store::Container container(where);
+				dotest(container.del("john"));
+				dotest(container.get("john") == "");
+				dotest(!container.del("john"));
+			}
+			{
+				store::Container container(where);
+				container.put("john", "doer");
+				dotest(container.get("john") == "doer");
+			}
 			where.remove();
 		} catch(const std::exception &exception) {
 			printf("FAIL: Exception: %s\n", exception.what());

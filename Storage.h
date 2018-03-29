@@ -19,6 +19,8 @@ namespace store {
 			void put(const String &name, const String &data);
 			String &get(const String &name, String &buffer);
 			String get(const String &name) {String buffer; return get(name, buffer);}
+			bool del(const String &name);
+			bool has(const String &name);
 			StringList &find(const String &like, int count, StringList &list);
 			StringList find(const String &like, int count) {StringList list; return find(like, count, list);}
 		private:
@@ -57,7 +59,7 @@ namespace store {
 			file.write(data);
 		}
 		// TODO: when logging added log when size is not the same as data size
-		_db.exec("SELECT put_count FROM data WHERE name LIKE '"+name+"';", &results);
+		_db.exec("SELECT put_count,size FROM data WHERE name LIKE '"+name+"';", &results);
 		if (results.size() == 0) {
 			Sqlite3::DB::Row row;
 
@@ -70,9 +72,13 @@ namespace store {
 			_db.addRow("data", row);
 		} else {
 			String command= "UPDATE data SET ";
+
 			command+= "put_time = '" + now + "', ";
 			if (!fileExisted) {
 				command+= "start_time = '" + now + "', ";
+				if (static_cast<unsigned lon>(std::stol(results[0]["size"])) != data.length()) {
+					command+= "size = '" + std::to_string(data.length()) + "', ";
+				}
 			}
 			command+= "put_count = '" + std::to_string(std::stoi(results[0]["put_count"])) + "' ";
 			command+= "WHERE name LIKE '"+name+"';";
@@ -107,6 +113,21 @@ namespace store {
 			_db.exec(command);
 		}
 		return buffer;
+	}
+	inline bool Container::del(const String &name) {
+		io::Path location= _location(name);
+
+		try {
+			_location(name).unlink();
+		} catch(const std::exception&) {
+			return false;
+		}
+		return true;
+	}
+	inline bool Container::has(const String &name) {
+		io::Path	location= _location(name);
+
+		return location.isFile();
 	}
 	inline Container::StringList &Container::find(const String &like, int count, StringList &list) {
 		// TODO implement
