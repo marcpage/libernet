@@ -98,7 +98,7 @@ int main(const int /*argc*/, const char * const /*argv*/[]) {
 					printf("Testing removable create\n");
 					store::Container container(where);
 					printf("Testing removable removable\n");
-					store::Container::NameList found= container.removable("john", 10);;
+					store::Container::NameList found= container.removable("john", 5);;
 					printf("Testing removable done\n");
 				}
 			} catch(const std::exception &exception) {

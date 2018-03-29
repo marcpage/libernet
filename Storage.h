@@ -122,11 +122,7 @@ namespace store {
 			String	command= "UPDATE data SET ";
 			String	getCount;
 
-			try {
-				getCount= std::to_string(std::stoi(results[0]["get_count"]) + 1);
-			} catch(const std::exception&) {
-				getCount= "1";
-			}
+			getCount= std::to_string(std::stoi(results[0]["get_count"]) + 1);
 			command+= "get_time = '" + now + "', ";
 			command+= "get_count = '" + getCount + "' ";
 			command+= "WHERE name LIKE '"+name+"';";
@@ -149,11 +145,7 @@ namespace store {
 			String command= "UPDATE data SET ";
 			String	delCount;
 
-			try {
-				delCount= std::to_string(std::stoi(results[0]["del_count"]) + 1);
-			} catch(const std::exception&) {
-				delCount= "1";
-			}
+			delCount= std::to_string(std::stoi(results[0]["del_count"]) + 1);
 			command+= "del_time = '" + now + "', ";
 			command+= "del_count = '" + delCount + "' ";
 			command+= "WHERE name LIKE '"+name+"';";
@@ -192,45 +184,50 @@ namespace store {
 		_db.exec("SELECT name,size FROM data WHERE name LIKE '%"+like.substr(0, numberOfCharacters)+"';", &results);
 		return list;
 	}
+	/**
+		@todo we should remove items in reverse order
+	*/
 	inline Container::NameList &Container::removable(const String &like, int count, NameList &list) {
-		printf("removable('%s', %d)\n", like.c_str(), count);
 		Sqlite3::DB::Results	results;
 		String					now= std::to_string(dt::DateTime().seconds());
 		String::size_type		numberOfCharacters= like.length();
 		const unsigned int		expectedCount= count;
 
 		list.clear();
-		//(put_count + get_count - del_count) * (now - start_time + now - first_time + now - put_time + now - get_time - now + del_time) * size
-		//(put_count + get_count - del_count) * (3.0 * now - start_time - first_time - put_time - get_time + del_time) * size
-		// may be NULL: get_count, del_count, get_time, del_time
 		printf("%s\n", ("SELECT name, size,"
 					"(put_count + get_count - del_count)"
 					"* (3.0 * " + now + " - start_time - first_time - put_time"
-						"+ CASE WHEN get_time IS NULL THEN " + now + " ELSE get_time END + CASE WHEN del_time IS NULL THEN " + now + " ELSE del_time END)"
-					" * size AS score "
-					"FROM data ORDER BY score DESC LIMIT " + std::to_string(count * 2) + ";").c_str());
+						"+ CASE WHEN get_time IS NULL THEN " + now + " ELSE get_time END"
+						"+ CASE WHEN del_time IS NULL THEN " + now + " ELSE del_time END) / 31536000.0"
+					" * size / 1048576.0 AS score "
+					"FROM data ORDER BY score ASC LIMIT " + std::to_string(expectedCount * 2) + ";").c_str());
 		_db.exec("SELECT name, size,"
 					"(put_count + get_count - del_count)"
 					"* (3.0 * " + now + " - start_time - first_time - put_time"
 						"+ CASE WHEN get_time IS NULL THEN " + now + " ELSE get_time END"
 						"+ CASE WHEN del_time IS NULL THEN " + now + " ELSE del_time END) / 31536000.0"
 					" * size / 1048576.0 AS score "
-					"FROM data ORDER BY score ASC LIMIT " + std::to_string(count * 2) + ";", &results);
-		for (Sqlite3::DB::Results::iterator row= results.begin(); row != results.end(); ++row) {
-			list[(*row)["name"]]= Metadata(std::stoi((*row)["size"]), _location((*row)["name"]).isFile(), std::stod((*row)["score"]));
-			printf("%s size=%s score=%s\n", (*row)["name"].c_str(), (*row)["size"].c_str(), (*row)["score"].c_str());
-		}
-		while ( (numberOfCharacters > 0) && (list.size() > expectedCount) ) {
-			for (NameList::iterator name= list.begin(); (list.size() > expectedCount) && (name != list.end());) {
-				const String::size_type most= std::min(name->first.length(), numberOfCharacters);
+					"FROM data ORDER BY score ASC LIMIT " + std::to_string(expectedCount * 2) + ";", &results);
+		std::reverse(results.begin(), results.end());
+		while ( (numberOfCharacters > 0) && (results.size() > expectedCount) ) {
+			printf("numberOfCharacters=%lu\n", numberOfCharacters);
+			for (Sqlite3::DB::Results::iterator row= results.begin(); (results.size() > expectedCount) && (row != results.end());) {
+				const String::size_type most= std::min((*row)["name"].length(), numberOfCharacters);
 
-				if (name->first.substr(0, most) == like.substr(0, most)) {
-					name= list.erase(name);
+				//printf("most=%lu row='%s' like='%s'\n", most, (*row)["name"].substr(0, most).c_str(), like.substr(0, most).c_str());
+				if ((*row)["name"].substr(0, most) == like.substr(0, most)) {
+					printf("REMOVING: %s size=%s score=%s chars=%lu\n", (*row)["name"].c_str(), (*row)["size"].c_str(), (*row)["score"].c_str(), numberOfCharacters);
+					row= results.erase(row);
 				} else {
-					++name;
+					printf("KEEPING: %s size=%s score=%s chars=%lu\n", (*row)["name"].c_str(), (*row)["size"].c_str(), (*row)["score"].c_str(), numberOfCharacters);
+					++row;
 				}
 			}
 			numberOfCharacters-= 1;
+		}
+		for (Sqlite3::DB::Results::iterator row= results.begin(); row != results.end(); ++row) {
+			list[(*row)["name"]]= Metadata(std::stoi((*row)["size"]), _location((*row)["name"]).isFile(), std::stod((*row)["score"]));
+			printf("KEPT: %s size=%s score=%s\n", (*row)["name"].c_str(), (*row)["size"].c_str(), (*row)["score"].c_str());
 		}
 		return list;
 	}
