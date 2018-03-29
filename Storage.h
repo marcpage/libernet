@@ -63,7 +63,7 @@ namespace store {
 		if (results.size() == 0) {
 			Sqlite3::DB::Row row;
 
-			row["size"]= data.length();
+			row["size"]= std::to_string(data.length());
 			row["name"]= name;
 			row["first_time"]= now;
 			row["start_time"]= now;
@@ -76,7 +76,13 @@ namespace store {
 			command+= "put_time = '" + now + "', ";
 			if (!fileExisted) {
 				command+= "start_time = '" + now + "', ";
-				if (static_cast<unsigned lon>(std::stol(results[0]["size"])) != data.length()) {
+				for (Sqlite3::DB::Results::iterator i= results.begin(); i != results.end(); ++i) {
+					for (Sqlite3::DB::Row::iterator r= i->begin(); r != i->end(); ++r) {
+						printf("'%s' = '%s'\t", r->first.c_str(), r->second.c_str());
+					}
+					printf("\n");
+				}
+				if (static_cast<unsigned long>(std::stol(results[0]["size"])) != data.length()) {
 					command+= "size = '" + std::to_string(data.length()) + "', ";
 				}
 			}
