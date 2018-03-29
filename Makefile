@@ -14,9 +14,11 @@ test:bin/test
 
 ../os/tests/test.cpp:
 	@git clone http://github.com/marcpage/os ../os
+	@git clone http://github.com/marcpage/protocol ../protocol
 
  ../os/*.h:../os/tests/test.cpp
- 
-bin/test:../os/tests/test.cpp ../os/*.h *.h
+ ../protocol/*.h:../os/tests/test.cpp
+
+bin/test:../os/tests/test.cpp ../protocol/*.h ../os/*.h *.h
 	@mkdir -p bin
 	@clang++ ../os/tests/test.cpp -o $@ -I.. -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
