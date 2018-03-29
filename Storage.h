@@ -6,14 +6,23 @@
 #include "os/File.h"
 #include "os/DateTime.h"
 #include <string>
-#include <vector>
+#include <map>
+#include <algorithm>
 
 namespace store {
 
 	class Container {
 		public:
 			typedef std::string String;
-			typedef std::vector<String> StringList;
+			struct Metadata {
+				Metadata():size(0),have(false),score(0.0) {}
+				Metadata(long size, bool have):size(size),have(have),score(0.0) {}
+				Metadata(long size, bool have, double score):size(size),have(have),score(score) {}
+				long size;
+				bool have;
+				double score;
+			};
+			typedef std::map<String,Metadata> NameList;
 			Container(const io::Path &path);
 			~Container() {}
 			void put(const String &name, const String &data);
@@ -21,8 +30,10 @@ namespace store {
 			String get(const String &name) {String buffer; return get(name, buffer);}
 			bool del(const String &name);
 			bool has(const String &name);
-			StringList &find(const String &like, int count, StringList &list);
-			StringList find(const String &like, int count) {StringList list; return find(like, count, list);}
+			NameList &find(const String &like, int count, NameList &list);
+			NameList find(const String &like, int count) {NameList list; return find(like, count, list);}
+			NameList &removable(const String &like, int count, NameList &list);
+			NameList removable(const String &like, int count) {NameList list; return removable(like, count, list);}
 		private:
 			io::Path 	_top;
 			io::Path 	_dbPath;
@@ -69,6 +80,8 @@ namespace store {
 			row["start_time"]= now;
 			row["put_time"]= now;
 			row["put_count"]= "1";
+			row["get_count"]= "0";
+			row["del_count"]= "0";
 			_db.addRow("data", row);
 		} else {
 			String command= "UPDATE data SET ";
@@ -86,7 +99,7 @@ namespace store {
 					command+= "size = '" + std::to_string(data.length()) + "', ";
 				}
 			}
-			command+= "put_count = '" + std::to_string(std::stoi(results[0]["put_count"])) + "' ";
+			command+= "put_count = '" + std::to_string(std::stoi(results[0]["put_count"]) + 1) + "' ";
 			command+= "WHERE name LIKE '"+name+"';";
 			_db.exec(command);
 		}
@@ -108,8 +121,9 @@ namespace store {
 		if (results.size() > 0) {
 			String	command= "UPDATE data SET ";
 			String	getCount;
+
 			try {
-				getCount= std::to_string(std::stoi(results[0]["get_count"]));
+				getCount= std::to_string(std::stoi(results[0]["get_count"]) + 1);
 			} catch(const std::exception&) {
 				getCount= "1";
 			}
@@ -121,12 +135,29 @@ namespace store {
 		return buffer;
 	}
 	inline bool Container::del(const String &name) {
-		io::Path location= _location(name);
+		io::Path location= 		_location(name);
+		String					now= std::to_string(dt::DateTime().seconds());
+		Sqlite3::DB::Results	results;
 
 		try {
 			_location(name).unlink();
 		} catch(const std::exception&) {
 			return false;
+		}
+		_db.exec("SELECT del_count,size FROM data WHERE name LIKE '"+name+"';", &results);
+		if (results.size() > 0) {
+			String command= "UPDATE data SET ";
+			String	delCount;
+
+			try {
+				delCount= std::to_string(std::stoi(results[0]["del_count"]) + 1);
+			} catch(const std::exception&) {
+				delCount= "1";
+			}
+			command+= "del_time = '" + now + "', ";
+			command+= "del_count = '" + delCount + "' ";
+			command+= "WHERE name LIKE '"+name+"';";
+			_db.exec(command);
 		}
 		return true;
 	}
@@ -135,12 +166,77 @@ namespace store {
 
 		return location.isFile();
 	}
-	inline Container::StringList &Container::find(const String &like, int count, StringList &list) {
-		// TODO implement
+	inline Container::NameList &Container::find(const String &like, int count, NameList &list) {
+		Sqlite3::DB::Results	results;
+		String::size_type		numberOfCharacters= like.length();
+		NameList::size_type		lastCount= 0;
+
+		list.clear();
+		do	{
+			_db.exec("SELECT name,size FROM data WHERE name LIKE '"+like.substr(0, numberOfCharacters)+"%' LIMIT "+std::to_string(count)+";", &results);
+			if (results.size() > lastCount) {
+				lastCount= results.size();
+				for (Sqlite3::DB::Results::iterator row= results.begin(); (list.size() < static_cast<unsigned int>(count)) && (row != results.end()); ++row) {
+					NameList::iterator found= list.find((*row)["name"]);
+
+					if (found == list.end()) {
+						list[(*row)["name"]]= Metadata(std::stoi((*row)["size"]), _location((*row)["name"]).isFile());
+					}
+				}
+			}
+			numberOfCharacters-= 1;
+		} while ( (numberOfCharacters > 0) && (list.size() < static_cast<unsigned int>(count)) );
+		if (numberOfCharacters > 0) {
+			numberOfCharacters-= 1;
+		}
+		_db.exec("SELECT name,size FROM data WHERE name LIKE '%"+like.substr(0, numberOfCharacters)+"';", &results);
+		return list;
+	}
+	inline Container::NameList &Container::removable(const String &like, int count, NameList &list) {
+		printf("removable('%s', %d)\n", like.c_str(), count);
+		Sqlite3::DB::Results	results;
+		String					now= std::to_string(dt::DateTime().seconds());
+		String::size_type		numberOfCharacters= like.length();
+		const unsigned int		expectedCount= count;
+
+		list.clear();
+		//(put_count + get_count - del_count) * (now - start_time + now - first_time + now - put_time + now - get_time - now + del_time) * size
+		//(put_count + get_count - del_count) * (3.0 * now - start_time - first_time - put_time - get_time + del_time) * size
+		// may be NULL: get_count, del_count, get_time, del_time
+		printf("%s\n", ("SELECT name, size,"
+					"(put_count + get_count - del_count)"
+					"* (3.0 * " + now + " - start_time - first_time - put_time"
+						"+ CASE WHEN get_time IS NULL THEN " + now + " ELSE get_time END + CASE WHEN del_time IS NULL THEN " + now + " ELSE del_time END)"
+					" * size AS score "
+					"FROM data ORDER BY score DESC LIMIT " + std::to_string(count * 2) + ";").c_str());
+		_db.exec("SELECT name, size,"
+					"(put_count + get_count - del_count)"
+					"* (3.0 * " + now + " - start_time - first_time - put_time"
+						"+ CASE WHEN get_time IS NULL THEN " + now + " ELSE get_time END"
+						"+ CASE WHEN del_time IS NULL THEN " + now + " ELSE del_time END) / 31536000.0"
+					" * size / 1048576.0 AS score "
+					"FROM data ORDER BY score ASC LIMIT " + std::to_string(count * 2) + ";", &results);
+		for (Sqlite3::DB::Results::iterator row= results.begin(); row != results.end(); ++row) {
+			list[(*row)["name"]]= Metadata(std::stoi((*row)["size"]), _location((*row)["name"]).isFile(), std::stod((*row)["score"]));
+			printf("%s size=%s score=%s\n", (*row)["name"].c_str(), (*row)["size"].c_str(), (*row)["score"].c_str());
+		}
+		while ( (numberOfCharacters > 0) && (list.size() > expectedCount) ) {
+			for (Sqlite3::DB::Results::iterator row= results.begin(); (list.size() > expectedCount) && (row != results.end());) {
+				const String::size_type most= std::min(row->first.length(), numberOfCharacters);
+
+				if (row->first.substr(0, most) == like.substr(0, most)) {
+					row= list.erase(row);
+				} else {
+					++row;
+				}
+			}
+			numberOfCharacters-= 1;
+		}
 		return list;
 	}
 	inline io::Path Container::_location(const String &name) {
-		io::Path path= _parts + name.substr(0,2) + name.substr(2,4) + name.substr(4,6);
+		const String		parts= name + (name.length() < 6 ? String(6 - name.length(), '_') : String());
+		const io::Path		path= _parts + parts.substr(0,2) + parts.substr(2,2) + parts.substr(4,2);
 
 		path.mkdirs();
 		return path + name;
