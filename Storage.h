@@ -221,13 +221,13 @@ namespace store {
 			printf("%s size=%s score=%s\n", (*row)["name"].c_str(), (*row)["size"].c_str(), (*row)["score"].c_str());
 		}
 		while ( (numberOfCharacters > 0) && (list.size() > expectedCount) ) {
-			for (Sqlite3::DB::Results::iterator row= results.begin(); (list.size() > expectedCount) && (row != results.end());) {
-				const String::size_type most= std::min(row->first.length(), numberOfCharacters);
+			for (NameList::iterator name= list.begin(); (list.size() > expectedCount) && (name != list.end());) {
+				const String::size_type most= std::min(name->first.length(), numberOfCharacters);
 
-				if (row->first.substr(0, most) == like.substr(0, most)) {
-					row= list.erase(row);
+				if (name->first.substr(0, most) == like.substr(0, most)) {
+					name= list.erase(name);
 				} else {
-					++row;
+					++name;
 				}
 			}
 			numberOfCharacters-= 1;
