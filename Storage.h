@@ -2,7 +2,10 @@
 #define __Storage_h__
 
 /** @file Storage.h
-	@todo document*/
+	@todo document
+	@todo update database by walking directories
+	@todo add size data
+*/
 
 #include "os/Path.h"
 #include "os/Sqlite3Plus.h"
