@@ -3,6 +3,7 @@
 
 #include "os/Path.h"
 #include "os/Sqlite3Plus.h"
+#include "os/File.h"
 #include <string>
 #include <vector>
 
@@ -26,6 +27,7 @@ namespace store {
 			Sqlite3::DB	_db;
 			Container(const Container &other);
 			Container &operator=(const Container &other);
+			io::Path &_location(const String &name, io::Path &path);
 	};
 
 	inline Container::Container(const io::Path &path):_top(path), _dbPath(path+"meta.sqlite3"), _parts(path+"parts"), _db(_dbPath) {
@@ -48,6 +50,10 @@ namespace store {
 	inline String &Container::get(const String &name, String &buffer) {
 	}
 	inline StringList &Container::find(const String &like, int count, StringList &list) {
+	}
+	inline io::Path &Container::_location(const String &name, io::Path &path) {
+		path= _parts + name.substr(0,2) + name.substr(2,4) + name.substr(4,6) + name;
+		return path;
 	}
 
 }
