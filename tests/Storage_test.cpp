@@ -8,7 +8,7 @@
 	}
 
 int main(const int /*argc*/, const char * const /*argv*/[]) {
-	int	iterations= 2;
+	int	iterations= 25;
 #ifdef __Tracer_h__
 	iterations= 1;
 #endif
@@ -95,11 +95,16 @@ int main(const int /*argc*/, const char * const /*argv*/[]) {
 					}
 				}
 				{
-					printf("Testing removable create\n");
 					store::Container container(where);
-					printf("Testing removable removable\n");
 					store::Container::NameList found= container.removable("john", 5);;
-					printf("Testing removable done\n");
+					dotest(found.find("john") == found.end());
+					dotest(found.find("jon") == found.end());
+					dotest(found.find("jonathan") == found.end());
+					dotest(found.find("jonothon") == found.end());
+					dotest(found.find("johnathan") == found.end());
+					dotest(found.find("johnathan") == found.end());
+					dotest(found.find("johnathen") == found.end());
+					dotest(found.find("johnathon") == found.end());
 				}
 			} catch(const std::exception &exception) {
 				printf("FAIL: Exception: %s\n", exception.what());
