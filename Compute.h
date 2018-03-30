@@ -23,13 +23,10 @@ namespace compute {
 
 	std::string unstash(store::Container &store, const::std::string &identifier) {
 		std::string		encrypted= store.get(identifier.substr(0, identifier.find(':')));
-
-		printf("identifier: '%s'\n", identifier.c_str());
-		printf("contentsHash: %s\n", identifier.substr(identifier.find(':') + 1).c_str());
 		hash::sha256	contentsHash= hash::sha256::fromHex(identifier.substr(identifier.find(':') + 1));
 		crypto::AES256	cryptor(contentsHash.data());
 		std::string		compressed= cryptor.decrypt(encrypted);
-		std::string		contents= z::uncompress(compressed);
+		std::string		contents= z::uncompress(compressed, 2 * 1024 * 1024);
 
 		return contents;
 	}

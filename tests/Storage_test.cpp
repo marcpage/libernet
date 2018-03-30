@@ -14,7 +14,7 @@ int main(const int /*argc*/, const char * const /*argv*/[]) {
 #endif
 	for(int i= 0; i < iterations; ++i) {
 		try {
-			io::Path where("bin/logs/storage");
+			io::Path where("bin/scratch/Storage");
 
 			if (where.isDirectory()) {
 				where.remove();
