@@ -22,8 +22,8 @@ namespace store {
 			typedef std::string String;
 			struct Metadata {
 				Metadata():size(0),have(false),score(0.0) {}
-				Metadata(long size, bool have):size(size),have(have),score(0.0) {}
-				Metadata(long size, bool have, double score):size(size),have(have),score(score) {}
+				Metadata(long aSize, bool doesHave):size(aSize),have(doesHave),score(0.0) {}
+				Metadata(long aSize, bool doesHave, double theScore):size(aSize),have(doesHave),score(theScore) {}
 				long size;
 				bool have;
 				double score;
