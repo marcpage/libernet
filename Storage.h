@@ -8,29 +8,19 @@
 */
 
 #include "os/Path.h"
-#include "os/Sqlite3Plus.h"
-#include "os/File.h"
-#include "os/DateTime.h"
-#include <string>
-#include <map>
-#include <algorithm>
+#include "os/Thread.h"
+#include "os/Queue.h"
+#include "libernet/Container.h"
+#include <vector>
 
 namespace store {
 
-	class Container {
+	class Storage : public exec::Thread {
 		public:
 			typedef std::string String;
-			struct Metadata {
-				Metadata():size(0),have(false),score(0.0) {}
-				Metadata(long aSize, bool doesHave):size(aSize),have(doesHave),score(0.0) {}
-				Metadata(long aSize, bool doesHave, double theScore):size(aSize),have(doesHave),score(theScore) {}
-				long size;
-				bool have;
-				double score;
-			};
-			typedef std::map<String,Metadata> NameList;
-			Container(const io::Path &path);
-			~Container() {}
+			typedef std::vector<String> NameList;
+			Storage(const io::Path &location);
+			virtual ~Storage();
 			void put(const String &name, const String &data);
 			String &get(const String &name, String &buffer);
 			String get(const String &name) {String buffer; return get(name, buffer);}
@@ -38,192 +28,90 @@ namespace store {
 			bool has(const String &name);
 			NameList &find(const String &like, int count, NameList &list);
 			NameList find(const String &like, int count) {NameList list; return find(like, count, list);}
-			NameList &removable(const String &like, int count, NameList &list);
-			NameList removable(const String &like, int count) {NameList list; return removable(like, count, list);}
+		protected:
+			virtual void *run();
 		private:
-			io::Path 	_top;
-			io::Path 	_dbPath;
-			io::Path 	_parts;
-			Sqlite3::DB	_db;
-			Container(const Container &other);
-			Container &operator=(const Container &other);
-			io::Path _location(const String &name);
+			struct Request {
+				typedef exec::Queue<String> Queue;
+				enum Action {Put, Get, Del, Has, Find};
+				Request(const String &aName):action(Del),name(aName),data(),count(0),results(NULL) {}
+				Request(const String &aName, const String &aData):action(Put),name(aName),data(aData),count(0),results(NULL) {}
+				Request(const String &aName, int aCount, Queue &queue):action(Find),name(aName),data(),count(aCount),results(&queue) {}
+				Request(Action anAction, const String &aName, Queue &queue):action(anAction),name(aName),data(),count(0),results(&queue) {}
+				Action action;
+				String name;
+				String data;
+				int count;
+				Queue *results;
+			};
+			store::Container		_container;
+			exec::Queue<Request>	_requests;
 	};
 
-	inline Container::Container(const io::Path &path):_top(path.mkdirs()), _dbPath(path+"meta.sqlite3"), _parts(path+"parts"), _db(_dbPath) {
-		_db.exec("CREATE TABLE IF NOT EXISTS data ("
-					"name VARCHAR(256), "
-					"size INT, "
-					"first_time REAL, "
-					"start_time REAL, "
-					"get_time REAL, "
-					"get_count INT, "
-					"del_time REAL, "
-					"del_count INT, "
-					"put_time REAL, "
-					"put_count INT);"
-		);
+	inline Storage::Storage(const io::Path &location):_container(location),_requests() {
 	}
-	inline void Container::put(const String &name, const String &data) {
-		io::Path				location= _location(name);
-		const bool				fileExisted= location.isFile();
-		String					now= std::to_string(dt::DateTime().seconds());
-		Sqlite3::DB::Results	results;
-
-		if (!fileExisted) {
-			io::File	file(location, io::File::Binary, io::File::ReadWrite);
-
-			file.write(data);
-		}
-		// TODO: when logging added log when size is not the same as data size
-		_db.exec("SELECT put_count,size FROM data WHERE name LIKE '"+name+"';", &results);
-		if (results.size() == 0) {
-			Sqlite3::DB::Row row;
-
-			row["size"]= std::to_string(data.length());
-			row["name"]= name;
-			row["first_time"]= now;
-			row["start_time"]= now;
-			row["put_time"]= now;
-			row["put_count"]= "1";
-			row["get_count"]= "0";
-			row["del_count"]= "0";
-			_db.addRow("data", row);
-		} else {
-			String command= "UPDATE data SET ";
-
-			command+= "put_time = '" + now + "', ";
-			if (!fileExisted) {
-				command+= "start_time = '" + now + "', ";
-				if (static_cast<unsigned long>(std::stol(results[0]["size"])) != data.length()) {
-					command+= "size = '" + std::to_string(data.length()) + "', ";
-				}
-			}
-			command+= "put_count = '" + std::to_string(std::stoi(results[0]["put_count"]) + 1) + "' ";
-			command+= "WHERE name LIKE '"+name+"';";
-			_db.exec(command);
-		}
+	inline Storage::~Storage() {
 	}
-	inline Container::String &Container::get(const String &name, String &buffer) {
-		io::Path				location= _location(name);
-		const bool				fileExisted= location.isFile();
-		String					now= std::to_string(dt::DateTime().seconds());
-		Sqlite3::DB::Results	results;
+	inline void Storage::put(const String &name, const String &data) {
+		_requests.enqueue(Request(name, data));
+	}
+	inline Storage::String &Storage::get(const String &name, String &buffer) {
+		Request::Queue response;
 
-		if (fileExisted) {
-			io::File	file(location, io::File::Binary, io::File::ReadOnly);
-
-			file.read(buffer);
-		} else {
-			buffer.clear();
-		}
-		_db.exec("SELECT get_count FROM data WHERE name LIKE '"+name+"';", &results);
-		if (results.size() > 0) {
-			String	command= "UPDATE data SET ";
-			String	getCount;
-
-			getCount= std::to_string(std::stoi(results[0]["get_count"]) + 1);
-			command+= "get_time = '" + now + "', ";
-			command+= "get_count = '" + getCount + "' ";
-			command+= "WHERE name LIKE '"+name+"';";
-			_db.exec(command);
-		}
+		_requests.enqueue(Request(Request::Get), name, response));
+		buffer= response.dequeue();
 		return buffer;
 	}
-	inline bool Container::del(const String &name) {
-		io::Path location= 		_location(name);
-		String					now= std::to_string(dt::DateTime().seconds());
-		Sqlite3::DB::Results	results;
-
-		try {
-			_location(name).unlink();
-		} catch(const std::exception&) {
-			return false;
-		}
-		_db.exec("SELECT del_count,size FROM data WHERE name LIKE '"+name+"';", &results);
-		if (results.size() > 0) {
-			String command= "UPDATE data SET ";
-			String	delCount;
-
-			delCount= std::to_string(std::stoi(results[0]["del_count"]) + 1);
-			command+= "del_time = '" + now + "', ";
-			command+= "del_count = '" + delCount + "' ";
-			command+= "WHERE name LIKE '"+name+"';";
-			_db.exec(command);
-		}
-		return true;
+	inline bool Storage::del(const String &name) {
+		_requests.enqueue(Request(name));
 	}
-	inline bool Container::has(const String &name) {
-		io::Path	location= _location(name);
+	inline bool Storage::has(const String &name) {
+		Request::Queue response;
 
-		return location.isFile();
+		_requests.enqueue(Request(Request::Get), name, response));
+		return response.dequeue().length() > 0;
 	}
-	inline Container::NameList &Container::find(const String &like, int count, NameList &list) {
-		Sqlite3::DB::Results	results;
-		String::size_type		numberOfCharacters= like.length();
-		NameList::size_type		lastCount= 0;
+	inline Storage::NameList &Storage::find(const String &like, int count, NameList &list) {
+		Request::Queue	response;
+		String			name;
 
+		_requests.enqueue(Request(Request::Get), name, response));
 		list.clear();
-		do	{
-			_db.exec("SELECT name,size FROM data WHERE name LIKE '"+like.substr(0, numberOfCharacters)+"%' LIMIT "+std::to_string(count)+";", &results);
-			if (results.size() > lastCount) {
-				lastCount= results.size();
-				for (Sqlite3::DB::Results::iterator row= results.begin(); (list.size() < static_cast<unsigned int>(count)) && (row != results.end()); ++row) {
-					NameList::iterator found= list.find((*row)["name"]);
+		while ( (name= response.dequeue()).length() > 0 ) {
+			list.push_back(name);
+		}
+		return list;
+	}
+	inline void *Storage::run() {
+		Container::NameList names;
 
-					if (found == list.end()) {
-						list[(*row)["name"]]= Metadata(std::stoi((*row)["size"]), _location((*row)["name"]).isFile());
+		while (true) {
+			Request next= _requests.dequeue();
+
+			switch(next.action) {
+				case Put:
+					_container.put(next.name, next.data);
+					break;
+				case Get:
+					next.results->enqueue(_container.get(next.name, next.data));
+					break;
+				case Del:
+					_container.del(next.name);
+					break;
+				case Has:
+					next.results->enqueue(_container.has(next.name) ? "1" : "");
+					break;
+				case Find:
+					_container.find(next.name, next.count, names);
+					for (Container::NameList::iterator name= names.begin(); name != names.end(); ++name) {
+						next.results->enqueue(name->first);
 					}
-				}
+					next.results->enqueue("");
+					break;
 			}
-			numberOfCharacters-= 1;
-		} while ( (numberOfCharacters > 0) && (list.size() < static_cast<unsigned int>(count)) );
-		if (numberOfCharacters > 0) {
-			numberOfCharacters-= 1;
 		}
-		_db.exec("SELECT name,size FROM data WHERE name LIKE '%"+like.substr(0, numberOfCharacters)+"';", &results);
-		return list;
-	}
-	inline Container::NameList &Container::removable(const String &like, int count, NameList &list) {
-		Sqlite3::DB::Results	results;
-		String					now= std::to_string(dt::DateTime().seconds());
-		String::size_type		numberOfCharacters= like.length();
-		const unsigned int		expectedCount= count;
-
-		list.clear();
-		_db.exec("SELECT name, size,"
-					"(put_count + get_count - del_count)"
-					"* (3.0 * " + now + " - start_time - first_time - put_time"
-						"+ CASE WHEN get_time IS NULL THEN " + now + " ELSE get_time END"
-						"+ CASE WHEN del_time IS NULL THEN " + now + " ELSE del_time END) / 31536000.0"
-					" * size / 1048576.0 AS score "
-					"FROM data ORDER BY score ASC LIMIT " + std::to_string(expectedCount * 2) + ";", &results);
-		std::reverse(results.begin(), results.end());
-		while ( (numberOfCharacters > 0) && (results.size() > expectedCount) ) {
-			for (Sqlite3::DB::Results::iterator row= results.begin(); (results.size() > expectedCount) && (row != results.end());) {
-				const String::size_type most= std::min((*row)["name"].length(), numberOfCharacters);
-
-				if ((*row)["name"].substr(0, most) == like.substr(0, most)) {
-					row= results.erase(row);
-				} else {
-					++row;
-				}
-			}
-			numberOfCharacters-= 1;
-		}
-		for (Sqlite3::DB::Results::iterator row= results.begin(); row != results.end(); ++row) {
-			list[(*row)["name"]]= Metadata(std::stoi((*row)["size"]), _location((*row)["name"]).isFile(), std::stod((*row)["score"]));
-		}
-		return list;
-	}
-	inline io::Path Container::_location(const String &name) {
-		const String		parts= name + (name.length() < 6 ? String(6 - name.length(), '_') : String());
-		const io::Path		path= _parts + parts.substr(0,2) + parts.substr(2,2) + parts.substr(4,2);
-
-		path.mkdirs();
-		return path + name;
 	}
 
 }
 
-#endif // __Storage_h__
+#endif // __Container_h__
