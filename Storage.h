@@ -3,8 +3,6 @@
 
 /** @file Storage.h
 	@todo document
-	@todo update database by walking directories
-	@todo add size data
 */
 
 #include "os/Path.h"
@@ -24,7 +22,7 @@ namespace store {
 			void put(const String &name, const String &data);
 			String &get(const String &name, String &buffer);
 			String get(const String &name) {String buffer; return get(name, buffer);}
-			bool del(const String &name);
+			void del(const String &name);
 			bool has(const String &name);
 			NameList &find(const String &like, int count, NameList &list);
 			NameList find(const String &like, int count) {NameList list; return find(like, count, list);}
@@ -38,6 +36,7 @@ namespace store {
 				Request(const String &aName, const String &aData):action(Put),name(aName),data(aData),count(0),results(NULL) {}
 				Request(const String &aName, int aCount, Queue &queue):action(Find),name(aName),data(),count(aCount),results(&queue) {}
 				Request(Action anAction, const String &aName, Queue &queue):action(anAction),name(aName),data(),count(0),results(&queue) {}
+				const char *c_str() const {return name.c_str();}
 				Action action;
 				String name;
 				String data;
@@ -49,6 +48,7 @@ namespace store {
 	};
 
 	inline Storage::Storage(const io::Path &location):_container(location),_requests() {
+		start();
 	}
 	inline Storage::~Storage() {
 	}
@@ -58,24 +58,23 @@ namespace store {
 	inline Storage::String &Storage::get(const String &name, String &buffer) {
 		Request::Queue response;
 
-		_requests.enqueue(Request(Request::Get), name, response));
+		_requests.enqueue(Request(Request::Get, name, response));
 		buffer= response.dequeue();
 		return buffer;
 	}
-	inline bool Storage::del(const String &name) {
+	inline void Storage::del(const String &name) {
 		_requests.enqueue(Request(name));
 	}
 	inline bool Storage::has(const String &name) {
 		Request::Queue response;
-
-		_requests.enqueue(Request(Request::Get), name, response));
+		_requests.enqueue(Request(Request::Has, name, response));
 		return response.dequeue().length() > 0;
 	}
 	inline Storage::NameList &Storage::find(const String &like, int count, NameList &list) {
 		Request::Queue	response;
 		String			name;
 
-		_requests.enqueue(Request(Request::Get), name, response));
+		_requests.enqueue(Request(like, count, response));
 		list.clear();
 		while ( (name= response.dequeue()).length() > 0 ) {
 			list.push_back(name);
@@ -89,19 +88,19 @@ namespace store {
 			Request next= _requests.dequeue();
 
 			switch(next.action) {
-				case Put:
+				case Request::Put:
 					_container.put(next.name, next.data);
 					break;
-				case Get:
+				case Request::Get:
 					next.results->enqueue(_container.get(next.name, next.data));
 					break;
-				case Del:
+				case Request::Del:
 					_container.del(next.name);
 					break;
-				case Has:
+				case Request::Has:
 					next.results->enqueue(_container.has(next.name) ? "1" : "");
 					break;
-				case Find:
+				case Request::Find:
 					_container.find(next.name, next.count, names);
 					for (Container::NameList::iterator name= names.begin(); name != names.end(); ++name) {
 						next.results->enqueue(name->first);
