@@ -61,16 +61,34 @@ namespace server {
 			net::Socket		*next= _queue.dequeue();
 			try {
 				_working= true;
-				http::Request	request= _readRequest(*next);
-				http::Response	response;
-				std::string		buffer;
+				http::Request		request= _readRequest(*next);
+				http::Response		response;
+				std::string			buffer;
+				const std::string	hash= "/sha256/";
+				std::string			responseData;
 
-				response.info().code()= "200";
-				response.info().message()= "OK";
+				responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + request + "</pre></body></html>\n";
+				response.info().code()= "404";
+				response.info().message()= "Not Found";
+				response.fields()["Content-Type"]= "text/html; charset=utf-8";
+				if (request.info().path().find(hash) == 0) {
+					std::string::size_type nextSlash= request.info().path().find('/', hash.length());
+					std::string name= request.info().path().substr(hash.length(), nextSlash);
+
+					if (_store.has(name)) {
+						std::string content= _store.get(name);
+						response.info().code()= "200";
+						response.info().message()= "OK";
+						responseData= content;
+					} else {
+						responseData= std::string("<html><head><title>504 Resource Not Local</title></head><body><h1>504 Resource Not Local</h1></br><pre>") + request + "</pre></body></html>\n";
+						response.info().code()= "504";
+						response.info().message()= "Gateway Timeout: Not Local: " + name;
+					}
+				}
 				buffer= response;
 				next->write(BufferString(buffer), buffer.size());
-				buffer= request;
-				next->write(BufferString(buffer), buffer.size());
+				next->write(BufferString(responseData), responseData.size());
 				connection->close();
 				delete connection;
 			} catch(const std::exception &exception) {
