@@ -8,31 +8,31 @@ exec::ThreadId::sleep(1.05, exec::ThreadId::Seconds);
 #endif
 	try {
 		io::Path				location("bin/scratch/Compute");
-		
+
 		if (location.exists()) {
 			try {
 				location.remove();
 			} catch(const posix::err::ETIMEDOUT_Errno&) {}
 		}
-		
+
 		json::Value 			package;
 		std::string				contentsHash;
 		std::string				finalHash;
 		std::string 			contents;
 		std::string				identifier;
 		//io::Path				outDir("bin/logs/results");
-		store::Container		store(location);
+		store::Storage			store(location);
 		json::Value::StringList	names;
 		io::Path				currentDirectory(".");
 		io::Path::StringList	files= currentDirectory.list(io::Path::PathAndName);
-		
+
 		package.makeObject();
 		for (io::Path::StringList::iterator name= files.begin(); name != files.end(); ++name) {
 			json::Value		fileInfo;
-			
+
 			try {
 				io::Path	item(*name);
-				
+
 				if (item.isFile()) {
 					identifier= compute::stash(io::Path(*name).contents(), store, finalHash, contentsHash);
 					fileInfo.makeObject();

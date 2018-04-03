@@ -6,11 +6,11 @@
 #include "os/ZCompression.h"
 #include "os/SymetricEncrypt.h"
 #include "protocol/JSON.h"
-#include "libernet/Container.h"
+#include "libernet/Storage.h"
 
 namespace compute {
 
-	std::string stash(const std::string &contents, store::Container &container, std::string &identifier, std::string &key) {
+	std::string stash(const std::string &contents, store::Storage &container, std::string &identifier, std::string &key) {
 		hash::sha256 	contentsHash(contents);
 		crypto::AES256	cryptor(contentsHash.data());
 		std::string		compressed= z::compress(contents, 9);
@@ -21,7 +21,7 @@ namespace compute {
 		return finalHash.hex(identifier) + ":" + contentsHash.hex(key);
 	}
 
-	std::string unstash(store::Container &store, const std::string &name, const std::string &key) {
+	std::string unstash(store::Storage &store, const std::string &name, const std::string &key) {
 		std::string		encrypted= store.get(name);
 		hash::sha256	contentsHash= hash::sha256::fromHex(key);
 		crypto::AES256	cryptor(contentsHash.data());
@@ -30,7 +30,7 @@ namespace compute {
 
 		return contents;
 	}
-	std::string unstash(store::Container &store, const std::string &identifier) {
+	std::string unstash(store::Storage &store, const std::string &identifier) {
 		return unstash(store, identifier.substr(0, identifier.find(':')), identifier.substr(identifier.find(':') + 1));
 	}
 

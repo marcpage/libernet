@@ -3,12 +3,18 @@
 
 #include "os/Queue.h"
 #include "os/Thread.h"
+#include "os/Hash.h"
+#include "os/SymetricEncrypt.h"
 #include "os/SocketServer.h"
 #include "os/AddressIPv4.h"
 #include "os/AddressIPv6.h"
 #include "os/BufferManaged.h"
 #include "os/BufferString.h"
+#include "os/ZCompression.h"
+#include "protocol/HTTP.h"
+#include "protocol/JSON.h"
 #include "libernet/Storage.h"
+#include "libernet/Compute.h"
 #include <vector>
 
 namespace server {
@@ -17,14 +23,14 @@ namespace server {
 		public:
 			HTTPHandler(store::Storage &store);
 			virtual ~HTTPHandler();
-			bool handle(net::Socket *connection);
+			bool handleConnection(net::Socket *connection);
 		protected:
 			virtual void *run();
 		private:
 			store::Storage				&_store;
 			bool						_working;
 			exec::Queue<net::Socket*>	_queue;
-			http::Request &_readRequest(net::Socket &connection);
+			http::Request _readRequest(net::Socket &connection);
 			std::string &_readLine(net::Socket &connection, std::string &buffer);
 			bool _isDataPath(const std::string &path, std::string &name, std::string &key, std::string &suffix);
 			std::string _getData(const std::string &name, const std::string &key, const std::string &suffix, std::string &contentType);
@@ -48,9 +54,9 @@ namespace server {
 	}
 	inline HTTPHandler::~HTTPHandler() {
 	}
-	inline bool HTTPHandler::handle(net::Socket *connection) {
+	inline bool HTTPHandler::handleConnection(net::Socket *connection) {
 		if (_queue.size() == 0) {
-			_queue.enqueue(conection);
+			_queue.enqueue(connection);
 			return true;
 		}
 		return false;
@@ -59,6 +65,7 @@ namespace server {
 		while (true) {
 			_working= false;
 			net::Socket		*next= _queue.dequeue();
+
 			try {
 				_working= true;
 				http::Request		request= _readRequest(*next);
@@ -68,12 +75,13 @@ namespace server {
 				std::string			responseData;
 				std::string			name, key, suffix, contentType;
 
-				responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + request + "</pre></body></html>\n";
+				responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + std::string(request) + "</pre></body></html>\n";
 				response.info().code()= "404";
 				response.info().message()= "Not Found";
 				response.fields()["Content-Type"]= "text/html; charset=utf-8";
 				try {
 					if (_isDataPath(request.info().path(), name, key, suffix)) {
+						// check for method == GET vs PUT
 						std::string contents= _getData(name, key, suffix, contentType);
 
 						if (contents.length() > 0) {
@@ -88,20 +96,20 @@ namespace server {
 				} catch(const std::exception &exception) {
 					response.info().code()= "400";
 					response.info().message()= "Bad Request";
-					responseData= std::string("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><br/><pre>") + exception->what() + "</pre><br/>Request:<br/><pre>" + request + "</pre></body></html>\n";
+					responseData= std::string("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><br/><pre>") + exception.what() + "</pre><br/>Request:<br/><pre>" + std::string(request) + "</pre></body></html>\n";
 				}
 
 				buffer= response;
 				next->write(BufferString(buffer), buffer.size());
 				next->write(BufferString(responseData), responseData.size());
-				connection->close();
-				delete connection;
+				next->close();
+				delete next;
 			} catch(const std::exception &exception) {
 				// TODO: log
 			}
 		}
 	}
-	inline http::Request &HTTPHandler::_readRequest(net::Socket &connection) {
+	inline http::Request HTTPHandler::_readRequest(net::Socket &connection) {
 		std::string headers, line;
 
 		while ( (_readLine(connection, line) != "\r\n") && (line != "\n") ) {
@@ -192,7 +200,7 @@ namespace server {
 		return results;
 	}
 
-	inline HTTP::HTTP(int port, store::Storage &storage):exec::Thread(KeepAroundAfterFinish),_store(store),_port(port),_handlers() {
+	inline HTTP::HTTP(int port, store::Storage &storage):exec::Thread(KeepAroundAfterFinish),_store(storage),_port(port),_handlers() {
 		start();
 	}
 	inline HTTP::~HTTP() {
@@ -204,7 +212,7 @@ namespace server {
 		net::AddressIPv4	address(_port);
 		net::SocketServer	server(address.family());
 
-		server.resuseAddress();
+		server.reuseAddress();
 		server.reusePort();
 		server.bind(address);
 		server.listen(10/* backlog */);
@@ -215,14 +223,14 @@ namespace server {
 
 			server.accept(connectedTo, *connection);
 			for (_HandlerList::iterator i= _handlers.begin(); i != _handlers.end(); ++i) {
-				if ( (*i)->handle(connection) ) {
+				if ( (*i)->handleConnection(connection) ) {
 					found= *i;
 					break;
 				}
 			}
 			if (NULL == found) {
 				found= new HTTPHandler(_store);
-				found->handle(connection);
+				found->handleConnection(connection);
 				_handlers.push_back(found);
 			}
 		}
