@@ -26,7 +26,8 @@ namespace server {
 			exec::Queue<net::Socket*>	_queue;
 			http::Request &_readRequest(net::Socket &connection);
 			std::string &_readLine(net::Socket &connection, std::string &buffer);
-
+			bool _isDataPath(const std::string &path, std::string &name, std::string &key, std::string &suffix);
+			std::string _getData(const std::string &name, const std::string &key, const std::string &suffix, std::string &contentType);
 	};
 
 	class HTTP : public exec::Thread {
@@ -40,7 +41,6 @@ namespace server {
 			store::Storage	&_store;
 			int				_port;
 			_HandlerList	_handlers;
-
 	};
 
 	inline HTTPHandler::HTTPHandler(store::Storage &store):exec::Thread(KeepAroundAfterFinish),_store(store),_working(false),_queue() {
@@ -66,26 +66,31 @@ namespace server {
 				std::string			buffer;
 				const std::string	hash= "/sha256/";
 				std::string			responseData;
+				std::string			name, key, suffix, contentType;
 
 				responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + request + "</pre></body></html>\n";
 				response.info().code()= "404";
 				response.info().message()= "Not Found";
 				response.fields()["Content-Type"]= "text/html; charset=utf-8";
-				if (request.info().path().find(hash) == 0) {
-					std::string::size_type nextSlash= request.info().path().find('/', hash.length());
-					std::string name= request.info().path().substr(hash.length(), nextSlash);
+				try {
+					if (_isDataPath(request.info().path(), name, key, suffix)) {
+						std::string contents= _getData(name, key, suffix, contentType);
 
-					if (_store.has(name)) {
-						std::string content= _store.get(name);
-						response.info().code()= "200";
-						response.info().message()= "OK";
-						responseData= content;
-					} else {
-						responseData= std::string("<html><head><title>504 Resource Not Local</title></head><body><h1>504 Resource Not Local</h1></br><pre>") + request + "</pre></body></html>\n";
-						response.info().code()= "504";
-						response.info().message()= "Gateway Timeout: Not Local: " + name;
+						if (contents.length() > 0) {
+							responseData= contents;
+							response.info().code()= "200";
+							response.info().message()= "OK";
+							if (contentType.length() > 0) {
+								response.fields()["Content-Type"]= contentType;
+							}
+						}
 					}
+				} catch(const std::exception &exception) {
+					response.info().code()= "400";
+					response.info().message()= "Bad Request";
+					responseData= std::string("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><br/><pre>") + exception->what() + "</pre><br/>Request:<br/><pre>" + request + "</pre></body></html>\n";
 				}
+
 				buffer= response;
 				next->write(BufferString(buffer), buffer.size());
 				next->write(BufferString(responseData), responseData.size());
@@ -114,6 +119,77 @@ namespace server {
 				buffer += byte;
 			}
 			return buffer;
+	}
+	inline bool HTTPHandler::_isDataPath(const std::string &path, std::string &name, std::string &key, std::string &suffix) {
+		const std::string				namePrefix("/sha256/");
+		const std::string::size_type	nameSize= 32;
+
+		name.clear();
+		key.clear();
+		suffix.clear();
+		if ( (path.length() >= namePrefix.length() + nameSize) && (path.find(namePrefix) == 0) ) {
+			const std::string				keyPrefix("/aes256/");
+			const std::string::size_type	keySize= 32;
+
+			name= path.substr(keyPrefix.length(), nameSize);
+			try {
+				hash::sha256::fromHex(name);
+			} catch(const msg::Exception &) {
+				return false;
+			}
+			if ( (path.length() >= namePrefix.length() + nameSize + keyPrefix.length() + keySize)
+					&& (path.find(keyPrefix) == namePrefix.length() + nameSize) ) {
+				key= path.substr(namePrefix.length() + nameSize + keyPrefix.length(), keySize);
+				try {
+					hash::sha256	asHash= hash::sha256::fromHex(key);
+					crypto::AES256(asHash.buffer(), asHash.size());
+				} catch(const msg::Exception &) {
+					return false;
+				}
+				if (path.length() > namePrefix.length() + nameSize + keyPrefix.length() + keySize) {
+					suffix= path.substr(namePrefix.length() + nameSize + keyPrefix.length() + keySize);
+					return '/' == path[namePrefix.length() + nameSize + keyPrefix.length() + keySize];
+				} else {
+					return true;
+				}
+			}
+			return path.length() == namePrefix.length() + nameSize;
+		}
+		return false;
+	}
+	inline std::string HTTPHandler::_getData(const std::string &name, const std::string &key, const std::string &suffix, std::string &contentType) {
+		std::string results;
+
+		contentType.clear();
+		if (_store.has(name)) {
+			std::string			content= key.length() > 0 ? compute::unstash(_store, name, key) : _store.get(name);
+			const std::string	expectedContentHash= key.length() > 0 ? key : name;
+
+			if (hash::sha256(content).hex() != expectedContentHash) {
+				content= z::uncompress(content, 2 * 1024 * 1024);
+			}
+			if (hash::sha256(content).hex() == expectedContentHash) {
+				if (key.size() > 0) {
+					json::Value	directory(content);
+					std::string	path = suffix.substr(1);
+					std::string subname, subkey, subsuffix;
+
+					if ( (path.length() == 0) && (directory.has(path)) ) {
+						path= directory[path].string();
+					}
+					if ( directory.has(path) && (directory[path].has("path"))
+							&& (_isDataPath(directory[path]["path"], subname, subkey, subsuffix)) && (subsuffix.length() == 0) ) {
+						results= _getData(subname, subkey, subsuffix, contentType);
+						if (directory[path].has("Content-Type")) {
+							contentType= directory[path]["Content-Type"];
+						}
+					}
+				} else {
+					results= content;
+				}
+			}
+		}
+		return results;
 	}
 
 	inline HTTP::HTTP(int port, store::Storage &storage):exec::Thread(KeepAroundAfterFinish),_store(store),_port(port),_handlers() {
