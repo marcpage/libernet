@@ -2,14 +2,14 @@
 
 all:test docs
 
-documentation/index.html:
+documentation/index.html: Makefile
 	@mkdir -p documentation
 	@doxygen libernet.dox 2> bin/logs/doxygen.txt
 	@if [ `cat bin/logs/doxygen.txt | wc -l` -ne "0" ]; then echo `cat bin/logs/doxygen.txt | wc -l` documentation messages; fi
 
 docs:documentation/index.html
 
-test:bin/test
+test:bin/test Makefile
 	@bin/test $(OS_OPTIONS)
 
 ../os/tests/test.cpp:
@@ -19,6 +19,6 @@ test:bin/test
  ../os/*.h:../os/tests/test.cpp
  ../protocol/*.h:../os/tests/test.cpp
 
-bin/test:../os/tests/test.cpp ../protocol/*.h ../os/*.h *.h
+bin/test:../os/tests/test.cpp ../protocol/*.h ../os/*.h *.h Makefile
 	@mkdir -p bin
 	@clang++ ../os/tests/test.cpp -o $@ -I.. -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
