@@ -1,6 +1,11 @@
 #ifndef __Server_h__
 #define __Server_h__
 
+/**
+	@todo Test and fix multi connection
+	@todo Test embedded data and files within embedded data
+*/
+
 #include "os/Queue.h"
 #include "os/Thread.h"
 #include "os/Hash.h"
@@ -65,7 +70,7 @@ namespace server {
 		while (true) {
 			_working= false;
 			net::Socket		*next= _queue.dequeue();
-			
+
 			try {
 				_working= true;
 				try {
@@ -102,10 +107,10 @@ namespace server {
 									bool			valid;
 									std::string		originalHash;
 									std::string		uncompressedHash;
-							
+
 									do {
 										size_t amount= next->read(dataBuffer, size);
-								
+
 										results.append(data, 0, amount);
 										size-= amount;
 									} while(size > 0);
@@ -161,7 +166,7 @@ namespace server {
 							response.info().message()= "Bad Request";
 							responseData= std::string("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><br/><pre>") + exception.what() + "</pre><br/>Request:<br/><pre>" + std::string(request) + "</pre></body></html>\n";
 						}
-				
+
 						if (responseData.size() > 0) {
 							response.fields()["Content-Length"]= std::to_string(responseData.size());
 						}
@@ -294,7 +299,7 @@ namespace server {
 			net::AddressIPv6	connectedTo;
 			net::Socket			*connection= new net::Socket();
 			HTTPHandler			*found= NULL;
-				
+
 			server.accept(connectedTo, *connection);
 			for (_HandlerList::iterator i= _handlers.begin(); i != _handlers.end(); ++i) {
 				if ( (*i)->handleConnection(connection) ) {
