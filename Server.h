@@ -65,110 +65,120 @@ namespace server {
 		while (true) {
 			_working= false;
 			net::Socket		*next= _queue.dequeue();
-
+			
 			try {
 				_working= true;
-				http::Request		request= _readRequest(*next);
-				http::Response		response;
-				std::string			buffer;
-				const std::string	hash= "/sha256/";
-				std::string			responseData;
-				std::string			name, key, suffix, contentType;
-
-				responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + std::string(request) + "</pre></body></html>\n";
-				response.info().code()= "404";
-				response.info().message()= "Not Found";
-				response.fields()["Content-Type"]= "text/html; charset=utf-8";
 				try {
-					if (_isDataPath(request.info().path(), name, key, suffix)) {
-						if (request.info().method() == "GET") {
-							std::string contents= _getData(name, key, suffix, contentType);
+					while (true) {
+						http::Request		request= _readRequest(*next);
+						http::Response		response;
+						std::string			buffer;
+						const std::string	hash= "/sha256/";
+						std::string			responseData;
+						std::string			name, key, suffix, contentType;
 
-							if (contents.length() > 0) {
-								responseData= contents;
-								response.info().code()= "200";
-								response.info().message()= "OK";
-								if (contentType.length() > 0) {
-									response.fields()["Content-Type"]= contentType;
+						responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + std::string(request) + "</pre></body></html>\n";
+						response.info().code()= "404";
+						response.info().message()= "Not Found";
+						response.fields()["Content-Type"]= "text/html; charset=utf-8";
+						try {
+							if (_isDataPath(request.info().path(), name, key, suffix)) {
+								if (request.info().method() == "GET") {
+									std::string contents= _getData(name, key, suffix, contentType);
+
+									if (contents.length() > 0) {
+										responseData= contents;
+										response.info().code()= "200";
+										response.info().message()= "OK";
+										if (contentType.length() > 0) {
+											response.fields()["Content-Type"]= contentType;
+										}
+									}
+								} else if ( (request.info().method() == "PUT") && (request.fields().has("Content-Length")) && (key.size() == 0) && (suffix.size() == 0)) {
+									long			size= std::stol(request.fields()["Content-Length"]);
+									std::string		data(size, '\0');
+									std::string		results;
+									BufferString	dataBuffer(data);
+									bool			valid;
+									std::string		originalHash;
+									std::string		uncompressedHash;
+							
+									do {
+										size_t amount= next->read(dataBuffer, size);
+								
+										results.append(data, 0, amount);
+										size-= amount;
+									} while(size > 0);
+									originalHash= hash::sha256(results).hex();
+									valid= hash::sha256(results) == hash::sha256::fromHex(name);
+									if (!valid) {
+										try {
+											uncompressedHash= hash::sha256(z::uncompress(results, 2 * 1024 * 1024)).hex();
+											valid= hash::sha256(z::uncompress(results, 2 * 1024 * 1024)) == hash::sha256::fromHex(name);
+										} catch(const z::Exception &) {}
+									}
+									if (valid) {
+										_store.put(name, results);
+										response.info().code()= "200";
+										response.info().message()= "OK";
+										responseData= "<html><head><title>Content Added</title></head><body><h1>Content Added</h1><br/>";
+									} else {
+										response.info().code()= "415";
+										response.info().message()= "Unsupported Media Type";
+										responseData= "<html><head><title>415 Unsupported Media Type</title></head><body><h1>415 Unsupported Media Type</h1><br/>";
+										responseData= responseData + "Request: " + name + "<br/>";
+										responseData= responseData + "Hash: " + originalHash + "<br/>";
+										responseData= responseData + "Uncompressed Hash: " + uncompressedHash + "<br/>";
+									}
+									responseData= responseData + "</body></html>\n";
+								} else {
+									if ( (key.size() > 0) || (suffix.size() > 0) ) {
+										response.info().code()= "404";
+										response.info().message()= "Not Found";
+										responseData= "<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><br/>";
+									} else {
+										response.info().code()= "405";
+										response.info().message()= "Method Not Allowed";
+										responseData= "<html><head><title>405 Method Not Allowed</title></head><body><h1>405 Method Not Allowed</h1><br/>";
+									}
+									responseData= responseData + "Method: " + request.info().method() + "<br/>";
+									if (request.fields().has("Content-Length")) {
+										responseData= responseData + "Size: " + request.fields()["Content-Length"] + "<br/>";
+									} else {
+										responseData= responseData + "Content-Length not specified<br/>";
+									}
+									if (key.size() > 0) {
+										responseData= responseData + "Cannot Find Specified Key (" + key + ")<br/>";
+									}
+									if (suffix.size() > 0) {
+										responseData= responseData + "Cannot Find Specified suffix (" + suffix + ")<br/>";
+									}
+									responseData= responseData + "</body></html>\n";
 								}
 							}
-						} else if ( (request.info().method() == "PUT") && (request.has("Content-Length"))) && (key.size() == 0) && (suffix.size() == 0)) {
-							long			size= std::stol(request["Content-Length"]);
-							std::string		data(size, '\0');
-							std::string		results;
-							BufferString	buffer(data);
-							bool			valid;
-							std::string		hash;
-							std::string		uncompressedHash;
-							
-							do {
-								size_t amount= connection.read(buffer, size);
-								
-								results.append(data, 0, amount);
-								size-= amount;
-							} while(size > 0);
-							hash= hash::sha256(results).hex();
-							valid= hash::sha256(results) == hash::sha256::fromHex(name);
-							if (!valid) {
-								try {
-									uncompressedHash= hash::sha256(z::uncompress(content, 2 * 1024 * 1024)).hex();
-									hash::sha256(z::uncompress(content, 2 * 1024 * 1024)) == hash::sha256::fromHex(name);
-									valid= true;
-							} catch(const z::Exception &) {}
-							if (valid) {
-								_store.put(name, results);
-								response.info().code()= "200";
-								response.info().message()= "OK";
-								responseData= "<html><head><title>Content Added</title></head><body><h1>Content Added</h1><br/>";
-							} else {
-								response.info().code()= "415";
-								response.info().message()= "Unsupported Media Type";
-								responseData= "<html><head><title>415 Unsupported Media Type</title></head><body><h1>415 Unsupported Media Type</h1><br/>";
-								responseData= responseData + "Request: " + name + "<br/>";
-								responseData= responseData + "Hash: " + hash + "<br/>";
-								responseData= responseData + "Uncompressed Hash: " + uncompressedHash + "<br/>";
-							}
-							responseData= responseData + "</body></html>\n";
-						} else {
-							if ( (key.size() > 0) || (suffix.size() > 0) ) {
-								response.info().code()= "404";
-								response.info().message()= "Not Found";
-								responseData= "<html><head><title>404 Not Found</title></head><body><h1>404 Not Found</h1><br/>";
-							} else {
-								response.info().code()= "405";
-								response.info().message()= "Method Not Allowed";
-								responseData= "<html><head><title>405 Method Not Allowed</title></head><body><h1>405 Method Not Allowed</h1><br/>";
-							}
-							responseData= responseData + "Method: " + request.info().method() + "<br/>";
-							if (request.has("Content-Length")) {
-								responseData= responseData + "Size: " + request["Content-Length"] + "<br/>";
-							} else {
-								responseData= responseData + "Content-Length not specified<br/>";
-							}
-							if (key.size() > 0) {
-								responseData= responseData + "Cannot Specified Key (" + key + ")<br/>";
-							}
-							if (suffix.size() > 0) {
-								responseData= responseData + "Cannot Specified suffix (" + suffix + ")<br/>";
-							}
-							responseData= responseData + "</body></html>\n";
+						} catch(const std::exception &exception) {
+							response.info().code()= "400";
+							response.info().message()= "Bad Request";
+							responseData= std::string("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><br/><pre>") + exception.what() + "</pre><br/>Request:<br/><pre>" + std::string(request) + "</pre></body></html>\n";
 						}
-					}
-				} catch(const std::exception &exception) {
-					response.info().code()= "400";
-					response.info().message()= "Bad Request";
-					responseData= std::string("<html><head><title>400 Bad Request</title></head><body><h1>400 Bad Request</h1><br/><pre>") + exception.what() + "</pre><br/>Request:<br/><pre>" + std::string(request) + "</pre></body></html>\n";
-				}
 				
-				if (responseData.size() > 0) {
-					response["Content-Length"]= std::to_string(responseData.size());
+						if (responseData.size() > 0) {
+							response.fields()["Content-Length"]= std::to_string(responseData.size());
+						}
+						buffer= response;
+						next->write(BufferString(buffer));
+						next->write(BufferString(responseData));
+					}
+				} catch(const std::exception &) {
+					// TODO: log
 				}
-				buffer= response;
-				next->write(BufferString(buffer), buffer.size());
-				next->write(BufferString(responseData), responseData.size());
-				next->close();
+				try {
+					next->close();
+				} catch(const std::exception &) {
+					// TODO: log
+				}
 				delete next;
-			} catch(const std::exception &exception) {
+			} catch(const std::exception &) {
 				// TODO: log
 			}
 		}
@@ -176,37 +186,37 @@ namespace server {
 	inline http::Request HTTPHandler::_readRequest(net::Socket &connection) {
 		std::string headers, line;
 
-		while ( (_readLine(connection, line) != "\r\n") && (line != "\n") ) {
+		while ( (_readLine(connection, line) != "\r\n") && (line != "\n") && (line != "") ) {
 			headers+= line;
 		}
 		return http::Request(headers);
 	}
 	inline std::string &HTTPHandler::_readLine(net::Socket &connection, std::string &buffer) {
-			char			byte= '\0';
-			BufferAddress	singleByte(&byte, 1);
+		char			byte= '\0';
+		BufferAddress	singleByte(&byte, 1);
 
-			buffer.clear();
-			while (byte != '\n') {
-				connection.read(singleByte, 1);
-				buffer += byte;
-			}
-			return buffer;
+		buffer.clear();
+		while (byte != '\n') {
+			connection.read(singleByte, 1);
+			buffer += byte;
+		}
+		return buffer;
 	}
 	inline bool HTTPHandler::_isDataPath(const std::string &path, std::string &name, std::string &key, std::string &suffix) {
 		const std::string				namePrefix("/sha256/");
-		const std::string::size_type	nameSize= 32;
+		const std::string::size_type	nameSize= 64;
 
 		name.clear();
 		key.clear();
 		suffix.clear();
 		if ( (path.length() >= namePrefix.length() + nameSize) && (path.find(namePrefix) == 0) ) {
 			const std::string				keyPrefix("/aes256/");
-			const std::string::size_type	keySize= 32;
+			const std::string::size_type	keySize= 64;
 
 			name= path.substr(keyPrefix.length(), nameSize);
 			try {
 				hash::sha256::fromHex(name);
-			} catch(const msg::Exception &) {
+			} catch(const msg::Exception &e) {
 				return false;
 			}
 			if ( (path.length() >= namePrefix.length() + nameSize + keyPrefix.length() + keySize)
@@ -215,7 +225,7 @@ namespace server {
 				try {
 					hash::sha256	asHash= hash::sha256::fromHex(key);
 					crypto::AES256(asHash.buffer(), asHash.size());
-				} catch(const msg::Exception &) {
+				} catch(const msg::Exception &e) {
 					return false;
 				}
 				if (path.length() > namePrefix.length() + nameSize + keyPrefix.length() + keySize) {
@@ -284,7 +294,7 @@ namespace server {
 			net::AddressIPv6	connectedTo;
 			net::Socket			*connection= new net::Socket();
 			HTTPHandler			*found= NULL;
-
+				
 			server.accept(connectedTo, *connection);
 			for (_HandlerList::iterator i= _handlers.begin(); i != _handlers.end(); ++i) {
 				if ( (*i)->handleConnection(connection) ) {
