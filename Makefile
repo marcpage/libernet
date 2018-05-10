@@ -1,14 +1,18 @@
 .PHONY:test docs
 
-all:test docs bin/libernet
+all:test docs bin/libernet bin/liberstuff
 
 start:bin/libernet
 	bin/libernet
+
+tool:bin/liberstuff
 
 # TODO: Add dependency on headers
 bin/libernet:libernet.cpp
 	@clang++ $< -o $@ -I.. -lsqlite3 -lz -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
 
+bin/liberstuff:liberstuff.cpp
+	@clang++ $< -o $@ -I.. -lz -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
 
 documentation/index.html: Makefile
 	@mkdir -p documentation
