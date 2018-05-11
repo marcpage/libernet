@@ -88,6 +88,7 @@ std::string sendFile(const io::Path &path, int port) {
 			fprintf(stderr, "%s\n", std::string(response).c_str());
 			throw;
 		}
+		connection.close();
 	} catch(const std::exception &exception) {
 		fprintf(stderr, "Path = %s\n", std::string(path).c_str());
 		throw;
@@ -101,6 +102,7 @@ int main(int argc, const char *argv[]) {
 			io::Path	path(argv[i]);
 
 			try {
+				printf("Sending %s\n", argv[i]);
 				printf("%s\t%s\n", argv[i], sendFile(path, 8080).c_str());
 			} catch(const std::exception &exception) {
 				fprintf(stderr, "Exception sending '%s': %s\n", argv[i], exception.what());
