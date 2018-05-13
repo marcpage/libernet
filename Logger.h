@@ -2,20 +2,22 @@
 #define __Logger_h__
 
 #include "os/Thread.h"
-#include "os./Queue.h"
+#include "os/Queue.h"
+#include "os/Path.h"
+#include <string>
 
 #define logDetail(logger, message) logger.log(log::Logger::Detail, message, __FILE__, __LINE__)
 #define logInfo(logger, message) logger.log(log::Logger::Info, message, __FILE__, __LINE__)
 #define logWarn(logger, message) logger.log(log::Logger::Warn, message, __FILE__, __LINE__)
 #define logError(logger, message) logger.log(log::Logger::Error, message, __FILE__, __LINE__)
-#define logException(logger, exception, message) logger.log(exception, message, __FILE__, __LINE__)
+#define logException(logger, exception, message) logger.exception(exception, message, __FILE__, __LINE__)
 
 namespace log {
 
 	class Logger : public exec::Thread {
 		public:
 			enum Level {Detail, Info, Warn, Error};
-			Logger(FILE file=NULL);
+			Logger(FILE *file=NULL);
 			Logger(const io::Path &path);
 			~Logger();
 			void log(Level level, const std::string &message, const char *file, int line);
@@ -23,15 +25,15 @@ namespace log {
 		protected:
 			virtual void *run();
 		private:
-			Queue<std::string>	_logs;
-			FILE 				*_file;
-			io::Path			_path;
+			exec::Queue<std::string>	_logs;
+			FILE 						*_file;
+			io::Path					_path;
 	};
 
-	Logger::Logger(FILE file):_logs(), _file(NULL == file ? stderr : file), _path() {
+	Logger::Logger(FILE *file):_logs(), _file(NULL == file ? stderr : file), _path() {
 		start();
 	}
-	Logger::Logger(const io::Path &path):logs(), _file(NULL), _path(path) {
+	Logger::Logger(const io::Path &path):_logs(), _file(NULL), _path(path) {
 		start();
 	}
 	Logger::~Logger() {}
@@ -42,13 +44,21 @@ namespace log {
 		dt::DateTime	now;
 		int				milliseconds = int(1000.0 * (now.seconds() - int(now.seconds())));
 		std::string 	msString = std::to_string(milliseconds);
-		intptr_t		thread = exec::ThreadId::current().thread();
-		std::string		thString = std::to_string(thread, 16);
+		intptr_t		thread = reinterpret_cast<intptr_t>(exec::ThreadId::current().thread());
+		std::string		thString = std::to_string(thread);
+		std::string		typeString;
 
+		switch(level) {
+			case Detail: typeString = "DTAL"; break;
+			case Info: typeString = "INFO"; break;
+			case Warn: typeString = "WARN"; break;
+			case Error: typeString = "EROR"; break;
+			default: typeString = "????"; break;
+		}
 		while(msString.length() < 3) {msString = "0" + msString;}
 		while(thString.length() < 16) {thString = "0" + thString;}
-		std::string	line_prefix = "[" + now.format("%Y/%m/%d %H:%M:%S") + "." + msString + "  Thread: " + thString + " " + file + ":" + std::to_string(line) + "] ";
-		_logs.enqueue(line_prefix + message;
+		std::string	line_prefix = "[" + typeString + " " + now.format("%Y/%m/%d %H:%M:%S") + "." + msString + "  Thread: " + thString + " " + file + ":" + std::to_string(line) + "] ";
+		_logs.enqueue(line_prefix + message);
 	}
 	void Logger::exception(const std::exception &exception, const std::string &message, const char *file, int line) {
 		log(Error, exception.what() + std::string("\n") + message, file, line);
