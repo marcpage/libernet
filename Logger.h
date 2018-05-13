@@ -54,15 +54,21 @@ namespace log {
 		log(Error, exception.what() + std::string("\n") + message, file, line);
 	}
 	void *Logger::run() {
+
 		while(true) {
 			std::string next = _logs.dequeue();
-			if (NULL != _file) {
-				fprintf(_file, "%s\n", next.c_str());
+
+			FILE	*output = NULL == _file ? fopen(std::string(_path).c_str(), "a") : _file;
+
+			if (NULL != output) {
+				fprintf(output, "%s\n", next.c_str());
+			}
+
+			if ( (NULL == _file) && (NULL != output) ) {
+				fclose(output);
 			}
 		}
 	}
-
-
 }
 
 
