@@ -20,13 +20,14 @@
 #include "protocol/JSON.h"
 #include "libernet/Storage.h"
 #include "libernet/Compute.h"
+#include "libernet/Logger.h"
 #include <vector>
 
 namespace server {
 
 	class HTTPHandler : public exec::Thread {
 		public:
-			HTTPHandler(store::Storage &store);
+			HTTPHandler(store::Storage &store, logger::Logger &logger);
 			virtual ~HTTPHandler();
 			bool handleConnection(net::Socket *connection);
 		protected:
@@ -35,6 +36,7 @@ namespace server {
 			store::Storage				&_store;
 			bool						_working;
 			exec::Queue<net::Socket*>	_queue;
+			logger::Logger				&_log;
 			http::Request _readRequest(net::Socket &connection);
 			std::string &_readLine(net::Socket &connection, std::string &buffer);
 			bool _isDataPath(const std::string &path, std::string &name, std::string &key, std::string &suffix);
@@ -43,7 +45,7 @@ namespace server {
 
 	class HTTP : public exec::Thread {
 		public:
-			HTTP(int port, store::Storage &storage);
+			HTTP(int port, store::Storage &storage, logger::Logger &logger);
 			virtual ~HTTP();
 		protected:
 			virtual void *run();
@@ -52,25 +54,33 @@ namespace server {
 			store::Storage	&_store;
 			int				_port;
 			_HandlerList	_handlers;
+			logger::Logger	&_log;
 	};
 
-	inline HTTPHandler::HTTPHandler(store::Storage &store):exec::Thread(KeepAroundAfterFinish),_store(store),_working(false),_queue() {
+	inline HTTPHandler::HTTPHandler(store::Storage &store, logger::Logger &logger)
+			:exec::Thread(KeepAroundAfterFinish),_store(store),_working(false),_queue(),_log(logger) {
+		logDetail(_log, "Starting HTTPHandler");
 		start();
 	}
 	inline HTTPHandler::~HTTPHandler() {
+		logDetail(_log, "Ending HTTPHandler");
 	}
 	inline bool HTTPHandler::handleConnection(net::Socket *connection) {
+		logDetail(_log, "handleConnection");
 		if (_queue.size() == 0) {
 			_queue.enqueue(connection);
 			return true;
 		}
+		logDetail(_log, "cannot handle connection, already busy");
 		return false;
 	}
 	inline void *HTTPHandler::run() {
+		logDetail(_log, "Handler thread started");
 		while (true) {
 			_working= false;
 			net::Socket		*next= _queue.dequeue();
 
+			logInfo(_log, "New Connection");
 			try {
 				_working= true;
 				try {
@@ -82,6 +92,8 @@ namespace server {
 						std::string			responseData;
 						std::string			name, key, suffix, contentType;
 
+						logInfo(_log, "New Request");
+						logDetail(_log, request);
 						responseData= std::string("<html><head><title>404 Path not found</title></head><body><h1>404 Path not found</h1></br><pre>") + std::string(request) + "</pre></body></html>\n";
 						response.info().code()= "404";
 						response.info().message()= "Not Found";
@@ -170,21 +182,23 @@ namespace server {
 						if (responseData.size() > 0) {
 							response.fields()["Content-Length"]= std::to_string(responseData.size());
 						}
+						logDetail(_log, "Sending Response");
+						logDetail(_log, response);
 						buffer= response;
 						next->write(BufferString(buffer));
 						next->write(BufferString(responseData));
 					}
-				} catch(const std::exception &) {
-					// TODO: log
+				} catch(const std::exception &exception) {
+					logException(_log, exception, "Handling Connection");
 				}
 				try {
 					next->close();
-				} catch(const std::exception &) {
-					// TODO: log
+				} catch(const std::exception &exception) {
+					logException(_log, exception, "Closing Connection");
 				}
 				delete next;
-			} catch(const std::exception &) {
-				// TODO: log
+			} catch(const std::exception &exception) {
+				logException(_log, exception, "Last Ditch Exception");
 			}
 		}
 	}
@@ -279,7 +293,8 @@ namespace server {
 		return results;
 	}
 
-	inline HTTP::HTTP(int port, store::Storage &storage):exec::Thread(KeepAroundAfterFinish),_store(storage),_port(port),_handlers() {
+	inline HTTP::HTTP(int port, store::Storage &storage, logger::Logger &logger)
+			:exec::Thread(KeepAroundAfterFinish),_store(storage),_port(port),_handlers(),_log(logger) {
 		start();
 	}
 	inline HTTP::~HTTP() {
@@ -308,7 +323,7 @@ namespace server {
 				}
 			}
 			if (NULL == found) {
-				found= new HTTPHandler(_store);
+				found= new HTTPHandler(_store, _log);
 				found->handleConnection(connection);
 				_handlers.push_back(found);
 			}

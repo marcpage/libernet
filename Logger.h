@@ -22,26 +22,29 @@ namespace logger {
 			~Logger();
 			void log(Level level, const std::string &message, const char *file, int line);
 			void exception(const std::exception &exception, const std::string &message, const char *file, int line);
+			void finish();
 		protected:
 			virtual void *run();
 		private:
 			exec::Queue<std::string>	_logs;
 			FILE 						*_file;
 			io::Path					_path;
-			bool						_gone;
+			bool						_done;
 	};
 
-	Logger::Logger(FILE *file):_logs(), _file(NULL == file ? stderr : file), _path(), _gone(false) {
+	Logger::Logger(FILE *file)
+			:exec::Thread(exec::Thread::KeepAroundAfterFinish),_logs(), _file(NULL == file ? stderr : file), _path(), _done(false) {
 		start();
 	}
-	Logger::Logger(const io::Path &path):_logs(), _file(NULL), _path(path), _gone(false) {
+	Logger::Logger(const io::Path &path)
+			:exec::Thread(exec::Thread::KeepAroundAfterFinish),_logs(), _file(NULL), _path(path), _done(false) {
 		if (!_path.parent().isDirectory()) {
 			_path.parent().mkdirs();
 		}
 		start();
 	}
 	Logger::~Logger() {
-		_gone = true;
+		_done = true;
 	}
 	/**
 		@todo We need to split up multiline messages
@@ -55,11 +58,11 @@ namespace logger {
 		std::string		typeString;
 
 		switch(level) {
-			case Detail: typeString = "DTAL"; break;
-			case Info: typeString = "INFO"; break;
-			case Warn: typeString = "WARN"; break;
-			case Error: typeString = "EROR"; break;
-			default: typeString = "????"; break;
+			case Detail:	typeString = "DTAL"; break;
+			case Info:		typeString = "INFO"; break;
+			case Warn:		typeString = "WARN"; break;
+			case Error:		typeString = "EROR"; break;
+			default:		typeString = "????"; break;
 		}
 		while(msString.length() < 3) {msString = "0" + msString;}
 		while(thString.length() < 16) {thString = "0" + thString;}
@@ -69,15 +72,19 @@ namespace logger {
 	void Logger::exception(const std::exception &exception, const std::string &message, const char *file, int line) {
 		log(Error, exception.what() + std::string("\n") + message, file, line);
 	}
+	void Logger::finish() {
+		_done = true;
+		log(Detail, "finish()", __FILE__, __LINE__);
+		join();
+	}
 	void *Logger::run() {
-
-		while(true) {
+		while(!_done || !_logs.empty()) {
 			std::string next;
 
 			try {
 				next = _logs.dequeue();
 			} catch(const std::exception &exception) {
-				if (_gone) {
+				if (_done) {
 					break;
 				}
 				next = exception.what();

@@ -55,7 +55,8 @@ http::Response sendRequest(net::Socket &connection, const std::string &path, std
 int main(int /*argc*/, char */*argv*/[]) {
 	try {
 		store::Storage		store(io::Path("bin/scratch/Server"));
-		server::HTTP		server(8123, store);
+		logger::Logger		log(io::Path("bin/scratch/Server/log.txt"));
+		server::HTTP		server(8123, store, log);
 		net::AddressIPv4	localhost(8123);
 		net::Socket			connection(localhost.family());
 		std::string			data= "Testing";
@@ -114,6 +115,7 @@ int main(int /*argc*/, char */*argv*/[]) {
 			printf("FAIL: GET code should be 400, but its %s\n", response.info().code().c_str());
 		}
 
+		log.finish();
 	} catch(const std::exception &e) {
 		printf("FAILED: Exception: %s\n", e.what());
 	}

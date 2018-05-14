@@ -67,5 +67,6 @@ int main(int /*argc*/, const char */*argv*/[]) {
 	t3.join();
 	t4.join();
 	t5.join();
+	log.finish();
 	return 0;
 }
