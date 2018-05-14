@@ -7,12 +7,17 @@ start:bin/libernet
 
 tool:bin/liberstuff
 
+-include bin/libernet.d
+-include bin/liberstuff.d
+
 # TODO: Add dependency on headers
 bin/libernet:libernet.cpp
-	@clang++ $< -o $@ -I.. -lsqlite3 -lz -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
+	@mkdir -p bin
+	@clang++ $< -o $@ -I.. -lsqlite3 -lz -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings -MMD -MP
 
 bin/liberstuff:liberstuff.cpp
-	@clang++ $< -o $@ -I.. -lz -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
+	@mkdir -p bin
+	@clang++ $< -o $@ -I.. -lz -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings -MMD -MP
 
 documentation/index.html: Makefile
 	@mkdir -p documentation

@@ -7,6 +7,7 @@
 #include "os/SymetricEncrypt.h"
 #include "os/Thread.h"
 #include "os/ZCompression.h"
+
 #include "protocol/HTTP.h"
 
 #include <stdio.h>
@@ -41,11 +42,13 @@ http::Response sendRequest(net::Socket &connection, const std::string &path, std
 		line= data;
 		connection.write(BufferString(line));
 	}
+	printf("Sent %s\n", path.c_str());
 	do {
 		line= readline(connection);
 		header+= line;
 	} while( (line != "") && (line != "\r\n") && (line != "\n") );
 	response= http::Response(header);
+	printf("Reponse Received for %s\n", path.c_str());
 	if (response.fields().has("Content-Length")) {
 		long			size= std::stol(response.fields()["Content-Length"]);
 		std::string		readData(size, '\0');

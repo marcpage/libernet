@@ -1,4 +1,6 @@
 #include "libernet/Server.h"
+#include "libernet/Logger.h"
+
 #include "os/Thread.h"
 #include "os/Environment.h"
 
@@ -9,9 +11,11 @@ io::Path location() {
 }
 
 int main(int /*argc*/, const char */*argv*/[]) {
+	logger::Logger	log(stderr);//io::Path(env::get("HOME")) + "Library" + "Logs" + "libernet.txt");
+
 	try {
 		store::Storage	store(location());
-		server::HTTP	server(8080, store);
+		server::HTTP	server(8080, store, log);
 
 		while(true) {
 			exec::ThreadId::sleep(1.0);
@@ -20,5 +24,6 @@ int main(int /*argc*/, const char */*argv*/[]) {
 		fprintf(stderr, "Exception: %s\n", exception.what());
 		return 1;
 	}
+	log.finish();
 	return 0;
 }
