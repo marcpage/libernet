@@ -170,7 +170,6 @@ namespace logger {
 		return s;
 	}
 	inline void Logger::_loadSettings(const io::Path &path) {
-		printf("_loadSettings: %s\n", std::string(path).c_str());
 		if (path.isFile()) {
 			std::string::size_type endOfLine = -1;
 			std::string contents = std::regex_replace(std::regex_replace(path.contents(), std::regex("\\r\\n"), "\n"), std::regex("\\r"), "\n");
@@ -185,7 +184,6 @@ namespace logger {
 				lineNumber += 1;
 				while ( (line.length() > 0) && (std::isspace(line[0])) ) {line.erase(0, 1);}
 				while ( (line.length() > 0) && (std::isspace(line[line.length() - 1])) ) {line.erase(line.length() - 1, 1);}
-				printf("line #%d: %s\n", lineNumber, line.c_str());
 				if ( (line.length() > 0) && (line[0] != '#') ) {
 					std::string lowercased = line;
 					std::string::size_type equalsPos = line.find('=');
@@ -201,14 +199,11 @@ namespace logger {
 							lower = value;
 							if (_tolower(lower) == "stderr") {
 								_file = stderr;
-								printf("output -> stderr\n");
 							} else if (_tolower(lower) == "stdout") {
 								_file = stdout;
-								printf("output -> stdout\n");
 							} else {
 								_file = NULL;
 								_path = value;
-								printf("output -> '%s'\n", value.c_str());
 							}
 						} else {
 							_Range	range(0, std::numeric_limits<int>::max(), Detail);
@@ -249,7 +244,7 @@ namespace logger {
 		_loadSettings(io::Path(env::get("HOME")) + "Library" + "Preferences" + "Logger.txt");
 		_loadSettings(io::Path("Logger.txt"));
 		if ( (NULL == _file) && (std::string(_path).length() == 0) ) {
-			_path = io::Path(env::get("HOME")) + "Library" + "Logs" + "Logger.txt"
+			_path = io::Path(env::get("HOME")) + "Library" + "Logs" + "Logger.txt";
 		}
 		if ( (NULL == _file) && (!_path.parent().isDirectory()) ) {
 			_path.parent().mkdirs();
