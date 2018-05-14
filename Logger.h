@@ -6,13 +6,13 @@
 #include "os/Path.h"
 #include <string>
 
-#define logDetail(logger, message) logger.log(log::Logger::Detail, message, __FILE__, __LINE__)
-#define logInfo(logger, message) logger.log(log::Logger::Info, message, __FILE__, __LINE__)
-#define logWarn(logger, message) logger.log(log::Logger::Warn, message, __FILE__, __LINE__)
-#define logError(logger, message) logger.log(log::Logger::Error, message, __FILE__, __LINE__)
-#define logException(logger, exception, message) logger.exception(exception, message, __FILE__, __LINE__)
+#define logDetail(logObject, message) logObject.log(logger::Logger::Detail, message, __FILE__, __LINE__)
+#define logInfo(logObject, message) logObject.log(logger::Logger::Info, message, __FILE__, __LINE__)
+#define logWarn(logObject, message) logObject.log(logger::Logger::Warn, message, __FILE__, __LINE__)
+#define logError(logObject, message) logObject.log(logger::Logger::Error, message, __FILE__, __LINE__)
+#define logException(logObject, exception, message) logObject.exception(exception, message, __FILE__, __LINE__)
 
-namespace log {
+namespace logger {
 
 	class Logger : public exec::Thread {
 		public:

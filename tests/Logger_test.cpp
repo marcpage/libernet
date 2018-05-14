@@ -11,7 +11,7 @@
 
 class LogThread : public exec::Thread {
 	public:
-		LogThread(const std::string &name, log::Logger &log):exec::Thread(exec::Thread::KeepAroundAfterFinish), _name(name),_log(log) {start();}
+		LogThread(const std::string &name, logger::Logger &log):exec::Thread(exec::Thread::KeepAroundAfterFinish), _name(name),_log(log) {start();}
 		~LogThread() {}
 	protected:
 		virtual void *run() {
@@ -34,7 +34,7 @@ class LogThread : public exec::Thread {
 		}
 	private:
 		std::string _name;
-		log::Logger &_log;
+		logger::Logger &_log;
 
 };
 
@@ -45,7 +45,7 @@ int main(int /*argc*/, const char */*argv*/[]) {
 		logFile.remove();
 	}
 
-	log::Logger log(io::Path("bin") + "scratch" + "Logger" + "log.txt");
+	logger::Logger log(io::Path("bin") + "scratch" + "Logger" + "log.txt");
 	LogThread t1("one", log), t2("two", log), t3("three", log), t4("four", log), t5("five", log);
 
 	sleep(0.001);
