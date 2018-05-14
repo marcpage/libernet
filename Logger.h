@@ -28,15 +28,21 @@ namespace log {
 			exec::Queue<std::string>	_logs;
 			FILE 						*_file;
 			io::Path					_path;
+			bool						_gone;
 	};
 
-	Logger::Logger(FILE *file):_logs(), _file(NULL == file ? stderr : file), _path() {
+	Logger::Logger(FILE *file):_logs(), _file(NULL == file ? stderr : file), _path(), _gone(false) {
 		start();
 	}
-	Logger::Logger(const io::Path &path):_logs(), _file(NULL), _path(path) {
+	Logger::Logger(const io::Path &path):_logs(), _file(NULL), _path(path), _gone(false) {
+		if (!_path.parent().isDirectory()) {
+			_path.parent().mkdirs();
+		}
 		start();
 	}
-	Logger::~Logger() {}
+	Logger::~Logger() {
+		_gone = true;
+	}
 	/**
 		@todo We need to split up multiline messages
 	*/
@@ -66,7 +72,16 @@ namespace log {
 	void *Logger::run() {
 
 		while(true) {
-			std::string next = _logs.dequeue();
+			std::string next;
+
+			try {
+				next = _logs.dequeue();
+			} catch(const std::exception &exception) {
+				if (_gone) {
+					break;
+				}
+				next = exception.what();
+			}
 
 			FILE	*output = NULL == _file ? fopen(std::string(_path).c_str(), "a") : _file;
 
@@ -78,6 +93,7 @@ namespace log {
 				fclose(output);
 			}
 		}
+		return NULL;
 	}
 }
 
