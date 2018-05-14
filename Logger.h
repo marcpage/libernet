@@ -248,6 +248,9 @@ namespace logger {
 	inline void Logger::_init() {
 		_loadSettings(io::Path(env::get("HOME")) + "Library" + "Preferences" + "Logger.txt");
 		_loadSettings(io::Path("Logger.txt"));
+		if ( (NULL == _file) && (std::string(_path).length() == 0) ) {
+			_path = io::Path(env::get("HOME")) + "Library" + "Logs" + "Logger.txt"
+		}
 		if ( (NULL == _file) && (!_path.parent().isDirectory()) ) {
 			_path.parent().mkdirs();
 		}
