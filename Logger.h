@@ -4,10 +4,14 @@
 #include "os/Thread.h"
 #include "os/Queue.h"
 #include "os/Path.h"
+#include "os/Environment.h"
 
 #include <string>
 #include <map>
 #include <vector>
+#include <regex>
+#include <algorithm>
+#include <limits>
 
 #define logDetail(logObject, message) logObject.log(logger::Logger::Detail, message, __FILE__, __LINE__)
 #define logInfo(logObject, message) logObject.log(logger::Logger::Info, message, __FILE__, __LINE__)
@@ -47,18 +51,19 @@ namespace logger {
 			bool						_done;
 			Level						_defaultLevel;
 			_FileRanges					_fileLevels;
-
+			std::string &_tolower(std::string &s);
+			void _loadSettings(const io::Path &path);
+			void _init();
 	};
 
 	inline Logger::Logger(FILE *file)
 			:exec::Thread(exec::Thread::KeepAroundAfterFinish),_logs(), _file(NULL == file ? stderr : file), _path(), _done(false),_defaultLevel(Warn),_fileLevels() {
+		_init();
 		start();
 	}
 	inline Logger::Logger(const io::Path &path)
 			:exec::Thread(exec::Thread::KeepAroundAfterFinish),_logs(), _file(NULL), _path(path), _done(false),_defaultLevel(Warn),_fileLevels() {
-		if (!_path.parent().isDirectory()) {
-			_path.parent().mkdirs();
-		}
+		_init();
 		start();
 	}
 	inline Logger::~Logger() {
@@ -160,6 +165,94 @@ namespace logger {
 		}
 		return NULL;
 	}
+	inline std::string &Logger::_tolower(std::string &s) {
+		std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+		return s;
+	}
+	inline void Logger::_loadSettings(const io::Path &path) {
+		printf("_loadSettings: %s\n", std::string(path).c_str());
+		if (path.isFile()) {
+			std::string::size_type endOfLine = -1;
+			std::string contents = std::regex_replace(std::regex_replace(path.contents(), std::regex("\\r\\n"), "\n"), std::regex("\\r"), "\n");
+			int lineNumber = 0;
+
+			do {
+				std::string::size_type startOfLine = endOfLine + 1;
+
+				endOfLine = contents.find("\n", startOfLine);
+
+				std::string	line = contents.substr(startOfLine, endOfLine - startOfLine);
+				lineNumber += 1;
+				while ( (line.length() > 0) && (std::isspace(line[0])) ) {line.erase(0, 1);}
+				while ( (line.length() > 0) && (std::isspace(line[line.length() - 1])) ) {line.erase(line.length() - 1, 1);}
+				printf("line #%d: %s\n", lineNumber, line.c_str());
+				if ( (line.length() > 0) && (line[0] != '#') ) {
+					std::string lowercased = line;
+					std::string::size_type equalsPos = line.find('=');
+
+					if (equalsPos == std::string::npos) {
+						log(Warn, "Unable to interpret " + std::string(path) + ":" + std::to_string(lineNumber) + ": '" + line + "'", __FILE__, __LINE__);
+					} else {
+						std::string key = line.substr(0,equalsPos);
+						std::string value = line.substr(equalsPos + 1);
+						std::string lower = key;
+
+						if (_tolower(lower) == "output") {
+							lower = value;
+							if (_tolower(lower) == "stderr") {
+								_file = stderr;
+								printf("output -> stderr\n");
+							} else if (_tolower(lower) == "stdout") {
+								_file = stdout;
+								printf("output -> stdout\n");
+							} else {
+								_file = NULL;
+								_path = value;
+								printf("output -> '%s'\n", value.c_str());
+							}
+						} else {
+							_Range	range(0, std::numeric_limits<int>::max(), Detail);
+							std::string::size_type colonPos = key.find(':');
+							std::string file = key.substr(0, colonPos);
+
+							lower = value;
+							switch(_tolower(lower)[0]) {
+								case 'd': range.level = Detail; break;
+								case 'i': range.level = Info; break;
+								case 'w': range.level = Warn; break;
+								case 'e': range.level = Error; break;
+								case 'n': range.level = None; break;
+								default:
+									log(Warn, "Unable to interpret " + std::string(path) + ":" + std::to_string(lineNumber) + ": Level = '" + value + "'", __FILE__, __LINE__);
+									break;
+							}
+
+							lower = key;
+							if (_tolower(lower) == "all") {
+								_defaultLevel = range.level;
+							} else {
+								if (colonPos != std::string::npos) {
+									std::string::size_type	minusPos = key.find('-');
+
+									range.start = std::stoi(key.substr(colonPos + 1, minusPos - colonPos - 1));
+									range.end = (std::string::npos == minusPos) ? range.start : std::stoi(key.substr(minusPos + 1));
+								}
+								_fileLevels[file].push_back(range);
+							}
+						}
+					}
+				}
+			} while(endOfLine != std::string::npos);
+		}
+	}
+	inline void Logger::_init() {
+		_loadSettings(io::Path(env::get("HOME")) + "Library" + "Preferences" + "Logger.txt");
+		_loadSettings(io::Path("Logger.txt"));
+		if ( (NULL == _file) && (!_path.parent().isDirectory()) ) {
+			_path.parent().mkdirs();
+		}
+	}
+
 }
 
 
