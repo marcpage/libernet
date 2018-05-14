@@ -69,6 +69,7 @@ namespace server {
 		logDetail(_log, "handleConnection");
 		if (_queue.size() == 0) {
 			_queue.enqueue(connection);
+			logInfo(_log, "Sending request for next connection");
 			return true;
 		}
 		logDetail(_log, "cannot handle connection, already busy");
@@ -78,6 +79,8 @@ namespace server {
 		logDetail(_log, "Handler thread started");
 		while (true) {
 			_working= false;
+			logInfo(_log, "Waiting for next request");
+
 			net::Socket		*next= _queue.dequeue();
 
 			logInfo(_log, "New Connection");
@@ -85,6 +88,7 @@ namespace server {
 				_working= true;
 				try {
 					while (true) {
+						logInfo(_log, "Waiting for the next request");
 						http::Request		request= _readRequest(*next);
 						http::Response		response;
 						std::string			buffer;
@@ -100,9 +104,14 @@ namespace server {
 						response.fields()["Content-Type"]= "text/html; charset=utf-8";
 						try {
 							if (_isDataPath(request.info().path(), name, key, suffix)) {
+								logInfo(_log, request.info().path() + " is data path");
+								logDetail(_log, "name="+name+" key="+key+" suffix="+suffix);
+								logDetail(_log, "method="+request.info().method());
 								if (request.info().method() == "GET") {
 									std::string contents= _getData(name, key, suffix, contentType);
 
+									logDetail(_log, "contentType=" + contentType);
+									logDetail(_log, "GET size = " + std::to_string(contents.length()));
 									if (contents.length() > 0) {
 										responseData= contents;
 										response.info().code()= "200";
@@ -120,26 +129,34 @@ namespace server {
 									std::string		originalHash;
 									std::string		uncompressedHash;
 
+									logInfo(_log, "PUT Content-Length=" + request.fields()["Content-Length"]);
 									do {
 										size_t amount= next->read(dataBuffer, size);
 
+										logDetail(_log, "Read " + std::to_string(amount) + " bytes");
 										results.append(data, 0, amount);
 										size-= amount;
 									} while(size > 0);
 									originalHash= hash::sha256(results).hex();
+									logInfo(_log, "PUT data hash = " + originalHash);
 									valid= hash::sha256(results) == hash::sha256::fromHex(name);
 									if (!valid) {
 										try {
+											logInfo(_log, "Hash doesn't match URL, seeing if it is compressed");
 											uncompressedHash= hash::sha256(z::uncompress(results, 2 * 1024 * 1024)).hex();
 											valid= hash::sha256(z::uncompress(results, 2 * 1024 * 1024)) == hash::sha256::fromHex(name);
-										} catch(const z::Exception &) {}
+										} catch(const z::Exception &exception) {
+											logException(_log, exception, "Apparently it is not compressed");
+										}
 									}
 									if (valid) {
+										logInfo(_log, "Valid data PUT");
 										_store.put(name, results);
 										response.info().code()= "200";
 										response.info().message()= "OK";
 										responseData= "<html><head><title>Content Added</title></head><body><h1>Content Added</h1><br/>";
 									} else {
+										logInfo(_log, "Invalid data PUT");
 										response.info().code()= "415";
 										response.info().message()= "Unsupported Media Type";
 										responseData= "<html><head><title>415 Unsupported Media Type</title></head><body><h1>415 Unsupported Media Type</h1><br/>";
@@ -182,11 +199,12 @@ namespace server {
 						if (responseData.size() > 0) {
 							response.fields()["Content-Length"]= std::to_string(responseData.size());
 						}
-						logDetail(_log, "Sending Response");
+						logInfo(_log, "Sending Response");
 						logDetail(_log, response);
 						buffer= response;
 						next->write(BufferString(buffer));
 						next->write(BufferString(responseData));
+						logDetail(_log, "Response Sent");
 					}
 				} catch(const std::exception &exception) {
 					logException(_log, exception, "Handling Connection");
@@ -201,6 +219,7 @@ namespace server {
 				logException(_log, exception, "Last Ditch Exception");
 			}
 		}
+		logError(_log, "We shouldn't be exiting this thread!");
 	}
 	inline http::Request HTTPHandler::_readRequest(net::Socket &connection) {
 		std::string headers, line;
@@ -295,17 +314,22 @@ namespace server {
 
 	inline HTTP::HTTP(int port, store::Storage &storage, logger::Logger &logger)
 			:exec::Thread(KeepAroundAfterFinish),_store(storage),_port(port),_handlers(),_log(logger) {
+		logDetail(_log, "Starting HTTP Serving on port " + std::to_string(port));
 		start();
 	}
 	inline HTTP::~HTTP() {
+		logDetail(_log, "Shutting Down HTTP Serving on port " + std::to_string(_port));
 		for (_HandlerList::iterator i= _handlers.begin(); i != _handlers.end(); ++i) {
+			logDetail(_log, "Deleting handler");
 			delete *i;
 		}
+		logDetail(_log, "Shut Down");
 	}
 	inline void *HTTP::run() {
 		net::AddressIPv4	address(_port);
 		net::SocketServer	server(address.family());
 
+		logInfo(_log, "HTTP Server for port " + std::to_string(_port) + " started");
 		server.reuseAddress();
 		server.reusePort();
 		server.bind(address);
@@ -315,10 +339,13 @@ namespace server {
 			net::Socket			*connection= new net::Socket();
 			HTTPHandler			*found= NULL;
 
+			logInfo(_log, "Waiting for connection");
 			server.accept(connectedTo, *connection);
+			logInfo(_log, "Connection received");
 			for (_HandlerList::iterator i= _handlers.begin(); i != _handlers.end(); ++i) {
 				if ( (*i)->handleConnection(connection) ) {
 					found= *i;
+					logDetail(_log, "Connection Handler Found");
 					break;
 				}
 			}
@@ -326,6 +353,7 @@ namespace server {
 				found= new HTTPHandler(_store, _log);
 				found->handleConnection(connection);
 				_handlers.push_back(found);
+				logDetail(_log, "Connection Handler Created");
 			}
 		}
 	}

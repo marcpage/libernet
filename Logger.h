@@ -13,11 +13,11 @@
 #include <algorithm>
 #include <limits>
 
-#define logDetail(logObject, message) logObject.log(logger::Logger::Detail, message, __FILE__, __LINE__)
-#define logInfo(logObject, message) logObject.log(logger::Logger::Info, message, __FILE__, __LINE__)
-#define logWarn(logObject, message) logObject.log(logger::Logger::Warn, message, __FILE__, __LINE__)
-#define logError(logObject, message) logObject.log(logger::Logger::Error, message, __FILE__, __LINE__)
-#define logException(logObject, exception, message) logObject.exception(exception, message, __FILE__, __LINE__)
+#define logDetail(logObject, message) if (logObject.canLog(logger::Logger::Detail, __FILE__, __LINE__)) {logObject.log(logger::Logger::Detail, message, __FILE__, __LINE__);} else {logger::Logger::noop();}
+#define logInfo(logObject, message) if (logObject.canLog(logger::Logger::Info, __FILE__, __LINE__)) {logObject.log(logger::Logger::Info, message, __FILE__, __LINE__);} else {logger::Logger::noop();}
+#define logWarn(logObject, message) if (logObject.canLog(logger::Logger::Warn, __FILE__, __LINE__)) {logObject.log(logger::Logger::Warn, message, __FILE__, __LINE__);} else {logger::Logger::noop();}
+#define logError(logObject, message) if (logObject.canLog(logger::Logger::Error, __FILE__, __LINE__)) {logObject.log(logger::Logger::Error, message, __FILE__, __LINE__);} else {logger::Logger::noop();}
+#define logException(logObject, exception, message) if (logObject.canLog(logger::Logger::Error, __FILE__, __LINE__)) {logObject.exception(exception, message, __FILE__, __LINE__);} else {logger::Logger::noop();}
 
 namespace logger {
 
@@ -64,6 +64,7 @@ namespace logger {
 	inline Logger::Logger(const io::Path &path)
 			:exec::Thread(exec::Thread::KeepAroundAfterFinish),_logs(), _file(NULL), _path(path), _done(false),_defaultLevel(Warn),_fileLevels() {
 		_init();
+		logDetail((*this), "Logger Started");
 		start();
 	}
 	inline Logger::~Logger() {
@@ -99,8 +100,8 @@ namespace logger {
 		log(Error, exception.what() + std::string("\n") + message, file, line);
 	}
 	inline void Logger::finish() {
-		_done = true;
 		log(Detail, "finish()", __FILE__, __LINE__);
+		_done = true;
 		join();
 	}
 	Logger::Level Logger::logLevel(const char *file, int line) const {
