@@ -65,6 +65,9 @@ int main(int /*argc*/, char */*argv*/[]) {
 		http::Response		response;
 		std::string			output;
 
+		log.reset(io::Path("bin/scratch/Server/log.txt"));
+		log.setLevel(logger::Logger::Warn);
+
 		connection.connect(localhost);
 
 		printf("%p Sending Data\n", exec::ThreadId::current().thread());
