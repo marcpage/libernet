@@ -57,6 +57,7 @@ namespace logger {
 			std::string &_tolower(std::string &s);
 			void _loadSettings(const io::Path &path);
 			void _init();
+			std::string _next();
 	};
 
 	inline Logger::Logger(FILE *file)
@@ -155,29 +156,38 @@ namespace logger {
 	inline void Logger::setLevel(Level level) {
 		_defaultLevel = level;
 	}
-	inline void *Logger::run() {
-		while(!_done || !_logs.empty()) {
-			std::string next;
+	inline std::string Logger::_next() {
+		std::string next;
 
-			try {
-				next = _logs.dequeue();
-			} catch(const std::exception &exception) {
-				if (_done) {
-					break;
-				}
-				next = exception.what();
+		try {
+			next = _logs.dequeue();
+		} catch(const std::exception &exception) {
+			if (_done) {
+				throw;
 			}
-
-			FILE	*output = NULL == _file ? fopen(std::string(_path).c_str(), "a") : _file;
-
-			if (NULL != output) {
-				fprintf(output, "%s\n", next.c_str());
-			}
-
-			if ( (NULL == _file) && (NULL != output) ) {
-				fclose(output);
-			}
+			next = exception.what();
 		}
+		return next;
+	}
+	inline void *Logger::run() {
+		try {
+			while(!_done || !_logs.empty()) {
+				std::string next = _next();
+				FILE	*output = NULL == _file ? fopen(std::string(_path).c_str(), "a") : _file;
+
+				if (NULL != output) {
+					fprintf(output, "%s\n", next.c_str());
+					while (!_logs.empty()) {
+						next = _next();
+						fprintf(output, "%s\n", next.c_str());
+					}
+				}
+
+				if ( (NULL == _file) && (NULL != output) ) {
+					fclose(output);
+				}
+			}
+		} catch(const std::exception &) {}
 		return NULL;
 	}
 	inline std::string &Logger::_tolower(std::string &s) {
