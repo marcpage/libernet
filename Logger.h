@@ -33,6 +33,9 @@ namespace logger {
 			Level logLevel(const char *file, int line) const;
 			bool canLog(Level level, const char *file, int line) const;
 			static void noop() {}
+			void reset(FILE *file=NULL);
+			void reset(const io::Path &path);
+			void setLevel(Level level);
 		protected:
 			virtual void *run();
 		private:
@@ -140,6 +143,17 @@ namespace logger {
 			return true;
 		}
 		return false;
+	}
+	inline void Logger::reset(FILE *file) {
+		_file = file;
+		_fileLevels.clear();
+	}
+	inline void Logger::reset(const io::Path &path) {
+		reset();
+		_path = path;
+	}
+	inline void Logger::setLevel(Level level) {
+		_defaultLevel = level;
 	}
 	inline void *Logger::run() {
 		while(!_done || !_logs.empty()) {

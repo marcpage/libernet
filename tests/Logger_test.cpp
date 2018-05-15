@@ -46,6 +46,10 @@ int main(int /*argc*/, const char */*argv*/[]) {
 	}
 
 	logger::Logger log(io::Path("bin") + "scratch" + "Logger" + "log.txt");
+
+	log.reset(io::Path("bin") + "scratch" + "Logger" + "log.txt");
+	log.setLevel(logger::Logger::Detail);
+
 	LogThread t1("one", log), t2("two", log), t3("three", log), t4("four", log), t5("five", log);
 
 	sleep(0.001);
