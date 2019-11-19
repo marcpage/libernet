@@ -1,11 +1,13 @@
 #ifndef __Package_h__
 #define __Package_h__
 
-#include <string>
 #include "os/MemoryMappedFile.h"
 #include "os/Hash.h"
 #include "os/Path.h"
 #include "os/Queue.h"
+#include "protocol/JSON.h"
+#include <thread>
+#include <string>
 
 namespace package {
 
@@ -45,6 +47,7 @@ namespace package {
 		ThreadList threads;
 		PathQueue filesToProcess;
 		HashQueue fileHashes;
+		json::Value listing;
 
 		if (0 == threadCount) {
 			threadCount = std::thread::hardware_concurrency();
@@ -61,12 +64,24 @@ namespace package {
 
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
-				filesToProcess.enqueue(entry);
+				filesToProcess.enqueue(*entry);
+			} else {
+				listing["directories"] = *entry; // TODO this needs to be relative
 			}
 		}
 
-		// TODO: get hashes
+		filesToProces.enqueue(io::Path());
 
+		for (auto thread = threads.begin(); thread != threads.end(); ++thread) {
+			thread->join();
+		}
+
+		while (!fileHashes.empty()) {
+			PathHash next = fileHashes.dequeue();
+
+		}
+
+		return "";
 	}
 
 }
