@@ -20,3 +20,6 @@ test:bin/test
 bin/test:../os/tests/test.cpp ../os/*.h *.h
 	@mkdir -p bin
 	@clang++ ../os/tests/test.cpp -o $@ -std=c++11 -I.. -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
+
+bin/%:%.cpp
+	@clang++ $< -o -o $@ -std-c++11 -I.. -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
