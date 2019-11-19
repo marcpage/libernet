@@ -70,7 +70,7 @@ namespace package {
 			}
 		}
 
-		filesToProces.enqueue(io::Path());
+		filesToProcess.enqueue(io::Path());
 
 		for (auto thread = threads.begin(); thread != threads.end(); ++thread) {
 			thread->join();
