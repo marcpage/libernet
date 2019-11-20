@@ -42,7 +42,15 @@ namespace package {
 			fprintf(stderr, "Unexpected exception: %s\n", exception.what());
 		}
 	}
-	inline std::string hashDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
+
+	inline std::string encryptFile(const io::Path &source, const std::string &key, const io::Path &storagePath) {
+
+	}
+	inline std::string packageFile(const io::Path &path, const io::Path &storagePath) {
+
+	}
+
+	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
 		typedef std::vector<std::thread> ThreadList;
 		ThreadList threads;
 		PathQueue filesToProcess;
