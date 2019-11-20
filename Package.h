@@ -5,6 +5,7 @@
 #include "os/Hash.h"
 #include "os/Path.h"
 #include "os/Queue.h"
+#include "os/SymetricEncrypt.h"
 #include "protocol/JSON.h"
 #include <thread>
 #include <string>
@@ -43,11 +44,29 @@ namespace package {
 		}
 	}
 
-	inline std::string encryptFile(const io::Path &source, const std::string &key, const io::Path &storagePath) {
+	inline std::string encryptFile(const io::Path &source, const io::Path &storagePath) {
+		io::Path					tempFile = storagePath.uniqueName();
+		io::MemoryMappedFile		sourceFile(source, 0, 0, PROT_READ);
+		io::FileDescriptor			destinationFile(tempFile);
+		size_t						encryptedSize = source.size() + crypto::AES256_CBC_Padded::BlockSize;
 
-	}
-	inline std::string packageFile(const io::Path &path, const io::Path &storagePath) {
+		destinationFile.resize(encryptedSize);
 
+		io::MemoryMappedFile		destination(destinationFile);
+		hash::sha256				sourceHash(sourceFile, sourceFile.size());
+		std::string					key(reinterpret_cast<const char*>(sourceHash.buffer()), sourceHash.size());
+		crypto::AES256_CBC_Padded	cryptor(key);
+
+		cryptor.encryptInPlace(sourceFile.address<char>(), sourceFile.size(), "", destination.address<char>(), encryptedSize);
+		sourceFile.close();
+		destination.close();
+		destinationFile.resize(encryptedSize);
+
+		io::MemoryMappedFile		encryptedFile(tempFile);
+		hash::sha256				encryptedHash(encryptedFile, encryptedFile.size());
+
+		tempFile.rename(storagePath + encryptedHash.hex());
+		return "sha256:" + encryptedHash.hex() + ":" + "aes256/sha256:" + sourceHash.hex();
 	}
 
 	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
