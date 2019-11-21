@@ -12,38 +12,6 @@
 
 namespace package {
 
-	inline std::string hashFile(const io::Path &path) {
-		io::MemoryMappedFile	file(path);
-
-		return hash::sha256(file, file.size()).hex();
-	}
-	typedef exec::Queue<io::Path> PathQueue;
-	typedef std::pair<io::Path,std::string> PathHash;
-	typedef exec::Queue<PathHash> HashQueue;
-
-	inline void _hashingThread(PathQueue &filePathsIn, HashQueue &hashesOut) {
-		try {
-			while (true) {
-				io::Path	next = filePathsIn.dequeue();
-
-				if (next.isEmpty()) {
-					filePathsIn.enqueue(next);
-					break;
-				}
-
-				std::string	hash = hashFile(next);
-
-				hashesOut.enqueue(PathHash(next, hash));
-			}
-		} catch(const PathQueue::Closed &) {
-			// ignore, this is expected
-		} catch(const HashQueue::Closed &) {
-			// ignore, this is expected
-		} catch(const std::exception &exception) {
-			fprintf(stderr, "Unexpected exception: %s\n", exception.what());
-		}
-	}
-
 	inline std::string encryptFilePart(const io::Path &source, const off_t offset, const size_t size, const io::Path &storagePath) {
 		io::Path					tempFile = storagePath.uniqueName();
 		io::MemoryMappedFile		sourceFile(source, offset, size, PROT_READ);
@@ -71,7 +39,7 @@ namespace package {
 
 	inline std::string encryptFile(const io::Path &source, const io::Path &storagePath) {
 		const off_t fileSize = source.size();
-		const size_t filePartSize = 1024 * 1024; // 1 MiB
+		const size_t filePartSize = 1024 * 1024; // 1 MiB max part size
 
 		if (0 == fileSize) {
 			// e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
@@ -96,11 +64,38 @@ namespace package {
 		return identifier;
 	}
 
+	typedef exec::Queue<io::Path> PathQueue;
+	typedef std::pair<io::Path,std::string> PathId;
+	typedef exec::Queue<PathId> IdQueue;
+
+	inline void _encryptFileThread(PathQueue &filePathsIn, IdQueue &idsOut, const io::Path &storagePath) {
+		try {
+			while (true) {
+				io::Path	next = filePathsIn.dequeue();
+
+				if (next.isEmpty()) {
+					filePathsIn.enqueue(next);
+					break;
+				}
+
+				std::string	identifier = encryptFile(next, storagePath);
+
+				idsOut.enqueue(PathId(next, identifier));
+			}
+		} catch(const PathQueue::Closed &) {
+			// ignore, this is expected
+		} catch(const IdQueue::Closed &) {
+			// ignore, this is expected
+		} catch(const std::exception &exception) {
+			fprintf(stderr, "Unexpected exception: %s\n", exception.what());
+		}
+	}
+
 	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
 		typedef std::vector<std::thread> ThreadList;
 		ThreadList threads;
 		PathQueue filesToProcess;
-		HashQueue fileHashes;
+		IdQueue fileIds;
 		json::Value listing;
 
 		if (0 == threadCount) {
@@ -111,7 +106,7 @@ namespace package {
 		}
 
 		for (int thread = 0; thread < threadCount; ++thread) {
-			threads.push_back(std::thread(_hashingThread, std::ref(filesToProcess), std::ref(fileHashes)));
+			threads.push_back(std::thread(_encryptFileThread, std::ref(filesToProcess), std::ref(fileIds), std::ref(storagePath)));
 		}
 
 		io::Path::StringList contents = path.list(io::Path::PathAndName, io::Path::RecursiveListing);
@@ -130,10 +125,13 @@ namespace package {
 			thread->join();
 		}
 
-		while (!fileHashes.empty()) {
-			PathHash next = fileHashes.dequeue();
+		while (!fileIds.empty()) {
+			PathId next = fileIds.dequeue();
 
+			listing[next.first] = next.second;
 		}
+
+		// TODO: Create a compressed, encrypted file from listing and return the identifier
 
 		return "";
 	}

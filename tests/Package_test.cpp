@@ -22,9 +22,6 @@ int main(const int argc, const char * const argv[]) {
 
 		kTestFilePath.write(kTestFileContents);
 		printf("%s size=%lu\n", kTestFileContents, strlen(kTestFileContents));
-		std::string dataHash = hash::sha256(kTestFileContents, strlen(kTestFileContents)).hex();
-		std::string fileHash = package::hashFile(kTestFilePath);
-		dotest(dataHash == fileHash);
 	}
 
 	return 0;
