@@ -44,9 +44,9 @@ namespace package {
 		}
 	}
 
-	inline std::string encryptFile(const io::Path &source, const io::Path &storagePath) {
+	inline std::string encryptFilePart(const io::Path &source, const off_t offset, const size_t size, const io::Path &storagePath) {
 		io::Path					tempFile = storagePath.uniqueName();
-		io::MemoryMappedFile		sourceFile(source, 0, 0, PROT_READ);
+		io::MemoryMappedFile		sourceFile(source, offset, size, PROT_READ);
 		io::FileDescriptor			destinationFile(tempFile);
 		size_t						encryptedSize = source.size() + crypto::AES256_CBC_Padded::BlockSize;
 
@@ -67,6 +67,33 @@ namespace package {
 
 		tempFile.rename(storagePath + encryptedHash.hex());
 		return "sha256:" + encryptedHash.hex() + ":" + "aes256/sha256:" + sourceHash.hex();
+	}
+
+	inline std::string encryptFile(const io::Path &source, const io::Path &storagePath) {
+		const off_t fileSize = source.size();
+		const size_t filePartSize = 1024 * 1024; // 1 MiB
+
+		if (0 == fileSize) {
+			// e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+			static const std::string emptyHash = hash::sha256("").hex();
+
+			return "sha256:" + emptyHash;
+		}
+
+		const int		parts = (fileSize - 1) / filePartSize + 1;
+		const size_t	lastPartSize = fileSize - (parts - 1) * filePartSize;
+		std::string		identifier;
+		std::string		prefix;
+
+		for (int i = 0; i < parts; ++i) {
+			const size_t partSize = (i == parts - 1) ? lastPartSize : filePartSize;
+			const std::string partIdentifier = encryptFilePart(source, i * filePartSize, partSize, storagePath);
+
+			identifier = identifier + prefix + partIdentifier;
+			prefix = ",";
+		}
+
+		return identifier;
 	}
 
 	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
