@@ -6,35 +6,28 @@
 #include "os/Path.h"
 #include "os/Queue.h"
 #include "os/SymetricEncrypt.h"
+#include "os/ZCompression.h"
 #include "protocol/JSON.h"
 #include <thread>
 #include <string>
 
 namespace package {
 
+	inline std::string storeData(const std::string &sourceData, const io::Path &storagePath) {
+		hash::sha256		sourceHash(sourceData);
+		std::string			compressedData = z::compress(sourceData, 9);
+		const std::string	&dataToEncrypt = (sourceData.size() > compressedData.size()) ? compressedData : sourceData;
+		std::string			key(reinterpret_cast<const char*>(sourceHash.buffer()), sourceHash.size());
+		std::string			encrypted = crypto::AES256(key).encrypt(dataToEncrypt);
+		std::string			dataName = hash::sha256(encrypted).hex();
+
+		(storagePath + dataName).write(encrypted);
+
+		return "sha256:" + dataName + ":" + "aes256/sha256:" + sourceHash.hex();
+	}
+
 	inline std::string encryptFilePart(const io::Path &source, const off_t offset, const size_t size, const io::Path &storagePath) {
-		io::Path					tempFile = storagePath.uniqueName();
-		io::MemoryMappedFile		sourceFile(source, offset, size, PROT_READ);
-		io::FileDescriptor			destinationFile(tempFile);
-		size_t						encryptedSize = source.size() + crypto::AES256_CBC_Padded::BlockSize;
-
-		destinationFile.resize(encryptedSize);
-
-		io::MemoryMappedFile		destination(destinationFile);
-		hash::sha256				sourceHash(sourceFile, sourceFile.size());
-		std::string					key(reinterpret_cast<const char*>(sourceHash.buffer()), sourceHash.size());
-		crypto::AES256_CBC_Padded	cryptor(key);
-
-		cryptor.encryptInPlace(sourceFile.address<char>(), sourceFile.size(), "", destination.address<char>(), encryptedSize);
-		sourceFile.close();
-		destination.close();
-		destinationFile.resize(encryptedSize);
-
-		io::MemoryMappedFile		encryptedFile(tempFile);
-		hash::sha256				encryptedHash(encryptedFile, encryptedFile.size());
-
-		tempFile.rename(storagePath + encryptedHash.hex());
-		return "sha256:" + encryptedHash.hex() + ":" + "aes256/sha256:" + sourceHash.hex();
+		return storeData(source.contents(io::File::Binary), storagePath); // TODO Read only the offset and size
 	}
 
 	inline std::string encryptFile(const io::Path &source, const io::Path &storagePath) {
@@ -125,15 +118,14 @@ namespace package {
 			thread->join();
 		}
 
+		listing["files"] = json::Value();
 		while (!fileIds.empty()) {
 			PathId next = fileIds.dequeue();
 
-			listing[next.first] = next.second;
+			listing["files"][next.first] = next.second; // TODO first needs to be relative
 		}
 
-		// TODO: Create a compressed, encrypted file from listing and return the identifier
-
-		return "";
+		return storeData(listing, storagePath);
 	}
 
 }
