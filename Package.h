@@ -27,7 +27,7 @@ namespace package {
 	}
 
 	inline std::string encryptFilePart(const io::Path &source, const off_t offset, const size_t size, const io::Path &storagePath) {
-		return storeData(source.contents(io::File::Binary), storagePath); // TODO Read only the offset and size
+		return storeData(source.contents(io::File::Binary, offset, size), storagePath);
 	}
 
 	inline std::string encryptFile(const io::Path &source, const io::Path &storagePath) {
@@ -104,11 +104,12 @@ namespace package {
 
 		io::Path::StringList contents = path.list(io::Path::PathAndName, io::Path::RecursiveListing);
 
+		listing["directories"] = json::Value().makeArray();
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
 				filesToProcess.enqueue(*entry);
 			} else {
-				listing["directories"] = *entry; // TODO this needs to be relative
+				listing["directories"].append(std::string(io::Path(*entry).relativeTo(path)));
 			}
 		}
 
@@ -122,7 +123,7 @@ namespace package {
 		while (!fileIds.empty()) {
 			PathId next = fileIds.dequeue();
 
-			listing["files"][next.first] = next.second; // TODO first needs to be relative
+			listing["files"][next.first.relativeTo(path)] = next.second;
 		}
 
 		return storeData(listing, storagePath);
