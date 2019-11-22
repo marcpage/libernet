@@ -36,7 +36,7 @@ namespace pkg {
 
 		if (0 == fileSize) {
 			// e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
-			static const std::string emptyHash = hash::sha256("").hex();
+			static const std::string emptyHash = hash::sha256("", 0).hex();
 
 			return "sha256:" + emptyHash;
 		}
@@ -85,7 +85,10 @@ namespace pkg {
 	}
 
 	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
-		json::Value listing = json::Value().makeObject();
+		json::Value 	listing = json::Value().makeObject();
+		const io::Path	storagePathAbsolute = storagePath.absolute();
+		const io::Path	listingPathAbsolute = path.absolute();
+
 		IdQueue fileIds;
 /*
 		typedef std::vector<std::thread> ThreadList;
@@ -100,10 +103,10 @@ namespace pkg {
 		}
 
 		for (int thread = 0; thread < threadCount; ++thread) {
-			threads.push_back(std::thread(_encryptFileThread, std::ref(filesToProcess), std::ref(fileIds), std::ref(storagePath)));
+			threads.push_back(std::thread(_encryptFileThread, std::ref(filesToProcess), std::ref(fileIds), std::ref(storagePathAbsolute)));
 		}
 */
-		io::Path::StringList contents = path.list(io::Path::PathAndName, io::Path::RecursiveListing);
+		io::Path::StringList contents = listingPathAbsolute.list(io::Path::PathAndName, io::Path::RecursiveListing);
 
 		listing["directories"] = json::Value().makeArray();
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
@@ -111,9 +114,10 @@ namespace pkg {
 /*
 				filesToProcess.enqueue(*entry);
 */
-				fileIds.enqueue(PathId(*entry, encryptFile(*entry, storagePath))); // single threaded version
+				fileIds.enqueue(PathId(*entry, encryptFile(*entry, storagePathAbsolute))); // single threaded version
 			} else {
-				json::Value directoryName = std::string(io::Path(*entry).relativeTo(path));
+				json::Value directoryName;
+				directoryName = std::string(io::Path(*entry).relativeTo(listingPathAbsolute));
 				listing["directories"].append(directoryName);
 			}
 		}
@@ -125,14 +129,16 @@ namespace pkg {
 			thread->join();
 		}
 */
-		listing["files"] = json::Value();
+		listing["files"] = json::Value().makeObject();
 		while (!fileIds.empty()) {
 			PathId next = fileIds.dequeue();
+			json::Value fileName;
+			fileName = next.second;
 
-			listing["files"][next.first.relativeTo(path)] = next.second;
+			listing["files"][next.first.relativeTo(listingPathAbsolute)] = fileName;
 		}
 
-		return storeData(listing, storagePath);
+		return storeData(listing, storagePathAbsolute);
 	}
 
 }

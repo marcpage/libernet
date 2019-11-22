@@ -8,7 +8,7 @@
 	}
 
 int main(const int argc, const char * const argv[]) {
-	int	iterations= 40;
+	int	iterations= 2;
 #ifdef __Tracer_h__
 	iterations= 1;
 #endif
