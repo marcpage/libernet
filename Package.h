@@ -11,7 +11,7 @@
 #include <thread>
 #include <string>
 
-namespace package {
+namespace pkg {
 
 	inline std::string storeData(const std::string &sourceData, const io::Path &storagePath) {
 		hash::sha256		sourceHash(sourceData);
@@ -85,11 +85,12 @@ namespace package {
 	}
 
 	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
+		json::Value listing = json::Value().makeObject();
+		IdQueue fileIds;
+/*
 		typedef std::vector<std::thread> ThreadList;
 		ThreadList threads;
 		PathQueue filesToProcess;
-		IdQueue fileIds;
-		json::Value listing;
 
 		if (0 == threadCount) {
 			threadCount = std::thread::hardware_concurrency();
@@ -101,24 +102,29 @@ namespace package {
 		for (int thread = 0; thread < threadCount; ++thread) {
 			threads.push_back(std::thread(_encryptFileThread, std::ref(filesToProcess), std::ref(fileIds), std::ref(storagePath)));
 		}
-
+*/
 		io::Path::StringList contents = path.list(io::Path::PathAndName, io::Path::RecursiveListing);
 
 		listing["directories"] = json::Value().makeArray();
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
+/*
 				filesToProcess.enqueue(*entry);
+*/
+				fileIds.enqueue(PathId(*entry, encryptFile(*entry, storagePath))); // single threaded version
 			} else {
-				listing["directories"].append(std::string(io::Path(*entry).relativeTo(path)));
+				json::Value directoryName = std::string(io::Path(*entry).relativeTo(path));
+				listing["directories"].append(directoryName);
 			}
 		}
 
+/*
 		filesToProcess.enqueue(io::Path());
 
 		for (auto thread = threads.begin(); thread != threads.end(); ++thread) {
 			thread->join();
 		}
-
+*/
 		listing["files"] = json::Value();
 		while (!fileIds.empty()) {
 			PathId next = fileIds.dequeue();

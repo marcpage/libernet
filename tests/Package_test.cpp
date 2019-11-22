@@ -12,17 +12,23 @@ int main(const int argc, const char * const argv[]) {
 #ifdef __Tracer_h__
 	iterations= 1;
 #endif
-	const io::Path	kTestFilePath(argc < 2 ? "bin/logs/testMemoryMappedFile.txt" : argv[1]);
-	const char * const kTestFileContents = "Testing hashing file.";
+	const io::Path	kTestPath(argc < 2 ? "." : argv[1]);
+	const io::Path	kStoragePath = io::Path("/tmp").uniqueName();
+	std::string		identifier;
 
-	for (int i = 0; i < iterations; ++i) {
-		if (kTestFilePath.isFile()) {
-			kTestFilePath.remove();
-		}
-
-		kTestFilePath.write(kTestFileContents);
-		printf("%s size=%lu\n", kTestFileContents, strlen(kTestFileContents));
+	if (!kStoragePath.isDirectory()) {
+		kStoragePath.mkdir();
 	}
+
+	try {
+		for (int i = 0; i < iterations; ++i) {
+			identifier = pkg::packageDirectory(kTestPath, kStoragePath);
+		}
+	} catch(const std::exception &exception) {
+		printf("FAIL: Exception thrown: %s\n", exception.what());
+	}
+
+	printf("identifier = %s\n", identifier.c_str());
 
 	return 0;
 }
