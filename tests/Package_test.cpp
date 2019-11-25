@@ -17,26 +17,23 @@ int main(const int argc, const char * const argv[]) {
 	const io::Path	kStoragePath = io::Path("bin/logs").uniqueName("Package_test");
 	std::string		identifier;
 
-	if (!kStoragePath.isDirectory()) {
-		kStoragePath.mkdir();
-	}
+	kStoragePath.mkdirs();
 
 	if (argc < 2) {
 		io::Path headers = kTestPath + "headers";
 		io::Path sources = kTestPath + "sources";
 
-		if (!kTestPath.isDirectory()) {
-			kTestPath.mkdir();
+		kTestPath.mkdirs();
+		headers.mkdirs();
+		sources.mkdirs();
+
+		try {
+			exec::execute("cp *.h '" + std::string(headers) + "'");
+			exec::execute("cp tests/*.cpp '" + std::string(sources) + "'");
+			exec::execute("touch '" + std::string(kTestPath + "manifest") + "'");
+		} catch(const std::exception &exception) {
+			printf("FAIL: exception thrown during source prep: %s\n", exception.what());
 		}
-		if (!headers.isDirectory()) {
-			headers.mkdir();
-		}
-		if (!sources.isDirectory()) {
-			sources.mkdir();
-		}
-		exec::execute("cp *.h '" + std::string(headers) + "'");
-		exec::execute("cp tests/*.cpp '" + std::string(sources) + "'");
-		exec::execute("touch '" + std::string(kTestPath + "manifest") + "'");
 	}
 
 	try {

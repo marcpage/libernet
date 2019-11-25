@@ -57,85 +57,25 @@ namespace pkg {
 		return identifier;
 	}
 
-	typedef exec::Queue<io::Path> PathQueue;
 	typedef std::pair<io::Path,std::string> PathId;
 	typedef exec::Queue<PathId> IdQueue;
 
-	inline void _encryptFileThread(PathQueue &filePathsIn, IdQueue &idsOut, const io::Path &storagePath) {
-		try {
-			while (true) {
-				io::Path	next = filePathsIn.dequeue();
-
-				if (next.isEmpty()) {
-					filePathsIn.enqueue(next);
-					break;
-				}
-
-				std::string	identifier = encryptFile(next, storagePath);
-
-				idsOut.enqueue(PathId(next, identifier));
-			}
-		} catch(const PathQueue::Closed &) {
-			// ignore, this is expected
-		} catch(const IdQueue::Closed &) {
-			// ignore, this is expected
-		} catch(const std::exception &exception) {
-			fprintf(stderr, "Unexpected exception: %s\n", exception.what());
-		}
-	}
-
-	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath, int threadCount=0) {
+	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath) {
 		json::Value 	listing = json::Value().makeObject();
 		const io::Path	storagePathAbsolute = storagePath.absolute();
 		const io::Path	listingPathAbsolute = path.absolute();
 
-		IdQueue fileIds;
-/*
-		typedef std::vector<std::thread> ThreadList;
-		ThreadList threads;
-		PathQueue filesToProcess;
-
-		if (0 == threadCount) {
-			threadCount = std::thread::hardware_concurrency();
-		}
-		if (0 == threadCount) {
-			threadCount = 2;
-		}
-
-		for (int thread = 0; thread < threadCount; ++thread) {
-			threads.push_back(std::thread(_encryptFileThread, std::ref(filesToProcess), std::ref(fileIds), std::ref(storagePathAbsolute)));
-		}
-*/
 		io::Path::StringList contents = listingPathAbsolute.list(io::Path::PathAndName, io::Path::RecursiveListing);
 
 		listing["directories"] = json::Value().makeArray();
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
-/*
-				filesToProcess.enqueue(*entry);
-*/
-				fileIds.enqueue(PathId(*entry, encryptFile(*entry, storagePathAbsolute))); // single threaded version
+				listing["files"][io::Path(*entry).relativeTo(listingPathAbsolute)] = encryptFile(*entry, storagePathAbsolute);
 			} else {
 				json::Value directoryName;
 				directoryName = std::string(io::Path(*entry).relativeTo(listingPathAbsolute));
 				listing["directories"].append(directoryName);
 			}
-		}
-
-/*
-		filesToProcess.enqueue(io::Path());
-
-		for (auto thread = threads.begin(); thread != threads.end(); ++thread) {
-			thread->join();
-		}
-*/
-		listing["files"] = json::Value().makeObject();
-		while (!fileIds.empty()) {
-			PathId next = fileIds.dequeue();
-			json::Value fileName;
-			fileName = next.second;
-
-			listing["files"][next.first.relativeTo(listingPathAbsolute)] = fileName;
 		}
 
 		return storeData(listing, storagePathAbsolute);
