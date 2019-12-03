@@ -68,6 +68,7 @@ namespace pkg {
 		io::Path::StringList contents = listingPathAbsolute.list(io::Path::PathAndName, io::Path::RecursiveListing);
 
 		listing["directories"] = json::Value().makeArray();
+		listing["files"] = json::Value().makeObject();
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
 				listing["files"][io::Path(*entry).relativeTo(listingPathAbsolute)] = encryptFile(*entry, storagePathAbsolute);
