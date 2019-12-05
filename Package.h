@@ -61,7 +61,7 @@ namespace pkg {
 	typedef exec::Queue<PathId> IdQueue;
 
 	inline json::Value directoryInfo(const io::Path &path, const io::Path &storagePath) {
-		json::Value 	listing = json::Value().makeObject();
+		json::Value 	listing = json::Value(json::ObjectType);
 		const io::Path	storagePathAbsolute = storagePath.absolute();
 		const io::Path	listingPathAbsolute = path.absolute();
 
