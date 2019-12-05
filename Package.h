@@ -69,7 +69,7 @@ namespace pkg {
 
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
-				listing["files"][io::Path(*entry).relativeTo(listingPathAbsolute)] = encryptFile(*entry, storagePathAbsolute);
+				listing["files"][io::Path(*entry).relativeTo(listingPathAbsolute)]["contents"] = encryptFile(*entry, storagePathAbsolute);
 			} else {
 				json::Value directoryName;
 				directoryName = std::string(io::Path(*entry).relativeTo(listingPathAbsolute));
