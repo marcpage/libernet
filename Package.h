@@ -60,15 +60,13 @@ namespace pkg {
 	typedef std::pair<io::Path,std::string> PathId;
 	typedef exec::Queue<PathId> IdQueue;
 
-	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath) {
+	inline json::Value directoryInfo(const io::Path &path, const io::Path &storagePath) {
 		json::Value 	listing = json::Value().makeObject();
 		const io::Path	storagePathAbsolute = storagePath.absolute();
 		const io::Path	listingPathAbsolute = path.absolute();
 
 		io::Path::StringList contents = listingPathAbsolute.list(io::Path::PathAndName, io::Path::RecursiveListing);
 
-		listing["directories"] = json::Value().makeArray();
-		listing["files"] = json::Value().makeObject();
 		for (auto entry = contents.begin(); entry != contents.end(); ++entry) {
 			if (!io::Path::endsWithPathSeparator(*entry)) {
 				listing["files"][io::Path(*entry).relativeTo(listingPathAbsolute)] = encryptFile(*entry, storagePathAbsolute);
@@ -79,7 +77,11 @@ namespace pkg {
 			}
 		}
 
-		return storeData(listing, storagePathAbsolute);
+		return listing;
+	}
+
+	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath) {
+		return storeData(directoryInfo(path, storagePath), storagePath.absolute());
 	}
 
 }
