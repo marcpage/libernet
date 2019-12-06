@@ -13,17 +13,29 @@
 
 namespace pkg {
 
-	inline std::string storeData(const std::string &sourceData, const io::Path &storagePath) {
+	inline std::string packData(const std::string &sourceData, std::string &packedData, std::string &dataName) {
 		hash::sha256		sourceHash(sourceData);
 		std::string			compressedData = z::compress(sourceData, 9);
 		const std::string	&dataToEncrypt = (sourceData.size() > compressedData.size()) ? compressedData : sourceData;
 		std::string			key(reinterpret_cast<const char*>(sourceHash.buffer()), sourceHash.size());
-		std::string			encrypted = crypto::AES256(key).encrypt(dataToEncrypt);
-		std::string			dataName = hash::sha256(encrypted).hex();
 
-		(storagePath + dataName).write(encrypted);
-
+		packedData = crypto::AES256(key).encrypt(dataToEncrypt);
+		dataName = hash::sha256(packedData).hex();
 		return "sha256:" + dataName + ":" + "aes256/sha256:" + sourceHash.hex();
+	}
+
+	inline std::string packData(const std::string &sourceData, std::string &packedData) {
+		std::string dataName;
+
+		return packData(sourceData, packedData, dataName);
+	}
+
+	inline std::string storeData(const std::string &sourceData, const io::Path &storagePath) {
+		std::string			packedData, dataName;
+		std::string			identifier = packData(sourceData, packedData, dataName);
+
+		(storagePath + dataName).write(packedData);
+		return identifier;
 	}
 
 	inline std::string encryptFilePart(const io::Path &source, const off_t offset, const size_t size, const io::Path &storagePath) {
@@ -83,6 +95,7 @@ namespace pkg {
 	inline std::string packageDirectory(const io::Path &path, const io::Path &storagePath) {
 		return storeData(directoryInfo(path, storagePath), storagePath.absolute());
 	}
+
 
 }
 
