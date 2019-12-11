@@ -119,30 +119,48 @@ namespace pkg {
 	}
 
 	inline json::Value unpackageDirectoryInfo(const std::string &packagedDirectory, const std::string &identifier = std::string()) {
-		try {
-			return json::Value(packagedDirectory);
-		} catch(const json::WrongType &) {
-			std::string	nameType, name, keyType, key;
+		std::string		nameType, name, keyType, key;
+		hash::sha256	packagedHash(packagedDirectory);
+		std::string		jsonData;
 
-			splitIdentifier(identifier, nameType, name, keyType, key);
-			if (nameType != "sha256") {
-				throw json::WrongType("Expected data identifier to be sha256, but found '" + nameType + "'", __FILE__, __LINE__);
-			} else if ( (keyType.size() > 0) && (keyType != "aes256/sha256") ) {
-				throw json::WrongType("Expected key type to be aes256/sha256 or blank, but found '" + keyType + "'", __FILE__, __LINE__);
-			} else if ( (keyType.size() == 0) && (key.size() != 0) ) {
-				throw json::WrongType("Expected empty key if keyType is empty, but found key: '" + key + "'", __FILE__, __LINE__);
-			} else if (key.size() == 0) {
-				throw json::WrongType("We have an empty key, but a key type of: '" + keyType + "'", __FILE__, __LINE__);
-			}
-			// verify hash of packagedDirectory matches sha256
-			// if key is empty, try to json parse the data and return it, else
-			// create key from key string
-			// decrypt data
-			// try to json parse data and return it, else
-			// decompress data, json parse, and return it
+		splitIdentifier(identifier, nameType, name, keyType, key);
 
+		// verify the name is supported
+		if (nameType != "sha256") {
+			throw json::WrongType("Expected data identifier to be sha256, but found '" + nameType + "'", __FILE__, __LINE__);
+		} else if ( (keyType.size() > 0) && (keyType != "aes256/sha256") ) {
+			throw json::WrongType("Expected key type to be aes256/sha256 or blank, but found '" + keyType + "'", __FILE__, __LINE__);
+		} else if ( (keyType.size() == 0) && (key.size() != 0) ) {
+			throw json::WrongType("Expected empty key if keyType is empty, but found key: '" + key + "'", __FILE__, __LINE__);
+		} else if (key.size() == 0) {
+			throw json::WrongType("We have an empty key, but a key type of: '" + keyType + "'", __FILE__, __LINE__);
+		} else if (name != packagedHash.hex()) {
+			throw json::WrongType("Name does not match contents: name='" + name + "' hash='" + packagedHash.hex() + "'", __FILE__, __LINE__);
 		}
 
+		if (key.size() > 0) {
+			hash::sha256	sourceHash = hash::sha256::fromHex(key);
+			std::string		keyData(reinterpret_cast<const char*>(sourceHash.buffer()), sourceHash.size());
+			std::string		unpackedData = crypto::AES256(keyData).decrypt(packagedDirectory);
+
+			if (hash::sha256(unpackedData).hex() == key) {
+				jsonData = unpackedData;
+			} else {
+				z::uncompress(unpackedData, jsonData, 1024 * 1024);
+
+				if (hash::sha256(jsonData).hex() != key) {
+					throw json::WrongType("Name does not match contents: key='" + key
+											+ "' hash='" + hash::sha256(unpackedData).hex()
+											+ "' decompressed hash='" + hash::sha256(jsonData).hex() + "'", __FILE__, __LINE__);
+				}
+
+			}
+
+		} else {
+			jsonData = packagedDirectory;
+		}
+
+		return json::Value(jsonData);
 	}
 
 
