@@ -16,7 +16,6 @@ int main(const int argc, const char * const argv[]) {
 	const io::Path	kTestPath(argc < 2 ? "bin/test_files" : argv[1]);
 	const io::Path	kStoragePath = io::Path("bin/logs").uniqueName("Package_test");
 	std::string		identifier;
-	json::Value		source;
 
 	kStoragePath.mkdirs();
 
@@ -40,9 +39,29 @@ int main(const int argc, const char * const argv[]) {
 	try {
 		for (int i = 0; i < iterations; ++i) {
 			identifier = pkg::packageDirectory(kTestPath, kStoragePath);
-			source = pkg::directoryInfo(kTestPath, kStoragePath);
 		}
-		printf("identifier = %s\nsource\n%s\n", identifier.c_str(), source.format(4).c_str());
+
+		json::Value		original = pkg::directoryInfo(kTestPath, kStoragePath);
+		std::string		packedData;
+		std::string nameType, name, keyType, key;
+
+		pkg::splitIdentifier(identifier, nameType, name, keyType, key);
+
+		if (nameType != "sha256") {
+			printf("FAIL: expected nameType to be sha256 but got '%s' for '%s'\n", nameType.c_str(), identifier.c_str());
+		}
+
+		if (keyType != "aes256/sha256") {
+			printf("FAIL: expected keyType to be aes256/sha256 but got '%s' for '%s'\n", keyType.c_str(), identifier.c_str());
+		}
+
+		printf("identifier = %s\noriginal\n%s\n", identifier.c_str(), original.format(4).c_str());
+		pkg::packData(original, packedData);
+		printf("directory data size = %lu packed size = %lu\n", std::string(original).size(), packedData.size());
+
+		json::Value unpacked = pkg::unpackData(packedData, identifier);
+		printf("original\n%s\n", unpacked.format(4).c_str());
+
 	} catch(const std::exception &exception) {
 		printf("FAIL: Exception thrown: %s\n", exception.what());
 	}
