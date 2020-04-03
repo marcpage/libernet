@@ -5,7 +5,7 @@
 #include "os/Hash.h"
 #include "os/Path.h"
 #include "os/Queue.h"
-#include "os/SymetricEncrypt.h"
+#include "os/SymmetricEncrypt.h"
 #include "os/ZCompression.h"
 #include "protocol/JSON.h"
 #include <thread>
