@@ -59,7 +59,7 @@ int main(const int argc, const char * const argv[]) {
 		pkg::packData(original, packedData);
 		printf("directory data size = %lu packed size = %lu\n", std::string(original).size(), packedData.size());
 
-		json::Value unpacked = pkg::unpackData(packedData, identifier);
+		json::Value unpacked(pkg::unpackData(packedData, identifier));
 		printf("original\n%s\n", unpacked.format(4).c_str());
 
 	} catch(const std::exception &exception) {
