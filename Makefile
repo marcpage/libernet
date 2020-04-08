@@ -4,14 +4,16 @@ all:test docs lint
 
 lint:bin/logs/lint.txt
 
+OPENSSL_PATH=$(subst openssl=,-I,$(OS_OPTIONS))/include
+
 bin/logs/lint.txt: *.h
 	@mkdir -p bin/logs
-	@cppcheck --enable=all --std=c++11 --suppress=unusedFunction --language=c++ -I.. *.h &> $@
-	@cat $@ | grep style:
-	@cat $@ | grep performance:
-	@cat $@ | grep portability:
-	@cat $@ | grep warning:
-	@cat $@ | grep error:
+	@cppcheck --enable=all --force --std=c++11 --suppress=unusedFunction --suppress=constParameter --language=c++ $(OPENSSL_PATH) -I/usr/include -I.. *.h &> $@
+	@-cat $@ | grep performance:
+	@-cat $@ | grep portability:
+	@-cat $@ | grep style:
+	@-cat $@ | grep warning:
+	@-cat $@ | grep error:
 
 documentation/index.html:
 	@mkdir -p documentation
@@ -34,3 +36,6 @@ bin/test:../os/tests/test.cpp ../os/*.h *.h
 
 bin/%:%.cpp
 	@clang++ $< -o -o $@ -std-c++11 -I.. -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
+
+clean:
+	@rm -Rf documentation bin/coverage bin/test bin/tests bin/logs/*.log bin/logs/*.txt
