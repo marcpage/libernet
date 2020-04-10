@@ -102,13 +102,17 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 
 
 Type                                          | Encrypted | Contents | [Match](#data-matching)
------
+--------------------------------------------- | --------- | -------- | ------------------------------------------------------
 [Small File](#small-file)                     | Yes       | binary   | None
 [Large File](#large-file)                     | Yes       | json     | None
 [Bundle](#bundle-description)                 | Yes       | json     | None
-[Address History](#address-history)           | No        | json     | web:lowercase/path/to/bundle
+[Address History](#address-history)           | No        | json     | web:{lowercase/path/to/bundle}
 [Personal Key](#personal-key)                 | No        | PEM      | None
-[Personal Information](#personal-information) | No        | json     | info:personal key identifier
+[Personal Information](#personal-information) | No        | json     | info:{personal key identifier}
+[Message Envelope](#message-dictionary)       | Yes       | json     | None
+[Message Carrier](#carrier-dictionary)        | No        | json     | message:YYYY:MM:DD:{recipient personal key identifier}
+[Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
+
 
 ## Small file
 
