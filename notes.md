@@ -8,14 +8,14 @@ Table of Contents
   * [Data Identity](#data-identity)
   * [Data Routing](#data-routing)
   * [Deleting Data](#deleting-data)
-  * [Data Addresses](#data-addresses)
   * [Data Matching](#data-matching)
-    * [Time to match digits](#time-to-match-digits)
+    * [Cost to match digits](#cost-to-match-digits)
 * [Data Types](#data-types)
   * [Small file](#small-file)
   * [Large file](#large-file)
   * [Bundle Description](#bundle-description)
   * [Address History](#address-history)
+    * [Resolving web addresses](#resolving-web-addresses)
   * [Personal Key](#personal-key)
     * [Personal Information](#personal-information)
   * [Messages](#messages)
@@ -35,6 +35,8 @@ Table of Contents
 * *Public/Private Key* - An RSA public/private key pair
 * *Public-key encrypted* - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
 * *Signing* - RSA private encryption of SHA256 hashing of the data, stored as hex.
+* *Compression* - zlib compression, level 9
+
 
 # Concepts
 
@@ -48,9 +50,8 @@ Any data block can, therefore, be validated that the identity is correct by hash
 ## Data Routing
 
 When new data is created, it is pushed (at the least) to the connected node that most closely matches the identity of the data.
-Data identity is the hash of the contents of the data.
 When data is pushed to a node, it must either be stored, or pushed to another node.
-A node may not delete data (except for the cases in Deleting Chunks) without first passing the data on to another node.
+A node may not delete data (except for the cases in [Deleting Data](#deleting-data)) without first passing the data on to another node.
 When data is passed on before deleting, it is passed to the node that most closely matches the identity of the data.
 When a node originates data, it may want to push the data to more than one node, to ensure the data is seeded properly, before deleting locally.
 
@@ -60,34 +61,34 @@ When a node originates data, it may want to push the data to more than one node,
 Certain data can be squelched (not passed on and deleted from local cache).
 Each node keeps a list of identifiers that are squelched (deleted).
 When data of a squelched identifier is pushed to the node, it can immediately delete it.
+When responding to ["similar to" search](#data-matching), squelched data should be excluded.
 
 Reasons for squelching data include:
-* Old, fully Merged Address History (assuming no history was lost)
-* Old Personal Key Identity files (either through owner updates or through merging verifiers)
-* Old trust lists (determine by timestamp)
-
-
-## Data Addresses
-
-Data is addressed by the hash of the contents (which may be compressed or encrypted or both).
+* Old, fully Merged [Address History](#address-history) (assuming no history is lost)
+* Old [Personal Information](#personal-information) (either through owner updates or through merging verifiers)
+* Old [Trust](#trust) lists (determine by timestamp)
 
 
 ## Data Matching
 
 Data can be matched to other data by adding random data until the first hex digits of the hashes match.
-Data can be requested by exact hash, or by "similar to".
-The more digits that match, the more time (in general) and expense and, therefore, the higher the priority.
-When searching "similar to" each node may drop lower priority items if the number of items being returned is "large".
+Data can be requested by exact hash, or by "similar to" search.
+The more digits that match, the more time (in general) and expense and, therefore, the higher the priority or value of the match.
+When searching ["similar to" search](#data-matching) each node may drop lower priority items if the number of items being returned is "large".
 Items are not dropped just because they are low priority, but because there are "too many" items to return, in which case lower priority items may be omitted.
 
-### Time to match digits
+
+### Cost to match digits
 
 Below are the times to calculate a hash of sequential integer strings until it matches the hash of an empty string as well as a string of the letters a, b, c, and d.
-Absolute times are somewhat irrelevant and more to give scale. Different processors will drastically change the absolute times.
+Absolute times are somewhat irrelevant and more to give scale.
+Different processors will drastically change the absolute times.
 Times are provided to give relative speed of matching the number of digits.
+
 Numbers in the table are not exact, but generally the magnitude.
 Theoretical assumes that 2^(digits x 4) unique patterns will be required to ensure that many hex digits will match.
 That is not necessarily the case (see hex digits = 7).
+
 Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      | Theoretical Tries | Theoretical Time
 ---------- | ---------- | --------- | ----------- | ----------- | ------------- | ----------------- | ----------------
 4          | 0.01       | 0.10      | 5,000       | 7,000       | bulk mail     | 65,536            | 0.01 seconds
@@ -100,6 +101,15 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 # Data Types
 
 
+Type                                          | Encrypted | Contents | [Match](#data-matching)
+-----
+[Small File](#small-file)                     | Yes       | binary   | None
+[Large File](#large-file)                     | Yes       | json     | None
+[Bundle](#bundle-description)                 | Yes       | json     | None
+[Address History](#address-history)           | No        | json     | web:lowercase/path/to/bundle
+[Personal Key](#personal-key)                 | No        | PEM      | None
+[Personal Information](#personal-information) | No        | json     | info:personal key identifier
+
 ## Small file
 
 Small file is a file that is 1 MiB or smaller.
@@ -108,13 +118,13 @@ Then the data is compressed if compression can reduce the size.
 The key previously generated from the hash of the contents is used to encrypt the data.
 The data is then hashed to generate the identifier of the data.
 
-When data is received, it is received with the identifier.
+When data is received, it is received with the [identifier](#data-identity).
 If the recipient is intended to access the contents the key is also passed with the identifier.
 Data can be requested by the exact identifier.
 The data is then passed from node to node without being able to read the contents.
 
 When data is received and we have the decryption key, we can get the original data.
-The data is first verified that it matches the identifier (hash of data).
+The data is first verified that it matches the [identifier](#data-identity).
 We then decrypt the data using the shared decryption key.
 If the decryption key matches the hash of the decrypted contents, then we're done.
 Otherwise, decompress the data.
@@ -142,12 +152,12 @@ The first element of the array describes the overall file contents.
 		}
 	]
 ```
-This json is treated like a [Small file](#small-file).
+This json is treated like a [small file](#small-file).
 
 
 ## Bundle Description
 
-A bundle description escribes a bundle of files.
+A bundle description describes a bundle of files.
 Each entry is around 512 bytes, so limit of files in a bundle is roughly no less than 2,000 files.
 A bundle description is a json dictionary of relative path within the bundle to information about each file.
 ```
@@ -164,11 +174,15 @@ A bundle description is a json dictionary of relative path within the bundle to 
 		"Content-Type": mime type for the data},
 }
 ```
+The *size* fields can be used to help determine if the file is stored as a [small file](#small-file) or a [large file](#large-file).
+When restoring, files larger than 1 MiB are assumed to be a [large file](#large-file), but if it doesn't result in [large file](#large-file) json, then try again treating it as a [small file](#small-file).
+It may be that the file compressed down below 1 MiB.
+If it is smaller tha 1 MiB, it should be a [small file](#small-file).
 
 
 ## Address History
 
-Address history describes current [bundle](#bundle-description) and lists previous [bundles](#bundle-description) for an address.
+Address history describes current [bundle](#bundle-description) and lists previous [bundles](#bundle-description) for a web address.
 Each entry is at least 330 bytes, histories can be up to 3,000 entries.
 Older entries are removed to get the size down to 1 MiB.
 Address histories are not encrypted, but may be compressed if compression improves size.
@@ -179,7 +193,8 @@ Address history is requested for a particular address via [Data Matching](#data-
 The path to the contents referenced by the history is first converted to lowercase.
 Then any backslashes (\\) are converted to slashes (/).
 Any slash prefixes are removed and then whitespace is removed from the ends.
-```\Testing\the\Path\To Enlightenment -> testing/the/path/to enlightenment```
+The path is then prefixed with "web:".
+```\Testing\the\Path\To Enlightenment -> web:testing/the/path/to enlightenment```
 This string is then hashed.
 This is the hash we will [match](#data-matching) when adding padding.
 
@@ -215,6 +230,15 @@ A similar method is used to [delete](#deleting-data) older address histories
 ```
 
 
+### Resolving web addresses
+
+When a web address is received, it is really an address history address and a relative path in the bundle.
+Since there is not a clear distinction of where the relative path starts, there will need to be some searches.
+Start looking for the bundle starting at root (hash of "web:").
+If the relative path does not exist in the trusted root bundle then add the first path element (ie web:apple.com, web:company, web:country, etc).
+To prevent link-hijacking and cut down on requests needed to resolve paths, bundles should be stored in the first two path items.
+
+
 ## Personal Key
 
 A personal key is a PEM encoded public key that is stored without encryption (similar to [Address History](#address-history)) but with possible compression if it reduces the size.
@@ -224,13 +248,12 @@ The [identity](#data-identity) of the personal key is the identifier for a perso
 
 Personal information about a personal key is stored in a json dictionary.
 This is also stored without encryption but can be compressed to reduce size.
-The padding is used to [match](#data-matching) with the personal key [identity](#data-identity).
+The padding is added to [match](#data-matching) the personal key [identity](#data-identity) with "info:personal key identifier".
 
 Personal information is requested using ["similar to" search](#data-matching).
 When multiple are found, the one with the latest timestamp is used.
-Older personal information could be [deleted](#deleting-data), especially if all or most verifiers have verified the new data.
-Older personal information with different next fields should not be deleted.
-Multiple versions of the same timestamp be exists with different sets of verifiers.
+Older personal information should be [deleted](#deleting-data) if all or most verifiers have verified the new data and *next* field has not changed.
+Multiple versions of the same timestamp can exist with different sets of verifiers.
 The personal information that contains all verifiers of the latest personal information should be kept and others should be [deleted](#deleting-data).
 If there is not a personal information that contains all verifiers, you may merge verifiers and republish the personal information.
 If you do create a new personal information, you should [delete](#deleting-data) all other personal information.
@@ -248,11 +271,12 @@ Credentials and verifiers are two ways to help people know that this person is w
 Information that you may not want to share are email, apartment, street number (or even street or city), first name, last name.
 Whenever personal information is updated, verifiers should be [messaged](#messages) to notify them of the change to give them an opportunity to verify.
 
-Whenever a personal key is created, a backup key should be created.
+Whenever personal information is created, a backup (*next*) personal key should be created.
 The next field is this backup key.
 In the event that your private key for the personal key is leaked, you can set the valid field to false.
 Anything signed after the timestamp when the personal information is marked *valid=false* should be considered not signed.
-[Trust](#trust) trees should be updated and remove trust for this personal key (at least for items after this timestamp).
+[Trust](#trust) trees should be updated with this timestamp and anything after this timestamp should not be trusted and treated as malevolent.
+
 If *valid=false* then the *next* value is considered an alias for valid signatures after timestamp.
 The *next* fields should be generated and its private key should be put in cold storage and not used until *valid=false*.
 The *next* should not be trusted in the same personal information in which *valid=false*.
@@ -266,7 +290,12 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"nickname": short name or handle for person,
 	"first name": name,
 	"last name": name,
+	"domain": a domain name that http serves a file named libernet.trust at the root,
 	"email": email,
+	"website": address of a website,
+	"twitter": twitter handle,
+	"facebook": facebook url,
+	"youtube": youtube url,
 	"credentials": [
 		{"sha256": identifier of image of some identification credentials,"aes256": key to decrypt credential image}
 	],
@@ -278,11 +307,6 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"street": street,
 	"street number": house number,
 	"apartment": apartment number,
-	"website": address of a website,
-	"twitter": twitter handle,
-	"facebook": facebook url,
-	"youtube": youtube url,
-	"domain": a domain name that http serves a file named libernet.trust at the root,
 	"valid": true or false if false then this key cannot be used,
 	"next": personal information identifier for a backup identity
 }
@@ -291,7 +315,7 @@ The above dictionary is stored in the following wrapper
 ```
 {
 	"identity": above dictionary in a string,
-	"signature": signature data,
+	"signature": signature data of identity string from signer,
 	"signer": hash of public key,
 	"padding": random data to get hash of data to match digits with public key hash,
 	"verifiers": {identifier of public key: signature of identity}
@@ -303,7 +327,7 @@ The above dictionary is stored in the following wrapper
 
 Messages are json files that describe from, to, cc, subject, and [bundle](#bundle-description) of message body.
 Messages are composed of two separate data blocks, the envelope and the carrier.
-The envelope is treated as [Small files](#small-file) and contains sender's signature, routing and general message headers.
+The envelope is treated as a [small file](#small-file) and contains sender's signature, routing and general message headers.
 The carrier is stored unencrypted, but may be compressed.
 Messages are sent by [matching](#data-matching) the message with the hash of "message:YYYY:MM:DD:public key identifier" in all lowercase.
 
@@ -330,7 +354,7 @@ The above dictionary is encoded into the following Envelope Dictionary
 ```
 {
 	"message": the above dictionary,
-	"signature": signature message,
+	"signature": signature of message from signer,
 	"signer": hash of public key,
 }
 ````
