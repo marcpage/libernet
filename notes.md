@@ -9,7 +9,11 @@ Table of Contents
   * [Data Routing](#data-routing)
   * [Deleting Data](#deleting-data)
   * [Data Matching](#data-matching)
+    * [Similar to results](#similar-to-results)
     * [Cost to match digits](#cost-to-match-digits)
+* [Server](#server)
+  * [HTTP server](#http-server)
+  * [Data transfer](#data-transfer)
 * [Data Types](#data-types)
   * [Small file](#small-file)
   * [Large file](#large-file)
@@ -26,6 +30,8 @@ Table of Contents
     * [Domain Trust](#domain-trust)
     * [Indirect Trust](#indirect-trust)
     * [Trust Document](#trust-document)
+  * [Server Information](#server-information)
+  * [Requests](#requests)
 
 
 # Definitions
@@ -78,6 +84,17 @@ When searching ["similar to" search](#data-matching) each node may drop lower pr
 Items are not dropped just because they are low priority, but because there are "too many" items to return, in which case lower priority items may be omitted.
 
 
+### Similar to results
+
+When "similar to" search is done, it returns the json below.
+The json may be compressed if it reduces the size.
+```
+{
+	{similar to identifier}: [{similar identiiers}]
+}
+```
+
+
 ### Cost to match digits
 
 Below are the times to calculate a hash of sequential integer strings until it matches the hash of an empty string as well as a string of the letters a, b, c, and d.
@@ -98,11 +115,37 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 8          | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...    | 4,294,967,000     | 12 minutes
 
 
+# Server
+
+
+## HTTP server
+
+Data is transfered via an http server.
+Some paths may only be available when connecting to localhost.
+
+Path           | Always Public | Description
+------         | ------------- | -----------
+/              | No            | Index app
+/app           | No            | App configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
+/data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
+/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of hashes similar to {hash}
+/data/requests | Yes           | [Requests](#requests) that this node has. Supports PUT for connecting node's requests.
+/mail          | No            | [Messages](#messages) app
+/server        | Yes           | Returns server information. Supports PUT for connecting node's information.
+/web           | No            | See [Address History](#address-history)
+/{app}         | No            | Apps installed by /app
+
+
+## Data transfer
+
+Servers communicate via http.
+Server to server communication is done via /data, /data/like, /data/requests, and /server.
+
+
 # Data Types
 
-
 Type                                          | Encrypted | Contents | [Match](#data-matching)
---------------------------------------------- | --------- | -------- | ------------------------------------------------------
+--------------------------------------------- | --------- | -------- | -----------------------
 [Small File](#small-file)                     | Yes       | binary   | None
 [Large File](#large-file)                     | Yes       | json     | None
 [Bundle](#bundle-description)                 | Yes       | json     | None
@@ -112,6 +155,8 @@ Type                                          | Encrypted | Contents | [Match](#
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:YYYY:MM:DD:{recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
+[Similar to results](#similar-to-results)     | No        | json     | None
+[Requests](#requests)                         | No        | json     | None
 
 All data should be compressed, before encryption, if compression reduces the size of the original data.
 Data should be no larger than 1 MiB after compression.
@@ -465,6 +510,39 @@ The above dictionary is placed in a string in the following wrapper
 	"signature": signature message,
 	"signer": hash of public key,
 	"padding": random data to get hash of data to match,
+}
+```
+
+## Server Information
+
+When servers connect they request information about the node they are connecting to.
+The information returned is the json below, compressed if it reduces the size.
+```
+{
+	"identifier": hash identifier of the node,
+	"name": the name of this node,
+	"servers": {
+		"identifier": {
+			"address": address and port,
+			"connections": number of times connected,
+			"failed": number of failed connection attempts,
+			"time": total time in seconds connected to the server,
+			"input": total bytes received from this node,
+			"output": total bytes sent to this node,
+		}
+	},
+}
+```
+
+
+## Requests
+
+A node may ask for requests of another node.
+What is returned is the json description below.
+```
+{
+	"sha256": [list of data being searched for],
+	"like": {"sha256": [list of data being searched for]}
 }
 ```
 
