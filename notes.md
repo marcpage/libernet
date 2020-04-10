@@ -278,7 +278,7 @@ Field      | Points Scaler
 trusted    | x +10
 mistaken   | x -1
 disagree   | x -5
-malevolent | x -10
+malevolent | x -100
 
 
 ### Domain Trust
