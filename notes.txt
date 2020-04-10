@@ -1,0 +1,55 @@
+Scenarios
+
+Small file
+----------
+data compressed (if compression actually decreases size)
+data hashed for aes key
+data encrypted
+data hashed for identifier
+
+data received from identifier
+data decrypted using shared secrete aes key/contents hash
+data hashed, if matches hash, we're done
+data decompressed
+data hashed, if not matches aes key, then there was an error
+
+Large file
+----------
+File broken in up to 1 MiB chunks and each chunk is treated like a Small file
+Maximum number of chunks is at least 6,095 (assuming no compression)
+This means the file limit is no lower than 6 GiB (with compression, it is likely to be higher)
+json file of array of chunk identifiers. First element describes the overall file contents
+	[
+		{
+			'sha256': entire file hash,
+			'size': data size
+		},
+		{
+			'sha256': data identifier,
+			'aes256': decryption key,
+			'size': data size
+		}
+	]
+This json file is treated like a Small file
+
+Bundle Description
+------------------
+Describes a bundle of files
+Each entry is around 512 bytes, so bundle file limit is no less than 2,048
+json file of dictionary of relative path within the bundle to information about the file
+{
+	"index.html": {
+		"sha256": identifier of Small or Large file,
+		"aes256": key to decrypt Large file description or small file,
+		"size": number of bytes in the final file,
+		"Content-Type": mime type for the data},
+	"images/logo.png": {
+		"sha256": identifier of Small or Large file,
+		"aes256": key to decrypt Large file description or small file,
+		"size": number of bytes in the final file,
+		"Content-Type": mime type for the data},
+}
+
+Address History
+---------------
+Describes current bundle and previous bundles

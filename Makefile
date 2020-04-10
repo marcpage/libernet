@@ -7,6 +7,7 @@ lint:bin/logs/lint.txt
 OPENSSL_PATH=$(subst openssl=,-I,$(OS_OPTIONS))/include
 
 KNOWN_ERRORS:= --suppress=unusedFunction \
+    			--inline-suppr \
 				-U_DEBUG_FILE
 
 
