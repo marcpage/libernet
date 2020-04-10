@@ -4,7 +4,7 @@ Table of Contents
 
 * [Concepts](#concepts)
   * [Data Routing](#data-routing)
-  * [Deleting Chunks](#deleting-chunks)
+  * [Deleting Data](#deleting-chunks)
   * [Data Addresses](#data-addresses)
     * [Time to match digits](#time-to-match-digits)
 * [Data Types](#data-types)
@@ -34,9 +34,9 @@ When data is passed on before deleting, it is passed to the node that most close
 When a node originates data, it may want to push the data to more than one node, to ensure the data is seeded properly, before deleting locally
 
 
-## Deleting Chunks
+## Deleting Data
 
-Certain data chunks can be squelched (not passed on and deleted from local cache)
+Certain data can be squelched (not passed on and deleted from local cache)
 Each note keeps a list of identifiers that are squelched (deleted)
 when data of a squelched identifier is pushed to the node, it can immediately delete it
 These include
@@ -54,13 +54,13 @@ The more digits that match, the more time (in general) and expense and the highe
 When searching "similar to" each node may drop lower priority items if the number of items being returned is "large"
 
 ### Time to match digits
-Digits | Low Time   | High Time | Low Tries   | High Tries  | Category
------- | ---------- | --------- | ----------- | ----------- | --------
-4      | 0.01       | 0.10      | 5,000       | 7,000       | bulk mail
-5      | 0.31       | 3.32      | 200,688     | 2,148,794   | standard rate
-6      | 10.9       | 24.0      | 7,156,184   | 15,579,804  | priority mail
-7      | 11.8       | 1,449     | 70,179,856  | 938,827,609 | urgent
-8      | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...
+Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      | Theoretical Tries | Theoretical Time
+------ | ---------- | --------- | ----------- | ----------- | ------------- | ----------------- | ----------------
+4      | 0.01       | 0.10      | 5,000       | 7,000       | bulk mail     | 65,536            | 0.01 seconds
+5      | 0.31       | 3.32      | 200,688     | 2,148,794   | standard rate | 1,048,576         | 0.18 seconds
+6      | 10.9       | 24.0      | 7,156,184   | 15,579,804  | priority mail | 16,777,220        | 2.8 seconds
+7      | 11.8       | 1,449     | 70,179,856  | 938,827,609 | urgent        | 268,435,500       | 45 seconds
+8      | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...    | 4,294,967,000     | 12 minutes
 
 
 # Data Types
