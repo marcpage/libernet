@@ -299,6 +299,7 @@ If we don't have a preference, then look to the domain.
 If there is no domain, how would the people we trust rate them.
 If the people we trust don't know about them, what about the people they trust, and so on.
 Maybe at some point it is worth it to look up the identities trust list and see how it aligns with yours (if at all).
+The trust document is matched with "trust:public key identifier"
 ```
 {
 	"timestamp": seconds since epoch,
@@ -318,6 +319,7 @@ The above dictionary is placed in a string in the following wrapper
 	"trust": string of the above dictionary,
 	"signature": signature message,
 	"signer": hash of public key,
+	"padding": random data to get hash of data to match,
 }
 ```
 
