@@ -113,6 +113,10 @@ Type                                          | Encrypted | Contents | [Match](#
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:YYYY:MM:DD:{recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
 
+All data should be compressed, before encryption, if compression reduces the size of the original data.
+Data should be no larger than 1 MiB after compression.
+Data should be no larger than 1 MiB before compression unless there is not a mechanism to work around this limit.
+
 
 ## Small file
 
