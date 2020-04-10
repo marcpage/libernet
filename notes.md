@@ -82,7 +82,7 @@ data hashed, if not matches aes key, then there was an error
 
 ## Large file
 
-File broken in up to 1 MiB chunks and each chunk is treated like a Small file
+File broken in up to 1 MiB chunks and each chunk is treated like a [Small file](#small-file)
 Maximum number of chunks is at least 6,095 (assuming no compression)
 This means the file limit is no lower than 6 GiB (with compression, it is likely to be higher)
 json file of array of chunk identifiers. First element describes the overall file contents
@@ -99,7 +99,7 @@ json file of array of chunk identifiers. First element describes the overall fil
 		}
 	]
 ```
-This json file is treated like a Small file
+This json file is treated like a [Small file](#small-file)
 
 
 ## Bundle Description
