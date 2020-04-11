@@ -2,7 +2,6 @@
 Table of Contents
 =================
 
-* [Table of Contents](#table-of-contents)
 * [Definitions](#definitions)
 * [Concepts](#concepts)
   * [Data Identity](#data-identity)
@@ -80,7 +79,7 @@ Reasons for squelching data include:
 Data can be matched to other data by adding random data until the first hex digits of the hashes match.
 Data can be requested by exact hash, or by "similar to" search.
 The more digits that match, the more time (in general) and expense and, therefore, the higher the priority or value of the match.
-When searching ["similar to" search](#data-matching) each node may drop lower priority items if the number of items being returned is "large".
+When searching "similar to" each node may drop lower priority items if the number of items being returned is "large".
 Items are not dropped just because they are low priority, but because there are "too many" items to return, in which case lower priority items may be omitted.
 
 
@@ -93,6 +92,7 @@ The json may be compressed if it reduces the size.
 	{similar to identifier}: [{similar identiiers}]
 }
 ```
+Requests may be repeated as when a request is received, those requests are passed on to nodes likely to have that information.
 
 
 ### Cost to match digits
@@ -108,9 +108,9 @@ That is not necessarily the case (see hex digits = 7).
 
 Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      | Theoretical Tries | Theoretical Time
 ---------- | ---------- | --------- | ----------- | ----------- | ------------- | ----------------- | ----------------
-4          | 0.01       | 0.10      | 5,000       | 7,000       | bulk mail     | 65,536            | 0.01 seconds
-5          | 0.31       | 3.32      | 200,688     | 2,148,794   | standard rate | 1,048,576         | 0.18 seconds
-6          | 10.9       | 24.0      | 7,156,184   | 15,579,804  | priority mail | 16,777,220        | 2.8 seconds
+4          | 0.01       | 0.10      | 5,000       | 7,000       | bulk          | 65,536            | 0.01 seconds
+5          | 0.31       | 3.32      | 200,688     | 2,148,794   | standard      | 1,048,576         | 0.18 seconds
+6          | 10.9       | 24.0      | 7,156,184   | 15,579,804  | priority      | 16,777,220        | 2.8 seconds
 7          | 11.8       | 1,449     | 70,179,856  | 938,827,609 | urgent        | 268,435,500       | 45 seconds
 8          | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...    | 4,294,967,000     | 12 minutes
 
@@ -121,18 +121,18 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 ## HTTP server
 
 Data is transfered via an http server.
-Some paths may only be available when connecting to localhost.
+Some paths may only be available when connecting to localhost, others are available publicly.
 
 Path           | Always Public | Description
 ------         | ------------- | -----------
 /              | No            | Index app
-/app           | No            | App configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
+/app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
 /data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
 /data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of hashes similar to {hash}
 /data/requests | Yes           | [Requests](#requests) that this node has. Supports PUT for connecting node's requests.
 /mail          | No            | [Messages](#messages) app
 /server        | Yes           | Returns server information. Supports PUT for connecting node's information.
-/web           | No            | See [Address History](#address-history)
+/web           | No            | See [Address History](#address-history). Appending the address with  an empty query (?) will return information about how the bundle was chosen and other options as well as gives you opportunities to download and change trust in identity.
 /{app}         | No            | Apps installed by /app
 
 
@@ -153,7 +153,7 @@ Type                                          | Encrypted | Contents | [Match](#
 [Personal Key](#personal-key)                 | No        | PEM      | None
 [Personal Information](#personal-information) | No        | json     | info:{personal key identifier}
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
-[Message Carrier](#carrier-dictionary)        | No        | json     | message:YYYY:MM:DD:{recipient personal key identifier}
+[Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD:recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
@@ -165,8 +165,8 @@ Data should be no larger than 1 MiB before compression unless there is not a mec
 
 ## Small file
 
-Small file is a file that is 1 MiB or smaller.
-The data hashed to generate the encryption/decryption key.
+A small file is a file that is 1 MiB or smaller.
+The data is hashed to generate the encryption/decryption key.
 Then the data is compressed if compression can reduce the size.
 The key previously generated from the hash of the contents is used to encrypt the data.
 The data is then hashed to generate the identifier of the data.
@@ -180,7 +180,7 @@ When data is received and we have the decryption key, we can get the original da
 The data is first verified that it matches the [identifier](#data-identity).
 We then decrypt the data using the shared decryption key.
 If the decryption key matches the hash of the decrypted contents, then we're done.
-Otherwise, decompress the data.
+Otherwise, the data is decompressed.
 If the data does not match the decrypted contents, then we cannot use the data is it was a bad key or there is a hash collision on the original data.
 
 
@@ -212,7 +212,7 @@ This json is treated like a [small file](#small-file).
 
 A bundle description describes a bundle of files.
 Each entry is around 512 bytes, so limit of files in a bundle is roughly no less than 2,000 files.
-A bundle description is a json dictionary of relative path within the bundle to information about each file.
+A bundle description is a json dictionary of relative paths within the bundle to information about each file.
 ```
 {
 	"index.html": {
@@ -240,12 +240,12 @@ Each entry is at least 330 bytes, histories can be up to 3,000 entries.
 Older entries are removed to get the size down to 1 MiB.
 Address histories are not encrypted, but may be compressed if compression improves size.
 The identifier of an address history is a hash of compressed contents (or uncompressed if uncompressed is smaller).
-Unlike a [Small file](#small-file), address history is not encrypted.
+Unlike a [small file](#small-file), address history is not encrypted.
 
 Address history is requested for a particular address via [Data Matching](#data-matching).
 The path to the contents referenced by the history is first converted to lowercase.
 Then any backslashes (\\) are converted to slashes (/).
-Any slash prefixes are removed and then whitespace is removed from the ends.
+Any slash prefixes or suffixes are removed and then whitespace is removed from the ends.
 The path is then prefixed with "web:".
 ```\Testing\the\Path\To Enlightenment -> web:testing/the/path/to enlightenment```
 This string is then hashed.
@@ -255,14 +255,16 @@ Address history is requested using ["similar to" search](#data-matching).
 Many versions are likely to be returned.
 All versions returned are evaluated.
 A list of [bundles](#bundle-description) is built up and the address history that lists all recent [bundles](#bundle-description) is chosen.
-If there is not one address history that contains all recent [bundles](#bundle-description), then a new address history is created.
+If there is not one address history that contains all recent [bundles](#bundle-description), then a new address history is created and published containing all recent bundles.
+Differences can also occur from divergent signed dictionaries.
+Signed dictionaries can be merged adding all signers of each version bundle.
 
 When merging address histories to get the complete list of recent [bundles](#bundle-description), the head is chosen using your [trust](#trust) network.
 The head is chosen from the heads in the address histories that are being merged.
 
-Any address histories that that do not add any new [bundles](#bundle-description) outside of the chosen address history may be [deleted](#deleting-data).
+Any address histories that that do not add any new [bundles](#bundle-description) or signers outside of the chosen address history may be [deleted](#deleting-data).
 A similar method is used to [delete](#deleting-data) older address histories
- and maintain the smallest number of older address histories to maintain the smallest set possible of address histories that contain all bundles.
+ and maintain the smallest number of older address histories to maintain the smallest set of address histories that contain all bundles and signers.
 
 ```
 {
@@ -285,9 +287,9 @@ A similar method is used to [delete](#deleting-data) older address histories
 
 ### Resolving web addresses
 
-When a web address is received, it is really an address history address and a relative path in the bundle.
+When a web address is received, it is really the address of a history address and a relative path in the bundle.
 Since there is not a clear distinction of where the relative path starts, there will need to be some searches.
-Start looking for the bundle starting at root (hash of "web:").
+These searches start by looking for the bundle at the root (hash of "web:").
 If the relative path does not exist in the trusted root bundle then add the first path element (ie web:apple.com, web:company, web:country, etc).
 To prevent link-hijacking and cut down on requests needed to resolve paths, bundles should be stored in the first two path items.
 
@@ -295,7 +297,8 @@ To prevent link-hijacking and cut down on requests needed to resolve paths, bund
 ## Personal Key
 
 A personal key is a PEM encoded public key that is stored without encryption (similar to [Address History](#address-history)) but with possible compression if it reduces the size.
-The [identity](#data-identity) of the personal key is the identifier for a person.
+The [identity](#data-identity) of the personal key is the identifier for a person or node.
+
 
 ### Personal Information
 
@@ -304,7 +307,7 @@ This is also stored without encryption but can be compressed to reduce size.
 The padding is added to [match](#data-matching) the personal key [identity](#data-identity) with "info:personal key identifier".
 
 Personal information is requested using ["similar to" search](#data-matching).
-When multiple are found, the one with the latest timestamp is used.
+When multiple are found, the correctly signed one with the latest timestamp is used.
 Older personal information should be [deleted](#deleting-data) if all or most verifiers have verified the new data and *next* field has not changed.
 Multiple versions of the same timestamp can exist with different sets of verifiers.
 The personal information that contains all verifiers of the latest personal information should be kept and others should be [deleted](#deleting-data).
@@ -319,14 +322,14 @@ They may even provide a services where they privately receive information (like 
 
 Personal information fields are mostly optional.
 Nickname is required as it is the display name.
-Credentials may not be a good idea as identification may be personal information that should not be shared.
-Credentials and verifiers are two ways to help people know that this person is who they say they are.
+The *credentials* field may not be a good idea as the personal information may not be ideal to share.
+The *credentials* and *verifiers* fields are two ways to help people know that this person is who they say they are.
 Information that you may not want to share are email, apartment, street number (or even street or city), first name, last name.
-Whenever personal information is updated, verifiers should be [messaged](#messages) to notify them of the change to give them an opportunity to verify.
+Whenever personal information is updated, verifiers should be [messaged](#messages) to notify them of the change to give them an opportunity to verify the updated information.
 
 Whenever personal information is created, a backup (*next*) personal key should be created.
-The next field is this backup key.
-In the event that your private key for the personal key is leaked, you can set the valid field to false.
+The next field is a backup key.
+In the event that your private key for the personal key is leaked, you can set the *valid* field to false.
 Anything signed after the timestamp when the personal information is marked *valid=false* should be considered not signed.
 [Trust](#trust) trees should be updated with this timestamp and anything after this timestamp should not be trusted and treated as malevolent.
 
@@ -341,6 +344,7 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 ```
 {
 	"nickname": short name or handle for person,
+	"image": identifier for a small file or large file jpg image,
 	"first name": name,
 	"last name": name,
 	"domain": a domain name that http serves a file named libernet.trust at the root,
@@ -382,7 +386,7 @@ Messages are json files that describe from, to, cc, subject, and [bundle](#bundl
 Messages are composed of two separate data blocks, the envelope and the carrier.
 The envelope is treated as a [small file](#small-file) and contains sender's signature, routing and general message headers.
 The carrier is stored unencrypted, but may be compressed.
-Messages are sent by [matching](#data-matching) the message with the hash of "message:YYYY:MM:DD:public key identifier" in all lowercase.
+Messages are sent by [matching](#data-matching) the carrier with the hash of "message:YYYY:MM:DD:public key identifier" in all lowercase.
 
 Messages are requested using ["similar to" search](#data-matching).
 They are requested for specific dates (in GMT).
@@ -517,6 +521,7 @@ The above dictionary is placed in a string in the following wrapper
 
 When servers connect they request information about the node they are connecting to.
 The information returned is the json below, compressed if it reduces the size.
+The *identifier* field is used for determining best nodes to [route data](#data-routing) to.
 ```
 {
 	"identifier": hash identifier of the node,
