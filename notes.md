@@ -2,6 +2,7 @@
 Table of Contents
 =================
 
+* [Summary](#summary)
 * [Definitions](#definitions)
 * [Concepts](#concepts)
   * [Data Identity](#data-identity)
@@ -31,6 +32,11 @@ Table of Contents
     * [Trust Document](#trust-document)
   * [Server Information](#server-information)
   * [Requests](#requests)
+  * [Karma](#karma)
+    * [Choosing a transaction block to add your transaction](#choosing-a-transaction-block-to-add-your-transaction)
+    * [Block chain](#block-chain)
+    * [Transaction Block](#transaction-block)
+
 
 
 # Summary
@@ -563,6 +569,7 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 			"time": total time in seconds connected to the server,
 			"input": total bytes received from this node,
 			"output": total bytes sent to this node,
+			"karma": karma received from this node,
 		}
 	},
 }
@@ -609,21 +616,21 @@ The *pending* transactions are transactions where one or more identities does no
 ### Choosing a transaction block to add your transaction
 
 When creating a new block, or merging with a block, the *previous* block is chosen using the following criteria, in order:
-1. You've validated the transactions before it and all balances are correct (shortcuts may be taken at your own trust risk).
+1. All prior transactions has been validated and all balances are correct (shortcuts may be taken at your own trust risk).
 1. All identity balances are captured in the reach
-1. There is a balance outside of reach for every new transaction in this block
+1. For every new balance from the transactions in this block there is a balance from outside this blocks reach.
 1. All pending transactions are captured in the reach
 1. The index is an unbroken series of monotonically increasing integers from the prime block (index=0).
 1. The size of the block is as close to 1 MiB without going over
+1. The next *previous* block is validated with the other criteria
 1. The block with the best match to the hash of "karma:{block index}"
 1. The reach distance is smallest
 1. Most trusted signer
 1. If the previous block has an odd index, the signer that has the largest balance is chosen.
 1. If the previous block has an even index, the signer whose identity most closely matches the hash of the block identifier is chosen.
-1. The next *previous* block is validated with the above criteria criteria
 
 You may [delete](#deleting-data) blocks when better (see above criteria) blocks are found and the block to be [deleted](#deleting-data) does not add anything outside of existing blocks of higher value (see above criteria).
-You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the blocks transactions are captured in other blocks.
+You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the block's transactions are captured in other blocks.
 
 You may take shortcuts in validating the entire history by only validating back two or three reach blocks.
 For instance, go back to the index this block says has reach back to.
@@ -644,7 +651,7 @@ When verifying information for each block, any block found not validate basic in
 ### Transaction Block
 
 Transactions show the move of Karma from a set of identities to other identities.
-The fee is an optional amount to add in addition to the
+The fee is an optional amount added to the transaction to encourage more people to race to validate the block.
 ```
 {
 	"from": {sender identity:amount},
