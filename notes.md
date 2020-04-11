@@ -33,6 +33,34 @@ Table of Contents
   * [Requests](#requests)
 
 
+# Summary
+
+Libernet is a free, open, and secure platform for communicating and sharing data.
+It is designed to provide a rich internet experience while allowing you to maintain control over your data.
+All data is securely encrypted and distributed across the Libernet.
+While data loss is possible, only data that no one is requesting would be lost.
+Similar to Bittorrent, data that is more popular is distributed to more nodes, making data loss less likely and data transfer faster.
+
+Every person and computer (node) on the Libernet has at least one unique identity.
+This identity allows them to share data, receive messages, and participate in a network of trust.
+
+The web, or traditional internet, experience acts like a giant wiki where anyone can contribute, add, remove, or modify anything.
+However, all revisions are kept and only revisions that are validated by trusted people will be shown by default.
+Websites can be full HTML5 apps, allowing powerful applications to be developed.
+
+Messages are similar to email with three major differences.
+The first difference being that the only thing that is publicly visible is the recipient and date sent.
+The second difference is that senders can be verified as being a specific identity and, using the trust network, determine how likely an identity is valued.
+The third difference is that there is a cost to each message sent.
+
+Senders can spend CPU time as "postage" on messages to send a message first class, or spend less CPU time and send it bulk rate.
+This makes it more costly to send bulk messages and makes it easier to identify them.
+If it takes 30 seconds to prep a message for three people, that is not a big deal.
+But for a company to send out a message to 3,000 people, it would take 8 hours of intense compute power.
+Companies would screen their mailing lists to only those who would truly be interested in their message.
+Sending bulk messages is no longer free.
+
+
 # Definitions
 
 * *Hash* - SHA256 is used.
@@ -41,6 +69,7 @@ Table of Contents
 * *Public-key encrypted* - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
 * *Signing* - RSA private encryption of SHA256 hashing of the data, stored as hex.
 * *Compression* - zlib compression, level 9
+* *Dates* - All dates and times are in GMT, even YYYY/MM/DD
 
 
 # Concepts
@@ -54,7 +83,7 @@ Any data block can, therefore, be validated that the identity is correct by hash
 
 ## Data Routing
 
-When new data is created, it is pushed (at the least) to the connected node that most closely matches the identity of the data.
+When new data is created, it is pushed (at the least) to the connected node whose identity most closely matches the identity of the data.
 When data is pushed to a node, it must either be stored, or pushed to another node.
 A node may not delete data (except for the cases in [Deleting Data](#deleting-data)) without first passing the data on to another node.
 When data is passed on before deleting, it is passed to the node that most closely matches the identity of the data.
@@ -72,6 +101,7 @@ Reasons for squelching data include:
 * Old, fully Merged [Address History](#address-history) (assuming no history is lost)
 * Old [Personal Information](#personal-information) (either through owner updates or through merging verifiers)
 * Old [Trust](#trust) lists (determine by timestamp)
+* Merged Karma blocks
 
 
 ## Data Matching
@@ -153,7 +183,7 @@ Type                                          | Encrypted | Contents | [Match](#
 [Personal Key](#personal-key)                 | No        | PEM      | None
 [Personal Information](#personal-information) | No        | json     | info:{personal key identifier}
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
-[Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD:recipient personal key identifier}
+[Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD(GMT):recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
@@ -386,7 +416,7 @@ Messages are json files that describe from, to, cc, subject, and [bundle](#bundl
 Messages are composed of two separate data blocks, the envelope and the carrier.
 The envelope is treated as a [small file](#small-file) and contains sender's signature, routing and general message headers.
 The carrier is stored unencrypted, but may be compressed.
-Messages are sent by [matching](#data-matching) the carrier with the hash of "message:YYYY:MM:DD:public key identifier" in all lowercase.
+Messages are sent by [matching](#data-matching) the carrier with the hash of "message:YYYY:MM:DD(GMT):public key identifier" in all lowercase.
 
 Messages are requested using ["similar to" search](#data-matching).
 They are requested for specific dates (in GMT).
@@ -551,3 +581,120 @@ What is returned is the json description below.
 }
 ```
 
+
+## Karma
+
+Karma is a method to keep track of value being added to the network.
+Karma is created during the validation of Karma transactions.
+
+Karma transaction blocks are limited to 1 MiB (before compression).
+When creating a new transaction, either add to an existing block or create a new block.
+You can also merge existing blocks as part of a transaction.
+
+A maximum number of Karma is 100 trillion (100,000,000,000,000).
+Karma can also be divided into 100 trillion Kismet.
+Each block is awarded 1 Kismet from each sender in the block, all the transaction fees, and the Karma created from the block.
+The Karma created for each block is 20 Karma - index x 200 Kismet.
+At that rate, the last 200 Kismet of the 100 trillion Karma will be created by the 10 trillionth block.
+
+Each transaction has one or more *from* identities.
+Each *from* identity must supply a verification signature.
+Each transaction has one or more *to* identities.
+There is no participation needed for *to* identities.
+You can have *from* identities that have zero (0) amount added.
+These are identities that must sign to make the transaction valid.
+
+The *pending* transactions are transactions where one or more identities does not have sufficient funds or one or more identities have not signed yet.
+
+
+### Choosing a transaction block to add your transaction
+
+When creating a new block, or merging with a block, the *previous* block is chosen using the following criteria, in order:
+1. You've validated the transactions before it and all balances are correct (shortcuts may be taken at your own trust risk).
+1. All identity balances are captured in the reach
+1. There is a balance outside of reach for every new transaction in this block
+1. All pending transactions are captured in the reach
+1. The index is an unbroken series of monotonically increasing integers from the prime block (index=0).
+1. The size of the block is as close to 1 MiB without going over
+1. The block with the best match to the hash of "karma:{block index}"
+1. The reach distance is smallest
+1. Most trusted signer
+1. If the previous block has an odd index, the signer that has the largest balance is chosen.
+1. If the previous block has an even index, the signer whose identity most closely matches the hash of the block identifier is chosen.
+1. The next *previous* block is validated with the above criteria criteria
+
+You may [delete](#deleting-data) blocks when better (see above criteria) blocks are found and the block to be [deleted](#deleting-data) does not add anything outside of existing blocks of higher value (see above criteria).
+You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the blocks transactions are captured in other blocks.
+
+You may take shortcuts in validating the entire history by only validating back two or three reach blocks.
+For instance, go back to the index this block says has reach back to.
+Take that block and got back to what it says its reach is.
+This would be double-reach-back validation.
+Triple would look at the double-reach-back block and go back to its reach-back and validate back to that transaction.
+Care should be taken when using shortcuts to ensure there is consensus on the blocks near the head of the block chain to ensure someone doesn't fabricate an entire double- or triple-reach-back chain.
+
+When taking shortcuts, note that you do risk your node getting its trust lowered (if you miss something), which could impact the likelihood of your blocks being added to the chain.
+
+
+### Block chain
+
+The chain of blocks linked using *previous* represent all transactions and balances going back to the prime block (index=0).
+When verifying information for each block, any block found not validate basic information gets a [mistaken demerit](#direct-trust).
+
+
+### Transaction Block
+
+Transactions show the move of Karma from a set of identities to other identities.
+The fee is an optional amount to add in addition to the
+```
+{
+	"from": {sender identity:amount},
+	"to": {recipient identity:amount},
+	"fee": {sender identity:amount},
+	"memo": any comment,
+	"timestamp": seconds since the epoch,
+}
+```
+Transactions are included in a transaction block description.
+This description includes:
+* The index of the transaction, starting at zero and monotonically increasing.
+* The timestamp when the block was created
+* The identifier of the previous index transaction
+* List of balances which include not only everyone in the transactions but also any identities that are not in the reach.
+* List of new, validated transactions.
+* List of pending transactions which not only include new pending transactions but also pending transactions not in the reach.
+```
+{
+	"index": transaction index starting at zero for prime block,
+	"timestamp": seconds since the epoch,
+	"previous": identifier for previous index block this is based on,
+	"reach": index in which all blocks since then have everyones balance,
+	"balances": {
+		identity: {
+			"balance": balance after this transaction block,
+			"last": index of last block with balance,
+		}
+	}
+	"transactions": [
+		{
+			"transaction": text of transaction above,
+			"verification": {identity of sender:signature of transaction}
+		},
+	],
+	"pending": [
+		{
+			"transaction": text of transaction above,
+			"verification": {identity of sender:signature of transaction}
+		},
+	]
+}
+```
+Transaction blocks are wrapped in a signing block.
+```
+{
+	"block": text of the above transaction block,
+	"padding": padding added to get the hash of the block to match,
+	"signer": the identity that signs this block,
+	""
+}
+```
