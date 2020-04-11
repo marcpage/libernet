@@ -245,16 +245,19 @@ Each entry is around 512 bytes, so limit of files in a bundle is roughly no less
 A bundle description is a json dictionary of relative paths within the bundle to information about each file.
 ```
 {
-	"index.html": {
-		"sha256": identifier of Small or Large file,
-		"aes256": key to decrypt Large file description or small file,
-		"size": number of bytes in the final file,
-		"Content-Type": mime type for the data},
-	"images/logo.png": {
-		"sha256": identifier of Small or Large file,
-		"aes256": key to decrypt Large file description or small file,
-		"size": number of bytes in the final file,
-		"Content-Type": mime type for the data},
+	"contents": {
+		"index.html": {
+			"sha256": identifier of Small or Large file,
+			"aes256": key to decrypt Large file description or small file,
+			"size": number of bytes in the final file,
+			"Content-Type": mime type for the data},
+		"images/logo.png": {
+			"sha256": identifier of Small or Large file,
+			"aes256": key to decrypt Large file description or small file,
+			"size": number of bytes in the final file,
+			"Content-Type": mime type for the data},
+	},
+	"previous": [list of bundle identifiers this bundle is based on]
 }
 ```
 The *size* fields can be used to help determine if the file is stored as a [small file](#small-file) or a [large file](#large-file).
@@ -298,19 +301,15 @@ A similar method is used to [delete](#deleting-data) older address histories
 
 ```
 {
-	"sha256": identifier of bundle,
-	"aes256": key to decrypt bundle,
-	"timestamp": seconds since epoch,
-	"signed": {identifier of public key: signature of bundle identifier},
-	"padding": random number to get hash to fit the right pattern,
-	"previous":[
+	"heads": [
 		{
 			"sha256": identifier of bundle,
 			"aes256": key to decrypt bundle,
 			"timestamp": seconds since epoch,
 			"signed": {identifier of public key: signature of bundle identifier},
 		},
-	]
+	],
+	"padding": random number to get hash to fit the right pattern,
 }
 ```
 
@@ -663,6 +662,8 @@ This description includes:
 * List of balances which include not only everyone in the transactions but also any identities that are not in the reach.
 * List of new, validated transactions.
 * List of pending transactions which not only include new pending transactions but also pending transactions not in the reach.
+* List of cancelation requests for pending transactions.
+
 ```
 {
 	"index": transaction index starting at zero for prime block,
@@ -684,7 +685,8 @@ This description includes:
 	"pending": [
 		{
 			"transaction": text of transaction above,
-			"verification": {identity of sender:signature of transaction}
+			"verification": {identity of sender:signature of transaction},
+			"cancelations": {identity of the sender: signature of sha256 of transaction}
 		},
 	]
 }
