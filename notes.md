@@ -613,21 +613,39 @@ These are identities that must sign to make the transaction valid.
 The *pending* transactions are transactions where one or more identities does not have sufficient funds or one or more identities have not signed yet.
 
 
+### Reach
+
+All balances and pending transactions are captured in a certain number of recent blocks.
+These blocks are referred to as the reach.
+If the reach value is correct, in order to find all pending transactions and the balance of any identity, you only need to go back to the reach block.
+In order to determine the reach block, start with the previous reach block.
+Remember every pending transaction and the identity of every balance and see if the show up in a more recent block in the chain.
+If they do, you may advance the reach block.
+The balances section of each block should be half balances affected from transactions in the current block and half from balances carried forward to increase the reach block.
+The goal is to advance the reach block at least one on each transaction.
+While this will not always be the case, it does increase the value of the block.
+
+
 ### Choosing a transaction block to add your transaction
 
-When creating a new block, or merging with a block, the *previous* block is chosen using the following criteria, in order:
-1. All prior transactions has been validated and all balances are correct (shortcuts may be taken at your own trust risk).
-1. All identity balances are captured in the reach
+When creating a new block, or merging with a block, the *previous* block is chosen by ensuring they are validated and then ranked by quality.
+
+Validation
+1. All prior transactions has been validated and all balances are correct (shortcuts may be taken at your own [trust](#trust) risk).
+1. All identity balances are captured in the reach.
 1. For every new balance from the transactions in this block there is a balance from outside this blocks reach.
-1. All pending transactions are captured in the reach
+1. All pending transactions are captured in the reach.
 1. The index is an unbroken series of monotonically increasing integers from the prime block (index=0).
-1. The size of the block is as close to 1 MiB without going over
-1. The next *previous* block is validated with the other criteria
-1. The block with the best match to the hash of "karma:{block index}"
-1. The reach distance is smallest
-1. Most trusted signer
-1. If the previous block has an odd index, the signer that has the largest balance is chosen.
-1. If the previous block has an even index, the signer whose identity most closely matches the hash of the block identifier is chosen.
+1. The size of the block is as close to 1 MiB without going over.
+1. The next *previous* block is validated with the other criteria.
+
+When ranking by quality, the first criteria is the most important.
+If there is a tie in the first criteria, move on to the second criteria, and so forth.
+1. The block with the best match to the hash of "karma:{block index}". (cost)
+1. The reach distance is smallest. (clean)
+1. Most trusted signer. (trust)
+1. Fees are the highest. (value)
+1. The signer with the highest balance. (stake)
 
 You may [delete](#deleting-data) blocks when better (see above criteria) blocks are found and the block to be [deleted](#deleting-data) does not add anything outside of existing blocks of higher value (see above criteria).
 You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the block's transactions are captured in other blocks.
