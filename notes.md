@@ -33,8 +33,8 @@ Table of Contents
   * [Server Information](#server-information)
   * [Requests](#requests)
   * [Karma](#karma)
+    * [Reach](#reach)
     * [Choosing a transaction block to add your transaction](#choosing-a-transaction-block-to-add-your-transaction)
-    * [Block chain](#block-chain)
     * [Transaction Block](#transaction-block)
 
 
@@ -592,7 +592,7 @@ What is returned is the json description below.
 Karma is a method to keep track of value being added to the network.
 Karma is created during the validation of Karma transactions.
 
-Karma transaction blocks are limited to 1 MiB (before compression).
+Karma transaction blocks are limited to 1 MiB (before compression) or about 1,700 transactions.
 When creating a new transaction, either add to an existing block or create a new block.
 You can also merge existing blocks as part of a transaction.
 
@@ -603,51 +603,97 @@ The Karma created for each block is 20 Karma - index x 200 Kismet.
 At that rate, the last 200 Kismet of the 100 trillion Karma will be created by the 10 trillionth block.
 
 Each transaction has one or more *from* identities.
-Each *from* identity must supply a verification signature.
+Each *from* identity must supply a verification signature for the block te be valid.
+Any block missing a verification signature is considered a pending transaction.
 Each transaction has one or more *to* identities.
 There is no participation needed for *to* identities.
 You can have *from* identities that have zero (0) amount added.
-These are identities that must sign to make the transaction valid.
+These are identities that must sign to make the transaction valid, for instance, escrow identities.
 
 The *pending* transactions are transactions where one or more identities does not have sufficient funds or one or more identities have not signed yet.
+To be a *pending* transaction, however, it must contain at least one signature.
+
+Cancelation signatures in the *pending* section allow signatures to be withdrawn.
+To cancel a signature, instead of signing the pending transaction, the hash of the pending transaction is signed.
+The block that contains a cancellation will be the last block that contains cancellation as well as the signature that is being cancelled.
+If all signatures for a pending transaction are cancelled, then the pending transaction is no longer listed in future transactions.
 
 
 ### Reach
 
 All balances and pending transactions are captured in a certain number of recent blocks.
 These blocks are referred to as the reach.
-If the reach value is correct, in order to find all pending transactions and the balance of any identity, you only need to go back to the reach block.
+In order to find all pending transactions and the balance of any identity, if the reach value is correct, you only need to go back to the reach block.
+
 In order to determine the reach block, start with the previous reach block.
-Remember every pending transaction and the identity of every balance and see if the show up in a more recent block in the chain.
+Track every pending transaction and the identity of every balance and see if the show up in a more recent block in the chain (and the pending transactions have not been cancelled).
 If they do, you may advance the reach block.
+
 The balances section of each block should be half balances affected from transactions in the current block and half from balances carried forward to increase the reach block.
 The goal is to advance the reach block at least one on each transaction.
 While this will not always be the case, it does increase the value of the block.
+
+A reach block is a list of transaction blocks in the block chain that contains every balance and every current pending transaction.
+The *reach* field tells you the index at which a reach block would end for this transaction block.
 
 
 ### Choosing a transaction block to add your transaction
 
 When creating a new block, or merging with a block, the *previous* block is chosen by ensuring they are validated and then ranked by quality.
+When adding a new transaction, you may add a new block with the current *index* but missing a *previous* field.
+If you add a block that is missing the *previous* field, your transactions will be merged with other transactions, your block deleted, and you will not be eligible for block ownership.
 
-Validation
-1. All prior transactions has been validated and all balances are correct (shortcuts may be taken at your own [trust](#trust) risk).
+Failing validation for any reason other than missing *previous* field, should have an increase in [mistaken demerit](#direct-trust) in your trust list.
+Shortcuts may be taken by using reach blocks (double, triple, etc), but use at your own [trust](#trust) risk.
+Critical validations to perform include:
+1. All prior transactions has been validated and all balances are correct.
 1. All identity balances are captured in the reach.
-1. For every new balance from the transactions in this block there is a balance from outside this blocks reach.
-1. All pending transactions are captured in the reach.
+1. All pending, uncanceled transactions are in the reach.
+1. The block contains at least one transaction.
+1. For every new balance from the transactions in this block there is no more than one balance from outside this block to help increment the reach.
+1. There are no more pending transactions than there are transactions in this block.
 1. The index is an unbroken series of monotonically increasing integers from the prime block (index=0).
 1. The size of the block is as close to 1 MiB without going over.
-1. The next *previous* block is validated with the other criteria.
+1. The block is not padded (parsing the json, and embedded json, and then generating compact json should result in about the same size).
+1. No transaction (completed or pending) has a memo field over 4k.
+1. The next *previous* block is validated with the above criteria.
 
+The following criteria should be used to evaluate which *previous* block, among the validated blocks, should be chosen.
 When ranking by quality, the first criteria is the most important.
 If there is a tie in the first criteria, move on to the second criteria, and so forth.
-1. The block with the best match to the hash of "karma:{block index}". (cost)
-1. The reach distance is smallest. (clean)
+1. Fully validated. (correct)
+1. The signing identity with the largest key size (up to 4096) and the best (reverse) [match](#data-matching) of the block identity. (diversity)
+1. The block with the best [match](#data-matching) to the hash of "karma:{block index}". (cost)
 1. Most trusted signer. (trust)
+1. Closest to matching new balance changes with old balance changes and cancelations. (balance)
+1. The reach distance is smallest. (clean)
+1. Contains the most completed transactions. (breadth)
 1. Fees are the highest. (value)
 1. The signer with the highest balance. (stake)
 
+The most important criteria is that the block is correct.
+The diversity criteria helps ensure a diverse set of identities are chosen and prevents a few from dominating.
+Note that for diversity criteria we use reverse matching to match the end of the identity with the end of the block identity to prevent matching a the known prefix from the index.
+Best [match](#data-matching) is the next criteria because it shows dedication (or luck) in getting the block completed, and weeds out a lot of candidates.
+Trust is the next criteria because it encourages correctness by punishing those found to have made mistakes.
+Balance is to ensure we are not just filling the block with new transactions for the fees.
+Reach is the next highest to keep the chain efficient to validate by ensuring that reach minimization is prioritized.
+Breadth encourages adding as many transactions as possible to the block.
+High fees show urgency and value to the senders.
+All else being equal, we want the signers with the most at stake (highest balance).
+
+There probably won't be much competition for best [match](#data-matching) hash until the uncompressed size of the block starts to reach 1 MiB.
+As the potential size of the next block reaches 1 MiB, blocks will start to be merged, [deleted](#deleting-data), and submitted at an increased pace.
+At that point the race to generate the optimal, chosen *previous* block will begin.
+The race ends as the potential size of the next block starts to reach 1 MiB and the chances of being chosen as a previous block diminish.
+
+The goal is to eventually be able to generate up to 15 indexes per second (assuming we have enough transactions per second).
+The pace will prevent too much computation cost trying to generate a block to match the index hash.
+It should also discourage wasted computation creating new keys to try and reverse match with the block.
+
 You may [delete](#deleting-data) blocks when better (see above criteria) blocks are found and the block to be [deleted](#deleting-data) does not add anything outside of existing blocks of higher value (see above criteria).
-You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the block's valid transactions are captured in other blocks.
+You may also [delete](#deleting-data) blocks that are invalid (balances do not [match](#data-matching), missing balances or pending transactions in reach) if all of the block's valid transactions are captured in other blocks.
+When validating from the prime block (index=0), you can [delete](#deleting-data) blocks as you see that they are not referenced in future index blocks (their branches die off).
 
 You may take shortcuts in validating the entire history by only validating back two or three reach blocks.
 For instance, go back to the index this block says has reach back to.
@@ -660,25 +706,21 @@ Care should be taken when using shortcuts to ensure there is consensus on the bl
 When taking shortcuts, note that you do risk your node getting its trust lowered (if you miss something), which could impact the likelihood of your blocks being added to the chain.
 
 
-### Block chain
-
-The chain of blocks linked using *previous* represent all transactions and balances going back to the prime block (index=0).
-When verifying information for each block, any block found to not validate basic information gets a [mistaken demerit](#direct-trust) on their identity.
-
-
 ### Transaction Block
 
 Transactions show the move of Karma from a set of identities to other identities.
 The fee is an optional amount added to the transaction to encourage more people to add the transaction to the block they are validating.
+Each transaction is about 400 bytes in size for single sender and single receiver.
 ```
 {
 	"from": {sender identity:amount},
 	"to": {recipient identity:amount},
 	"fee": {sender identity:amount},
-	"memo": any comment,
+	"memo": any comment but limited to 4k,
 	"timestamp": seconds since the epoch,
 }
 ```
+
 Transactions are included in a transaction block description.
 This description includes:
 * The index of the transaction, starting at zero and monotonically increasing.
@@ -689,6 +731,7 @@ This description includes:
 * List of pending transactions which not only include new pending transactions but also pending transactions not in the reach.
 * List of cancelation requests for pending transactions.
 
+The transaction block description is about 200 bytes plus about 600 bytes per transaction.
 ```
 {
 	"index": transaction index starting at zero for prime block,
@@ -717,11 +760,12 @@ This description includes:
 }
 ```
 Transaction blocks are wrapped in a signing block.
+The signing block adds about 200 bytes.
 ```
 {
 	"block": text of the above transaction block,
 	"padding": padding added to get the hash of the block to match,
 	"signer": the identity that signs this block,
-	""
+	"signature": The signature data of the block,
 }
 ```
