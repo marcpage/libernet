@@ -592,11 +592,11 @@ What is returned is the json description below.
 Karma is a method to keep track of value being added to the network.
 Karma is created during the validation of Karma transactions.
 
-Karma transaction blocks are limited to 1 MiB (before compression) or about 1,700 transactions.
-When creating a new transaction, either add to an existing block or create a new block.
+Karma transaction blocks are limited to 1 MiB (before compression) or about 1,700 single sender/receiver transactions.
+When creating a new transaction, it is either added to an existing block or a new block is created.
 You can also merge existing blocks as part of a transaction.
 
-A maximum number of Karma is 100 trillion (100,000,000,000,000).
+The maximum number of Karma is 100 trillion (100,000,000,000,000).
 Karma can also be divided into 100 trillion Kismet.
 Each block is awarded 1 Kismet from each sender in the block, all the transaction fees, and the Karma created from the block.
 The Karma created for each block is 20 Karma - index x 200 Kismet.
@@ -688,7 +688,7 @@ At that point the race to generate the optimal, chosen *previous* block will beg
 The race ends as the potential size of the next block starts to reach 1 MiB and the chances of being chosen as a previous block diminish.
 
 The goal is to eventually be able to generate up to 15 indexes per second (assuming we have enough transactions per second).
-The pace will prevent too much computation cost trying to generate a block to match the index hash.
+This pace will prevent too much computation cost trying to generate a block to match the index hash.
 It should also discourage wasted computation creating new keys to try and reverse match with the block.
 
 You may [delete](#deleting-data) blocks when better (see above criteria) blocks are found and the block to be [deleted](#deleting-data) does not add anything outside of existing blocks of higher value (see above criteria).
@@ -731,7 +731,7 @@ This description includes:
 * List of pending transactions which not only include new pending transactions but also pending transactions not in the reach.
 * List of cancelation requests for pending transactions.
 
-The transaction block description is about 200 bytes plus about 600 bytes per transaction.
+The transaction block description is about 200 bytes plus about 600 bytes per single sender/receiver transaction.
 ```
 {
 	"index": transaction index starting at zero for prime block,
