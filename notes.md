@@ -107,7 +107,7 @@ Reasons for squelching data include:
 * Old, fully Merged [Address History](#address-history) (assuming no history is lost)
 * Old [Personal Information](#personal-information) (either through owner updates or through merging verifiers)
 * Old [Trust](#trust) lists (determine by timestamp)
-* Merged Karma blocks
+* [Merged Karma blocks](#choosing-a-transaction-block-to-add-your-transaction)
 
 
 ## Data Matching
@@ -249,6 +249,8 @@ This json is treated like a [small file](#small-file).
 A bundle description describes a bundle of files.
 Each entry is around 512 bytes, so limit of files in a bundle is roughly no less than 2,000 files.
 A bundle description is a json dictionary of relative paths within the bundle to information about each file.
+The *previous* field lists bundles this bundle is based on.
+When merging bundles, place all bundle identifiers that were merged into this bundle in the *previous* list.
 ```
 {
 	"contents": {
@@ -274,9 +276,10 @@ If it is smaller tha 1 MiB, it should be a [small file](#small-file).
 
 ## Address History
 
-Address history describes current [bundle](#bundle-description) and lists previous [bundles](#bundle-description) for a web address.
+Address history describes the most recent versions of a [bundle](#bundle-description), each of which link to previous [bundles](#bundle-description) for a web address.
 Each entry is at least 330 bytes, histories can be up to 3,000 entries.
-Older entries are removed to get the size down to 1 MiB.
+To get the size down to 1 MiB uncompressed, entries may be removed.
+Removing entries should be prioritized by number of history chains it appears in, with most appearances being highest priority to remove.
 Address histories are not encrypted, but may be compressed if compression improves size.
 The identifier of an address history is a hash of compressed contents (or uncompressed if uncompressed is smaller).
 Unlike a [small file](#small-file), address history is not encrypted.
@@ -297,13 +300,9 @@ A list of [bundles](#bundle-description) is built up and the address history tha
 If there is not one address history that contains all recent [bundles](#bundle-description), then a new address history is created and published containing all recent bundles.
 Differences can also occur from divergent signed dictionaries.
 Signed dictionaries can be merged adding all signers of each version bundle.
+Any address histories that do not add any new head [bundles](#bundle-description) or signerss may be [deleted](#deleting-data).
 
-When merging address histories to get the complete list of recent [bundles](#bundle-description), the head is chosen using your [trust](#trust) network.
-The head is chosen from the heads in the address histories that are being merged.
-
-Any address histories that that do not add any new [bundles](#bundle-description) or signers outside of the chosen address history may be [deleted](#deleting-data).
-A similar method is used to [delete](#deleting-data) older address histories
- and maintain the smallest number of older address histories to maintain the smallest set of address histories that contain all bundles and signers.
+When choosing which head to use, your [trust](#trust) network is used to determine most trusted head.
 
 ```
 {
@@ -648,13 +647,14 @@ If there is a tie in the first criteria, move on to the second criteria, and so 
 1. The signer with the highest balance. (stake)
 
 You may [delete](#deleting-data) blocks when better (see above criteria) blocks are found and the block to be [deleted](#deleting-data) does not add anything outside of existing blocks of higher value (see above criteria).
-You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the block's transactions are captured in other blocks.
+You may also [delete](#deleting-data) blocks that are invalid (balances do not match, missing balances or pending transactions in reach) if all of the block's valid transactions are captured in other blocks.
 
 You may take shortcuts in validating the entire history by only validating back two or three reach blocks.
 For instance, go back to the index this block says has reach back to.
-Take that block and got back to what it says its reach is.
+Take that block and go back to what it says its reach is.
 This would be double-reach-back validation.
-Triple would look at the double-reach-back block and go back to its reach-back and validate back to that transaction.
+Validate all transactions since the double-reach-back block.
+Triple would look at the double-reach-back block and go back to its reach-back and validate back to those transactions.
 Care should be taken when using shortcuts to ensure there is consensus on the blocks near the head of the block chain to ensure someone doesn't fabricate an entire double- or triple-reach-back chain.
 
 When taking shortcuts, note that you do risk your node getting its trust lowered (if you miss something), which could impact the likelihood of your blocks being added to the chain.
@@ -663,13 +663,13 @@ When taking shortcuts, note that you do risk your node getting its trust lowered
 ### Block chain
 
 The chain of blocks linked using *previous* represent all transactions and balances going back to the prime block (index=0).
-When verifying information for each block, any block found not validate basic information gets a [mistaken demerit](#direct-trust).
+When verifying information for each block, any block found to not validate basic information gets a [mistaken demerit](#direct-trust) on their identity.
 
 
 ### Transaction Block
 
 Transactions show the move of Karma from a set of identities to other identities.
-The fee is an optional amount added to the transaction to encourage more people to race to validate the block.
+The fee is an optional amount added to the transaction to encourage more people to add the transaction to the block they are validating.
 ```
 {
 	"from": {sender identity:amount},
