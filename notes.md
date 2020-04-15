@@ -279,10 +279,13 @@ If it is smaller tha 1 MiB, it should be a [small file](#small-file).
 Address history describes the most recent versions of a [bundle](#bundle-description), each of which link to previous [bundles](#bundle-description) for a web address.
 Each entry is at least 330 bytes, histories can be up to 3,000 entries.
 To get the size down to 1 MiB uncompressed, entries may be removed.
-Removing entries should be prioritized by number of history chains it appears in, with most appearances being highest priority to remove.
+Care should be taken to have every signer represented in the *heads* list.
+If every head cannot be represented (as it would increase the size of the history beyond 1 MiB), then older entries which show up in [bundle](#bundle-description) *previous* chains me be removed.
 Address histories are not encrypted, but may be compressed if compression improves size.
 The identifier of an address history is a hash of compressed contents (or uncompressed if uncompressed is smaller).
 Unlike a [small file](#small-file), address history is not encrypted.
+
+The *heads* list should be ordered from most recent change to oldest change.
 
 Address history is requested for a particular address via [Data Matching](#data-matching).
 The path to the contents referenced by the history is first converted to lowercase.
@@ -300,7 +303,7 @@ A list of [bundles](#bundle-description) is built up and the address history tha
 If there is not one address history that contains all recent [bundles](#bundle-description), then a new address history is created and published containing all recent bundles.
 Differences can also occur from divergent signed dictionaries.
 Signed dictionaries can be merged adding all signers of each version bundle.
-Any address histories that do not add any new head [bundles](#bundle-description) or signerss may be [deleted](#deleting-data).
+Any address histories that do not add any new head [bundles](#bundle-description) or signers may be [deleted](#deleting-data).
 
 When choosing which head to use, your [trust](#trust) network is used to determine most trusted head.
 
