@@ -64,6 +64,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       d9 = data::Data(d7.data(), d7.identifier(), d7.key());
       d10 = data::Data(d7.data(), d7.identifier());
 
+      dotest(d8.contents(data::Data::Decompress) == unencryptedUncompressed);
+
       dotest(!d6.encrypted());
       dotest(d7.encrypted());
       dotest(!d8.encrypted());
@@ -147,7 +149,6 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
                      hash::sha256(encryptedCompressed).hex());
         std::string s = d.contents();
         dotest(false /* We should have thrown */)
-      } catch (const z::Exception &) {
       } catch (const data::CorruptData &) {
       }
 

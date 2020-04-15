@@ -52,6 +52,7 @@ public:
   enum Encryption { Encrypted, Unencrypted };
   enum Compression { Decompress, NoCompression };
   Data() : _contents(), _data(), _key(), _identifier() {}
+  virtual ~Data() {}
   Data(const Data &other);
   Data(const std::string &contents, Encryption encryption);
   Data(const std::string &data, const std::string &identifier,
@@ -77,8 +78,8 @@ public:
     std::string buffer;
     return identifier(buffer);
   }
-  std::string &contents(std::string &buffer,
-                        Compression compression = NoCompression);
+  virtual std::string &contents(std::string &buffer,
+                                Compression compression = NoCompression);
   std::string &data(std::string &buffer) const;
   std::string &key(std::string &buffer);
   std::string &identifier(std::string &buffer) const;
@@ -191,7 +192,11 @@ inline std::string &Data::contents(std::string &buffer,
       if (NoCompression == compression) {
         return buffer = _data;
       }
-      return z::uncompress(_data, buffer, 1024 * 1024);
+      try {
+        return z::uncompress(_data, buffer, 1024 * 1024);
+      } catch (const z::Exception &) {
+        return buffer = _data;
+      }
     }
     _calculateContents();
   }
@@ -307,7 +312,15 @@ inline void Data::_calculateContents() {
     if (!_hexEquals(decryptedHash, _key)) {
       std::string buffer;
 
-      z::uncompress(_contents, buffer, 1024 * 1024);
+      try {
+        z::uncompress(_contents, buffer, 1024 * 1024);
+      } catch (const z::Exception &exception) {
+        throw CorruptData(
+            "Key (" + _key + ") does not match decrypted hash (" +
+                decryptedHash +
+                ") and does not appear to be compressed: " + exception.what(),
+            __FILE__, __LINE__);
+      }
 
       const std::string uncompressedHash = hash::sha256(buffer).hex();
 
