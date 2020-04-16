@@ -81,7 +81,7 @@ public:
   virtual std::string &contents(std::string &buffer,
                                 Compression compression = NoCompression);
   std::string &data(std::string &buffer) const;
-  std::string &key(std::string &buffer);
+  std::string &key(std::string &buffer) { return buffer = _key; }
   std::string &identifier(std::string &buffer) const;
   Data &operator=(const Data &other);
   bool operator==(const Data &other) const;
@@ -210,8 +210,6 @@ inline std::string &Data::data(std::string &buffer) const {
   return buffer = _data;
 }
 
-inline std::string &Data::key(std::string &buffer) { return buffer = _key; }
-
 inline std::string &Data::identifier(std::string &buffer) const {
   if (_identifier.size() == 0) {
     _calculateData();
@@ -255,15 +253,18 @@ inline Data &Data::flush() {
   if (_data.size() > 0) {
     _contents.clear();
     _contents.reserve();
+    _data.reserve();
+    _key.reserve();
+    _identifier.reserve();
   }
   return *this;
 }
 
 inline Data &Data::reset() {
   if (_contents.size() > 0) {
+    _contents.reserve();
     _data.clear();
     _data.reserve();
-    _key.clear();
     _key.reserve();
     _identifier.clear();
     _identifier.reserve();
