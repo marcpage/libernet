@@ -3,11 +3,13 @@
 
 #include "libernet/Data.h"
 #include "libernet/JSONData.h"
+#include "libernet/SmallFile.h"
 #include "os/Exception.h"
 #include "os/File.h"
 #include "os/Hash.h"
 #include "os/Path.h"
 #include "os/Queue.h"
+#include <algorithm>
 #include <vector>
 
 namespace data {
@@ -33,14 +35,22 @@ public:
   bool operator!=(const Data &other) const { return !(*this == other); }
   List &objects(List &dataList);
   bool write(const io::Path &file, const Data &chunk);
-  bool operator==(const io::Path &other) const;
+  bool operator==(const io::Path &other);
+  bool operator!=(const io::Path &other) { return !(*this == other); }
 
 private:
-  static int64_t _validatePositiveInteger(const json::Value &value,
+  static int64_t _validatePositiveInteger(json::Value &value,
                                           const std::string &name);
-  static void _validateHash(const json::Value &value, const std::string &name);
+  static void _validateHash(json::Value &value, const std::string &name);
   json::Value _validate();
 };
+
+inline Data loadFile(const io::Path &path, LargeFile::Queue &queue) {
+  if (path.size() <= 1024 * 1024) {
+    return SmallFile(path);
+  }
+  return LargeFile(path, queue);
+}
 
 inline LargeFile::LargeFile(const std::string &data,
                             const std::string &identifier,
@@ -49,22 +59,34 @@ inline LargeFile::LargeFile(const std::string &data,
   _validate();
 }
 
-inline LargeFile &LargeFile::assign(const io::Path &path, Queue &queue) {
-	int64_t dataLeft = static_cast<int64_t>(path.size());
-	json::Value parts(json::ArrayType);
-	json::Value entry(json::ObjectType);
-  	io::File file(file, io::File::Binary, io::File::ReadOnly);
-  	std::string buffer;
+inline LargeFile &LargeFile::assign(const io::Path &path,
+                                    LargeFile::Queue &queue) {
+  int64_t dataLeft = static_cast<int64_t>(path.size());
+  json::Value parts(json::ArrayType);
+  json::Value entry(json::ObjectType);
+  io::File file(path, io::File::Binary, io::File::ReadOnly);
+  std::string buffer;
+  Data block;
 
-	entry["size"] = dataLeft;
-	parts.append(entry);
+  entry["size"] = dataLeft;
+  parts.append(entry);
 
-	while (dataLeft > 0) {
-		size_t readAmount = std::min(dataLeft, 1024 * 1024);
+  while (dataLeft > 0) {
+    size_t readAmount = std::min(dataLeft, static_cast<int64_t>(1024 * 1024));
 
-		file.read(buffer, readAmount);
-	}
-	// TODO: implement after updating a hash is supported
+    file.read(buffer, readAmount);
+    dataLeft -= buffer.size();
+
+    block.assign(buffer, Data::Encrypted);
+    queue.enqueue(block);
+
+    entry["sha256"] = block.identifier();
+    entry["aes256"] = block.key();
+    entry["size"] = static_cast<int64_t>(buffer.size());
+    parts.append(entry);
+  }
+  JSONData::assign(parts, Data::Encrypted);
+  return *this;
 }
 
 inline LargeFile &LargeFile::assign(const std::string &data,
@@ -72,9 +94,10 @@ inline LargeFile &LargeFile::assign(const std::string &data,
                                     const std::string &key) {
   Data::assign(data, identifier, key);
   _validate();
+  return *this;
 }
 
-inline List &LargeFile::objects(List &dataList) {
+inline LargeFile::List &LargeFile::objects(LargeFile::List &dataList) {
   json::Value parsed = JSONData::value();
   const int count = parsed.count();
 
@@ -92,8 +115,8 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   int64_t offset = 0;
   int index;
 
-  for (index = 1;
-       (index < count) && (chunk.identifier() == parsed[index]["sha256"]);
+  for (index = 1; (index < count) &&
+                  (chunk.identifier() == parsed[index]["sha256"].string());
        ++index) {
     offset += parsed[index]["size"].integer();
   }
@@ -103,7 +126,7 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   }
 
   std::string contents =
-      data::Data(chunk.data(), chunk.identifier(), parsed[index]["aes256"])
+      Data(chunk.data(), chunk.identifier(), parsed[index]["aes256"])
           .contents();
   io::File file(path, io::File::Binary, io::File::ReadWrite);
 
@@ -112,7 +135,7 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   return true;
 }
 
-inline bool LargeFile::operator==(const io::Path &other) const {
+inline bool LargeFile::operator==(const io::Path &other) {
   json::Value parsed = JSONData::value();
   const int count = parsed.count();
 
@@ -120,7 +143,7 @@ inline bool LargeFile::operator==(const io::Path &other) const {
     return false;
   }
 
-  io::File file(file, io::File::Binary, io::File::ReadOnly);
+  io::File file(other, io::File::Binary, io::File::ReadOnly);
   std::string buffer;
   hash::sha256 blockHash;
 
@@ -130,22 +153,23 @@ inline bool LargeFile::operator==(const io::Path &other) const {
     file.read(buffer, static_cast<size_t>(blockSize));
     blockHash.reset(buffer);
 
-    if (blockHash.hex() != parsed[index]["sha256"].string()) {
-    	return false;
+    if (blockHash.hex() != parsed[index]["aes256"].string()) {
+      return false;
     }
-
   }
+  return true;
 }
 
-inline int64_t _validatePositiveInteger(const json::Value &value,
-                                        const std::string &name) {
+inline int64_t LargeFile::_validatePositiveInteger(json::Value &value,
+                                                   const std::string &name) {
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::IntegerType));
   AssertMessageException(value[name].integer() > 0);
   return value[name].integer();
 }
 
-inline void _validateHash(const json::Value &value, const std::string &name) {
+inline void LargeFile::_validateHash(json::Value &value,
+                                     const std::string &name) {
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::StringType));
   hash::sha256().reset(value[name].string().c_str());
@@ -157,6 +181,7 @@ inline json::Value LargeFile::_validate() {
   const int64_t OneMegaByte = 1024 * 1024;
   json::Value parsed = JSONData::value();
 
+  fprintf(stderr, "json='%s'\n", std::string(parsed).c_str());
   AssertMessageException(parsed.is(json::ArrayType));
   AssertMessageException((count = parsed.count()) >= 2);
 

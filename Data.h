@@ -281,7 +281,7 @@ inline void Data::_validateSize() {
                      __FILE__, __LINE__);
   }
   if (_data.size() > 1024 * 1024) {
-    throw DataTooBig("Content size (" + std::to_string(_contents.size()) +
+    throw DataTooBig("Content size (" + std::to_string(_data.size()) +
                          ") is larger than the maximum (" +
                          std::to_string(1024 * 1024) + ").",
                      __FILE__, __LINE__);
