@@ -49,7 +49,24 @@ inline LargeFile::LargeFile(const std::string &data,
   _validate();
 }
 
-inline LargeFile &LargeFile::assign(const io::Path &path, Queue &queue) {}
+inline LargeFile &LargeFile::assign(const io::Path &path, Queue &queue) {
+	int64_t dataLeft = static_cast<int64_t>(path.size());
+	json::Value parts(json::ArrayType);
+	json::Value entry(json::ObjectType);
+  	io::File file(file, io::File::Binary, io::File::ReadOnly);
+  	std::string buffer;
+
+	entry["size"] = dataLeft;
+	parts.append(entry);
+
+	while (dataLeft > 0) {
+		size_t readAmount = std::min(dataLeft, 1024 * 1024);
+
+		file.read(buffer, readAmount);
+	}
+	// TODO: implement after updating a hash is supported
+}
+
 inline LargeFile &LargeFile::assign(const std::string &data,
                                     const std::string &identifier,
                                     const std::string &key) {
@@ -104,9 +121,20 @@ inline bool LargeFile::operator==(const io::Path &other) const {
   }
 
   io::File file(file, io::File::Binary, io::File::ReadOnly);
+  std::string buffer;
+  hash::sha256 blockHash;
 
-  // TODO: Read each block and validate that the data is correct then validate
-  // the overall hash is correct
+  for (int index = 1; index < count; ++index) {
+    int64_t blockSize = parsed[index]["size"].integer();
+
+    file.read(buffer, static_cast<size_t>(blockSize));
+    blockHash.reset(buffer);
+
+    if (blockHash.hex() != parsed[index]["sha256"].string()) {
+    	return false;
+    }
+
+  }
 }
 
 inline int64_t _validatePositiveInteger(const json::Value &value,
@@ -134,7 +162,6 @@ inline json::Value LargeFile::_validate() {
 
   AssertMessageException(
       (totalSize = _validatePositiveInteger(parsed[0], "size")) >= OneMegaByte);
-  _validateHash(parsed[0], "sha256");
 
   for (index = 1; index < count; ++index) {
     int64_t blockSize = _validatePositiveInteger(parsed[index], "size");

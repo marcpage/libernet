@@ -231,7 +231,6 @@ The first element of the array describes the overall file contents.
 ```
 	[
 		{
-			'sha256': entire file hash,
 			'size': data size
 		},
 		{
