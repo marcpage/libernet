@@ -47,6 +47,7 @@ public:
   virtual ~DataTooBig() {}
 };
 
+// TODO: Validate identifiers and keys are hashes
 class Data {
 public:
   enum Encryption { Encrypted, Unencrypted };
