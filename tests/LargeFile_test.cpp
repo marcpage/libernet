@@ -13,9 +13,9 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 #endif
   try {
     const char *testFiles[] = {
+        "tests/one_megabyte.jpg", "tests/two_megabyte.jpg",
         "tests/Data_test.cpp",    "tests/JSONData_test.cpp",
         "tests/Package_test.cpp", "tests/SmallFile_test.cpp",
-        "tests/one_megabyte.jpg", "tests/two_megabyte.jpg",
     };
     io::Path testDir("bin/LargeFile Restore");
     testDir.mkdirs();
@@ -45,6 +45,15 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         }
 
         dotest((queue.size() == 0) || (path.size() > 1024 * 1024));
+
+        for (int j = 0; j < queue.size(); ++j) {
+          data::Data temp = queue.dequeue();
+
+          queue.enqueue(temp);
+          if (i == 0) {
+            printf("Block contents size = %ld\n", temp.contents().size());
+          }
+        }
 
         try {
           file = data::LargeFile(block.data(), block.identifier(), block.key());

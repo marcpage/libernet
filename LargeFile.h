@@ -34,7 +34,7 @@ public:
   bool operator==(const Data &other) const { return Data::operator==(other); }
   bool operator!=(const Data &other) const { return !(*this == other); }
   List &objects(List &dataList);
-  bool write(const io::Path &file, const Data &chunk);
+  bool write(const io::Path &path, const Data &chunk);
   bool operator==(const io::Path &other);
   bool operator!=(const io::Path &other) { return !(*this == other); }
 
@@ -77,13 +77,13 @@ inline LargeFile &LargeFile::assign(const io::Path &path,
     file.read(buffer, readAmount);
     dataLeft -= buffer.size();
 
-    block.assign(buffer, Data::Encrypted);
-    queue.enqueue(block);
-
     entry["sha256"] = block.identifier();
     entry["aes256"] = block.key();
     entry["size"] = static_cast<int64_t>(buffer.size());
     parts.append(entry);
+
+    block.assign(buffer, Data::Encrypted);
+    queue.enqueue(block);
   }
   JSONData::assign(parts, Data::Encrypted);
   return *this;
@@ -126,7 +126,7 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   }
 
   std::string contents =
-      Data(chunk.data(), chunk.identifier(), parsed[index]["aes256"])
+      Data(chunk.data(), chunk.identifier(), parsed[index]["aes256"].string())
           .contents();
   io::File file(path, io::File::Binary, io::File::ReadWrite);
 
