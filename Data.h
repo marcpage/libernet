@@ -10,6 +10,12 @@
 
 namespace data {
 
+/// Data size is larger than contents size due to encryption
+#define data_Data_MAX_DATA_SIZE (1024 * 1024)
+
+/// 1 MiB minus the maximum padding size for encryption
+#define data_Data_MAX_CONTENTS_SIZE (1024 * 1024 - 32)
+
 class Exception : public msg::Exception {
 public:
   // cppcheck-suppress noExplicitConstructor
@@ -194,7 +200,7 @@ inline std::string &Data::contents(std::string &buffer,
         return buffer = _data;
       }
       try {
-        return z::uncompress(_data, buffer, 1024 * 1024);
+        return z::uncompress(_data, buffer, data_Data_MAX_DATA_SIZE);
       } catch (const z::Exception &) {
         return buffer = _data;
       }
@@ -274,16 +280,16 @@ inline Data &Data::reset() {
 }
 
 inline void Data::_validateSize() {
-  if (_contents.size() > 1024 * 1024) {
+  if (_contents.size() > data_Data_MAX_CONTENTS_SIZE) {
     throw DataTooBig("Content size (" + std::to_string(_contents.size()) +
                          ") is larger than the maximum (" +
-                         std::to_string(1024 * 1024) + ").",
+                         std::to_string(data_Data_MAX_CONTENTS_SIZE) + ").",
                      __FILE__, __LINE__);
   }
-  if (_data.size() > 1024 * 1024) {
+  if (_data.size() > data_Data_MAX_DATA_SIZE) {
     throw DataTooBig("Content size (" + std::to_string(_data.size()) +
                          ") is larger than the maximum (" +
-                         std::to_string(1024 * 1024) + ").",
+                         std::to_string(data_Data_MAX_DATA_SIZE) + ").",
                      __FILE__, __LINE__);
   }
 }
@@ -315,7 +321,7 @@ inline void Data::_calculateContents() {
       std::string buffer;
 
       try {
-        z::uncompress(_contents, buffer, 1024 * 1024);
+        z::uncompress(_contents, buffer, data_Data_MAX_DATA_SIZE);
       } catch (const z::Exception &exception) {
         throw CorruptData(
             "Key (" + _key + ") does not match decrypted hash (" +

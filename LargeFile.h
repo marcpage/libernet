@@ -46,7 +46,7 @@ private:
 };
 
 inline Data loadFile(const io::Path &path, LargeFile::Queue &queue) {
-  if (path.size() <= 1024 * 1024) {
+  if (path.size() <= data_Data_MAX_CONTENTS_SIZE) {
     return SmallFile(path);
   }
   return LargeFile(path, queue);
@@ -71,10 +71,9 @@ inline LargeFile &LargeFile::assign(const io::Path &path,
   entry["size"] = dataLeft;
   parts.append(entry);
 
-  fprintf(stderr, "LargeFile::assign, header = '%s'\n",
-          std::string(entry).c_str());
   while (dataLeft > 0) {
-    size_t readAmount = std::min(dataLeft, static_cast<int64_t>(1024 * 1024));
+    size_t readAmount =
+        std::min(dataLeft, static_cast<int64_t>(data_Data_MAX_CONTENTS_SIZE));
 
     file.read(buffer, readAmount);
     dataLeft -= buffer.size();
@@ -83,18 +82,8 @@ inline LargeFile &LargeFile::assign(const io::Path &path,
     entry["sha256"] = block.identifier();
     entry["aes256"] = block.key();
     entry["size"] = static_cast<int64_t>(buffer.size());
-    fprintf(stderr, "LargeFile::assign, block = '%s' block.key = '%s'\n",
-            std::string(entry).c_str(), block.key().c_str());
     parts.append(entry);
 
-    fprintf(
-        stderr,
-        "Read block size = %ld identifier = %s key = %s data = '%s...%s'\n",
-        buffer.size(), block.identifier().c_str(), block.key().c_str(),
-        hash::sha256::fromData(buffer.substr(0, 32).data(), 32).hex().c_str(),
-        hash::sha256::fromData(buffer.substr(buffer.size() - 32).data(), 32)
-            .hex()
-            .c_str());
     queue.enqueue(Data(block.data(), block.identifier()));
   }
   JSONData::assign(parts, Data::Encrypted);
@@ -128,13 +117,13 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   int index;
 
   for (index = 1; (index < count) &&
-                  (chunk.identifier() == parsed[index]["sha256"].string());
+                  (chunk.identifier() != parsed[index]["sha256"].string());
        ++index) {
     offset += parsed[index]["size"].integer();
   }
 
   if (index >= count) {
-    return false;
+    return false; // no test coverage
   }
 
   std::string contents =
@@ -152,7 +141,7 @@ inline bool LargeFile::operator==(const io::Path &other) {
   const int count = parsed.count();
 
   if (other.size() != static_cast<off_t>(parsed[0]["size"].integer())) {
-    return false;
+    return false; // no test coverage
   }
 
   io::File file(other, io::File::Binary, io::File::ReadOnly);
@@ -166,7 +155,7 @@ inline bool LargeFile::operator==(const io::Path &other) {
     blockHash.reset(buffer);
 
     if (blockHash.hex() != parsed[index]["aes256"].string()) {
-      return false;
+      return false; // no test coverage
     }
   }
   return true;
@@ -190,23 +179,21 @@ inline void LargeFile::_validateHash(json::Value &value,
 inline json::Value LargeFile::_validate() {
   int count, index;
   int64_t totalSize, sumOfBlocks = 0;
-  const int64_t OneMegaByte = 1024 * 1024;
   json::Value parsed = JSONData::value();
 
-  fprintf(stderr, "json='%s'\n", std::string(parsed).c_str());
   AssertMessageException(parsed.is(json::ArrayType));
   AssertMessageException((count = parsed.count()) >= 2);
 
   AssertMessageException(
-      (totalSize = _validatePositiveInteger(parsed[0], "size")) >= OneMegaByte);
+      (totalSize = _validatePositiveInteger(parsed[0], "size")) >=
+      data_Data_MAX_CONTENTS_SIZE);
 
   for (index = 1; index < count; ++index) {
     int64_t blockSize = _validatePositiveInteger(parsed[index], "size");
 
-    AssertMessageException((blockSize) <= OneMegaByte);
+    AssertMessageException((blockSize) <= data_Data_MAX_CONTENTS_SIZE);
     AssertMessageException((sumOfBlocks += blockSize) <= totalSize);
-    fprintf(stderr, "Validating sha256 and aes256 of '%s'\n",
-            std::string(parsed[index]).c_str());
+
     _validateHash(parsed[index], "sha256");
     _validateHash(parsed[index], "aes256");
   }

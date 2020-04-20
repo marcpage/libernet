@@ -59,10 +59,10 @@ inline void SmallFile::_loadFromFile(const io::Path &path) {
   std::string buffer;
   const off_t size = path.size();
 
-  if (size > 1024 * 1024) {
+  if (size > data_Data_MAX_CONTENTS_SIZE) {
     throw DataTooBig("File size (" + std::to_string(size) +
                          ") is larger than the maximum (" +
-                         std::to_string(1024 * 1024) +
+                         std::to_string(data_Data_MAX_CONTENTS_SIZE) +
                          "): " + std::string(path),
                      __FILE__, __LINE__);
   }

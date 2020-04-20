@@ -7,7 +7,7 @@
   }
 
 int main(const int /*argc*/, const char *const /*argv*/[]) {
-  int iterations = 10;
+  int iterations = 5;
 #ifdef __Tracer_h__
   iterations = 1;
 #endif
@@ -36,9 +36,6 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
         data::LargeFile::Queue dummy;
 
-        fprintf(stderr, "%s\n",
-                std::string(data::LargeFile(path, dummy).JSONData::value())
-                    .c_str());
         if (i == 0) {
           printf("%s: queue size = %d file size = %lld\n",
                  std::string(path).c_str(), queue.size(), path.size());
@@ -73,7 +70,9 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
           dotest(file == clone);
         } catch (const msg::Exception &exception) {
-          fprintf(stderr, "EXCEPTION: %s\n", exception.what());
+          if (i == 0) {
+            fprintf(stderr, "EXCEPTION: %s\n", exception.what());
+          }
           dotest(path.size() <= 1024 * 1024);
         }
       }
