@@ -71,19 +71,31 @@ inline LargeFile &LargeFile::assign(const io::Path &path,
   entry["size"] = dataLeft;
   parts.append(entry);
 
+  fprintf(stderr, "LargeFile::assign, header = '%s'\n",
+          std::string(entry).c_str());
   while (dataLeft > 0) {
     size_t readAmount = std::min(dataLeft, static_cast<int64_t>(1024 * 1024));
 
     file.read(buffer, readAmount);
     dataLeft -= buffer.size();
+    block.assign(buffer, Data::Encrypted);
 
     entry["sha256"] = block.identifier();
     entry["aes256"] = block.key();
     entry["size"] = static_cast<int64_t>(buffer.size());
+    fprintf(stderr, "LargeFile::assign, block = '%s' block.key = '%s'\n",
+            std::string(entry).c_str(), block.key().c_str());
     parts.append(entry);
 
-    block.assign(buffer, Data::Encrypted);
-    queue.enqueue(block);
+    fprintf(
+        stderr,
+        "Read block size = %ld identifier = %s key = %s data = '%s...%s'\n",
+        buffer.size(), block.identifier().c_str(), block.key().c_str(),
+        hash::sha256::fromData(buffer.substr(0, 32).data(), 32).hex().c_str(),
+        hash::sha256::fromData(buffer.substr(buffer.size() - 32).data(), 32)
+            .hex()
+            .c_str());
+    queue.enqueue(Data(block.data(), block.identifier()));
   }
   JSONData::assign(parts, Data::Encrypted);
   return *this;
@@ -193,6 +205,8 @@ inline json::Value LargeFile::_validate() {
 
     AssertMessageException((blockSize) <= OneMegaByte);
     AssertMessageException((sumOfBlocks += blockSize) <= totalSize);
+    fprintf(stderr, "Validating sha256 and aes256 of '%s'\n",
+            std::string(parsed[index]).c_str());
     _validateHash(parsed[index], "sha256");
     _validateHash(parsed[index], "aes256");
   }
