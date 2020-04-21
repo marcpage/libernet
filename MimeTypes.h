@@ -9,7 +9,7 @@ struct ExtensionMapping {
 };
 
 inline std::string &fromExtension(const std::string &extension,
-                                  const std::string &mimeType) {
+                                  std::string &mimeType) {
   static const ExtensionMapping extensions[] = {
       {"3g2", "video/3gpp2"},
       {"3gp", "video/3gpp"},
@@ -91,8 +91,7 @@ inline std::string &fromExtension(const std::string &extension,
       {"xul", "application/vnd.mozilla.xul+xml"},
       {"zip", "application/zip"},
   };
-  static const int count =
-      sizeof(mime::extensions) / sizeof(mime::extensions[0]);
+  static const int count = sizeof(extensions) / sizeof(extensions[0]);
 
   for (int i = 0; i < count; ++i) {
     if (extension == extensions[i].extension) {

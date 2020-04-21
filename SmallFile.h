@@ -28,6 +28,8 @@ public:
   bool operator==(const Data &other) const { return Data::operator==(other); }
   bool operator!=(const Data &other) const { return !(*this == other); }
   SmallFile &write(const io::Path &location);
+  bool operator==(const io::Path &other);
+  bool operator!=(const io::Path &other) { return !(*this == other); }
 
 private:
   void _loadFromFile(const io::Path &path);
@@ -53,6 +55,18 @@ inline SmallFile &SmallFile::operator=(const Data &data) {
 inline SmallFile &SmallFile::write(const io::Path &location) {
   location.write(Data::contents(), io::File::Binary);
   return *this;
+}
+
+// TODO: Test
+bool SmallFile::operator==(const io::Path &other) {
+  auto myContents = contents();
+  auto fileSize = other.size();
+
+  if (static_cast<decltype(fileSize)>(myContents.size()) != fileSize) {
+    return false;
+  }
+
+  return SmallFile(other).contents() == myContents;
 }
 
 inline void SmallFile::_loadFromFile(const io::Path &path) {

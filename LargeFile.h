@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <vector>
 
+// TODO: clean up all files to use auto
 namespace data {
 
 class LargeFile : public JSONData {
@@ -99,7 +100,6 @@ inline LargeFile::List &LargeFile::objects(LargeFile::List &dataList) {
   json::Value parsed = JSONData::value();
   const int count = parsed.count();
 
-  dataList.clear();
   for (int index = 1; index < count; ++index) {
     dataList.push_back(parsed[index]["sha256"].string());
   }
