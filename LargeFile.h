@@ -39,9 +39,6 @@ public:
   bool operator!=(const io::Path &other) { return !(*this == other); }
 
 private:
-  static int64_t _validatePositiveInteger(json::Value &value,
-                                          const std::string &name);
-  static void _validateHash(json::Value &value, const std::string &name);
   json::Value _validate();
 };
 
@@ -161,21 +158,6 @@ inline bool LargeFile::operator==(const io::Path &other) {
   return true;
 }
 
-inline int64_t LargeFile::_validatePositiveInteger(json::Value &value,
-                                                   const std::string &name) {
-  AssertMessageException(value.has(name));
-  AssertMessageException(value[name].is(json::IntegerType));
-  AssertMessageException(value[name].integer() > 0);
-  return value[name].integer();
-}
-
-inline void LargeFile::_validateHash(json::Value &value,
-                                     const std::string &name) {
-  AssertMessageException(value.has(name));
-  AssertMessageException(value[name].is(json::StringType));
-  hash::sha256().reset(value[name].string().c_str());
-}
-
 inline json::Value LargeFile::_validate() {
   int count, index;
   int64_t totalSize, sumOfBlocks = 0;
@@ -185,17 +167,18 @@ inline json::Value LargeFile::_validate() {
   AssertMessageException((count = parsed.count()) >= 2);
 
   AssertMessageException(
-      (totalSize = _validatePositiveInteger(parsed[0], "size")) >=
+      (totalSize = JSONData::_validatePositiveInteger(parsed[0], "size")) >=
       data_Data_MAX_CONTENTS_SIZE);
 
   for (index = 1; index < count; ++index) {
-    int64_t blockSize = _validatePositiveInteger(parsed[index], "size");
+    int64_t blockSize =
+        JSONData::_validatePositiveInteger(parsed[index], "size");
 
     AssertMessageException((blockSize) <= data_Data_MAX_CONTENTS_SIZE);
     AssertMessageException((sumOfBlocks += blockSize) <= totalSize);
 
-    _validateHash(parsed[index], "sha256");
-    _validateHash(parsed[index], "aes256");
+    JSONData::_validateHash(parsed[index], "sha256");
+    JSONData::_validateHash(parsed[index], "aes256");
   }
 
   AssertMessageException(sumOfBlocks == totalSize);

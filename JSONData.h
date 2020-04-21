@@ -26,6 +26,14 @@ public:
                         Compression compression = NoCompression) override;
   bool operator==(const Data &other) const { return Data::operator==(other); }
   bool operator!=(const Data &other) const { return !(*this == other); }
+
+protected:
+  static int64_t _validatePositiveInteger(json::Value &value,
+                                          const std::string &name);
+  static void _validateHash(json::Value &value);
+  static void _validateHash(const json::Value &value, const std::string &name);
+  static json::Value &_validateKey(json::Value &value, const std::string &key,
+                                   json::Type type);
 };
 
 inline JSONData::JSONData(const json::Value &json, Data::Encryption encryption)
@@ -53,6 +61,33 @@ inline JSONData &JSONData::operator=(const JSONData &other) {
 inline std::string &JSONData::contents(std::string &buffer,
                                        Compression compression) {
   return Data::contents(buffer, compression);
+}
+
+inline int64_t JSONData::_validatePositiveInteger(json::Value &value,
+                                                  const std::string &name) {
+  AssertMessageException(value.has(name));
+  AssertMessageException(value[name].is(json::IntegerType));
+  AssertMessageException(value[name].integer() > 0);
+  return value[name].integer();
+}
+
+inline void JSONData::_validateHash(const json::Value &value) {
+  hash::sha256().reset(value.string().c_str());
+}
+
+inline void JSONData::_validateHash(json::Value &value,
+                                    const std::string &name) {
+  AssertMessageException(value.has(name));
+  AssertMessageException(value[name].is(json::StringType));
+  _validateHash(value[name]);
+}
+
+inline json::Value &JSONData::_validateKey(json::Value &value,
+                                           const std::string &key,
+                                           json::Type type) {
+  AssertMessageException(value.has(key));
+  AssertMessageException(value[key].is(type));
+  return value[key];
 }
 
 } // namespace data
