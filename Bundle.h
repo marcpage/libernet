@@ -18,15 +18,16 @@ class Bundle : public JSONData {
 public:
   typedef exec::Queue<Data> Queue;
   typedef std::vector<std::string> List;
-  Bundle() : JSONData(), _contents() {}
-  Bundle(const io::Path &p, Queue &q) : JSONData(), _contents() {
-    assign(p, q);
+  Bundle() : JSONData(), _largeFileCache() {}
+  Bundle(const io::Path &p, Queue &q, const List &v = List())
+      : JSONData(), _largeFileCache() {
+    assign(p, q, v);
   }
   Bundle(const std::string &data, const std::string &identifier,
          const std::string &key);
-  Bundle(const Bundle &other) : JSONData(other), _contents() {}
+  Bundle(const Bundle &other) : JSONData(other), _largeFileCache() {}
   virtual Bundle() {}
-  Bundle &assign(const io::Path &p, Queue &q);
+  Bundle &assign(const io::Path &p, Queue &q, const List &previous = List());
   Bundle &assign(const std::string &data, const std::string &identifier,
                  const std::string &key);
   Bundle *operator=(const Bundle &other) {
@@ -39,21 +40,59 @@ public:
   bool write(const io::Path &path, const Data &chunk);
   bool operator==(const io::Path &other);
   bool operator!=(const io::Path &other) { return !(*this == other); }
-
+  // TODO: add setMimeType(relativePath, mimeType)
+  // TODO: add listFiles()
+  // TODO: add addFile(pathToFile, relativePath, mimeType="")
+  // TODO: add removeFile(relativePath)
+  // TODO: add has(relativePath)
+  // TODO: add write(relativePath, absolutePath)
+  // TODO: add addPrevious
+  // TODO: add removePrevious
+  // TODO: add hasPrevious
 private:
-  typedef std::map<std::string, LargeFile> Map;
-  Map _contents;
-  void validate();
+  typedef std::map<std::string, LargeFile> LargeFiles;
+  mutable LargeFiles _largeFileCache;
+  void _validate();
+  io::Path::StringList &_listRelative(const io::Path &path,
+                                      io::Path::StringList &list);
 };
 
 inline Bundle::Bundle(const std::string &data, const std::string &identifier,
                       const std::string &key)
-    : JSONData(data, identifier, key), _contents() {
+    : JSONData(data, identifier, key), _largeFileCache() {
   _validate();
 }
 
-inline Bundle &Bundle::assign(const io::Path &p, Queue &q) {
-  // TODO implement
+inline Bundle &Bundle::assign(const io::Path &p, Queue &q,
+                              const List &previous) {
+  io::Path::StringList files;
+  json::Value bundle(json::ObjectType);
+  json::Value entry;
+
+  json::Value &previousList = bundle["previous"] = json::Value(json::ArrayType);
+  for (List::iterator i = previous.begin(); i != previous.end(); ++i) {
+    entry = *i;
+    previousList.append(entry);
+  }
+
+  json::Value &contents = bundle["contents"] = json::Value(json::ObjectType);
+  _listRelative(p, files);
+  for (io::Path::StringList::iterator i = files.begin(); i != files.end; ++i) {
+    io::Path absolute = p + *i;
+    Data fileData = loadFile(absolute, q);
+    json::Value &fileEntry = contents[std::string(*i)] =
+        json::Value(json::ObjectType);
+    std::string mimeType = mime::fromExtension(i->extension());
+
+    fileEntry["sha256"] = fileData.identity();
+    fileEntry["aes256"] = fileData.key();
+    fileEntry["size"] = static_cast<int64_t>(absolute.size());
+    if (mimeType.size() > 0) {
+      fileEntry["Content-Type"] = mimeType;
+    }
+    queue.put(fileData);
+  }
+  _validate();
 }
 
 inline Bundle &Bundle::assign(const std::string &data,
@@ -73,7 +112,7 @@ inline bool Bundle::write(const io::Path &path, const Data &chunk) {
 inline bool Bundle::operator==(const io::Path &other) {
   // TODO implement
 }
-inline void Bundle::validate() {
+inline void Bundle::_validate() {
   json::Value parsed = JSONData::value();
 
   AssertMessageException(parsed.is(json::ObjectType));
@@ -85,9 +124,12 @@ inline void Bundle::validate() {
   for (json::Value::StringList::iterator name = keys.begin();
        name != keys.end(); ++name) {
     json::Value &entry = contents[*name];
+
     JSONData::_validateHash(entry, "sha256");
     JSONData::_validateHash(entry, "aes256");
     JSONData::_validatePositiveInteger(entry, "size");
+    AssertMessageException(!entry.has("Content-Type") ||
+                           entry["Content-Type"].is(json::StringType))
   }
 
   if (parsed.has("previous")) {
@@ -97,6 +139,32 @@ inline void Bundle::validate() {
 
     for (int i = 0; i < count; ++i) {
       _validateHash(previous[i]);
+    }
+  }
+}
+
+inline io::Path::StringList &Bundle::_listRelative(const io::Path &path,
+                                                   io::Path::StringList &list) {
+  std::vector<io::Path> directories;
+  io::Path::StringList names;
+
+  directories.push_back(io::Path());
+  while (directories.size() > 0) {
+    io::Path relativeBase = directories[0];
+    io::Path directory = path + relativeBase;
+
+    directories.erase(directories.begin());
+    directory.list(io::Path::NameOnly, names, io::Path::FlatListing);
+    for (io::Path::StringList::iterator name = names.begin();
+         name != names.end(); ++name) {
+      io::Path relative = relativeBase + *name;
+      io::Path absolute = path + relative;
+
+      if (absolute.isDirectory()) {
+        directories.push_back(relative);
+      } else {
+        list.push_back(relative);
+      }
     }
   }
 }

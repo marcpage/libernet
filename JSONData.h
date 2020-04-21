@@ -30,8 +30,8 @@ public:
 protected:
   static int64_t _validatePositiveInteger(json::Value &value,
                                           const std::string &name);
-  static void _validateHash(json::Value &value);
-  static void _validateHash(const json::Value &value, const std::string &name);
+  static void _validateHash(const json::Value &value);
+  static void _validateHash(json::Value &value, const std::string &name);
   static json::Value &_validateKey(json::Value &value, const std::string &key,
                                    json::Type type);
 };
