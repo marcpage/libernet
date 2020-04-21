@@ -195,13 +195,13 @@ Type                                          | Encrypted | Contents | [Match](#
 [Requests](#requests)                         | No        | json     | None
 
 All data should be compressed, before encryption, if compression reduces the size of the original data.
-Data should be no larger than 1 MiB after compression.
-Data should be no larger than 1 MiB before compression unless there is not a mechanism to work around this limit.
+Data should be no larger than 1 MiB (1024 * 1024 - 32 bytes) before compression.
+Data should be no larger than 1 MiB (1024 * 1024 bytes) after encryption.
 
 
 ## Small file
 
-A small file is a file that is 1 MiB or smaller.
+A small file is a file that is 1 MiB (1024 * 1024 - 32 bytes) or smaller.
 The data is hashed to generate the encryption/decryption key.
 Then the data is compressed if compression can reduce the size.
 The key previously generated from the hash of the contents is used to encrypt the data.
@@ -222,9 +222,9 @@ If the data does not match the decrypted contents, then we cannot use the data i
 
 ## Large file
 
-Large files are any file that is larger than 1 MiB.
-The file is broken up into up to 1 MiB chunks with each chunk being treated as a [Small file](#small-file).
-Maximum number of chunks is at least 6,095 as large file description is also limited to 1 MiB in size.
+Large files are any file that is larger than 1 MiB (1024 * 1024 - 32 bytes).
+The file is broken up into up to 1 MiB (1024 * 1024 - 32 byte) chunks with each chunk being treated as a [Small file](#small-file).
+Maximum number of chunks is at least 6,095 as large file description is also limited to 1 MiB (1024 * 1024 - 32 bytes) in size.
 This means the file limit is no lower than 6 GiB.
 The file description is a json array of chunk identifiers.
 The first element of the array describes the overall file contents.
