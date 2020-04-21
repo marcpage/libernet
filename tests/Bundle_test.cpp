@@ -24,7 +24,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       for (size_t testIndex = 0;
            testIndex < sizeof(testFiles) / sizeof(testFiles[0]); ++testIndex) {
         io::Path src(testFiles[testIndex]);
-        std::string filename = src.basename();
+        std::string filename = src.name();
 
         src.copyTo(sourceDir + filename).copyTo(sourceSubDir + filename);
       }
