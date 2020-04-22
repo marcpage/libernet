@@ -390,7 +390,10 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"facebook": facebook url,
 	"youtube": youtube url,
 	"credentials": [
-		{"sha256": identifier of image of some identification credentials,"aes256": key to decrypt credential image}
+		{
+			"sha256": identifier of image of some identification credentials,
+			"aes256": key to decrypt credential image
+		}
 	],
 	"country": country,
 	"state": state,
