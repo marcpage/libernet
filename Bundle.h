@@ -90,10 +90,10 @@ inline Bundle &Bundle::assign(const io::Path &p, Queue &q,
     std::string mimeType = mime::fromExtension(io::Path(*i).extension());
     Data fileData;
 
-    if (p.size() <= data_Data_MAX_CONTENTS_SIZE) {
-      fileData = SmallFile(p);
+    if (absolute.size() <= data_Data_MAX_CONTENTS_SIZE) {
+      fileData = SmallFile(absolute);
     } else {
-      fileData = _largeFileCache[*i] = LargeFile(p, q);
+      fileData = _largeFileCache[*i] = LargeFile(absolute, q);
     }
 
     fileEntry["sha256"] = fileData.identifier();
@@ -151,7 +151,7 @@ inline bool Bundle::update(Data &chunk) {
       }
     }
   }
-  return false;
+  return changed;
 }
 
 inline bool Bundle::write(const io::Path &path, Data &chunk) {
@@ -174,9 +174,16 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
         _largeFileCache[*name] = file;
         changed = true;
       } catch (const msg::Exception &exception) {
+        io::Path filePath = path + *name;
+        io::Path directory = filePath.parent();
+
         SmallFile file(chunk.data(), chunk.identifier(), chunk.key());
 
-        file.write(path + *name);
+        if (!directory.isDirectory()) {
+          directory.mkdirs();
+        }
+
+        file.write(filePath);
         changed = true;
       }
     }
