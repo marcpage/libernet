@@ -295,6 +295,7 @@ inline io::Path::StringList &Bundle::_listRelative(const io::Path &path,
     io::Path directory = path + relativeBase;
 
     directories.erase(directories.begin());
+    names.clear();
     directory.list(io::Path::NameOnly, names, io::Path::FlatListing);
     for (io::Path::StringList::iterator name = names.begin();
          name != names.end(); ++name) {
