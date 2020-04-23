@@ -36,6 +36,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
             dotest(fileData == data::Data(fileData.data(),
                                           fileData.identifier(),
                                           fileData.key()));
+            dotest(fileData == io::Path(testFiles[testIndex]));
           } catch (const data::DataTooBig &) {
             dotest(file.size() > 1024 * 1024);
           }
