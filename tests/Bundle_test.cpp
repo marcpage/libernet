@@ -26,7 +26,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         io::Path src(testFiles[testIndex]);
         std::string filename = src.name();
 
-        src.copyTo(sourceDir + filename).copyTo(sourceSubDir + filename);
+        src.copyContentsTo(sourceDir + filename)
+            .copyContentsTo(sourceSubDir + filename);
       }
 
       data::Bundle::Queue queue;
