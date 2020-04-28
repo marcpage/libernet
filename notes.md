@@ -604,7 +604,7 @@ You can also merge existing blocks as part of a transaction.
 The maximum number of Karma is 100 trillion (100,000,000,000,000).
 Karma can also be divided into 100 trillion Kismet.
 Each block is awarded 1 Kismet from each sender in the block, all the transaction fees, and the Karma created from the block.
-The Karma created for each block is 20 Karma - index x 200 Kismet.
+The Karma created for each block is 20 Karma - index x 200 Kismet (but cannot become negative).
 At that rate, the last 200 Kismet of the 100 trillion Karma will be created by the 10 trillionth block.
 
 Each transaction has one or more *from* identities.
@@ -612,7 +612,7 @@ Each *from* identity must supply a verification signature for the block te be va
 Any block missing a verification signature is considered a pending transaction.
 Each transaction has one or more *to* identities.
 There is no participation needed for *to* identities.
-You can have *from* identities that have zero (0) amount added.
+You can have *from* identities that have zero (0) amount added to the transaction.
 These are identities that must sign to make the transaction valid, for instance, escrow identities.
 
 The *pending* transactions are transactions where one or more identities does not have sufficient funds or one or more identities have not signed yet.
@@ -736,6 +736,9 @@ This description includes:
 * List of pending transactions which not only include new pending transactions but also pending transactions not in the reach.
 * List of cancelation requests for pending transactions.
 
+The *income* and *outgo* fields of identities in the *balances* field are used to determine how much you can trust this identity.
+For instance, if there are thousands of income transactions and the *last* is prett recent, you can probably trust that the Karma they have sent you is not a double spend.
+
 The transaction block description is about 200 bytes plus about 600 bytes per single sender/receiver transaction.
 ```
 {
@@ -746,6 +749,18 @@ The transaction block description is about 200 bytes plus about 600 bytes per si
 	"balances": {
 		identity: {
 			"balance": balance after this transaction block,
+			"income": {
+				"last": index of last block that this identity received income,
+				"first": index of the first block that this identity received income,
+				"total": total of incoming transactions,
+				"count": number of incoming transactions
+			},
+			"outgo": {
+				"last": index of last block that this identity sent karma,
+				"first": index of the first block that this identity sent karma,
+				"total": total of sending transactions,
+				"count": number of sending transactions
+			},
 			"last": index of last block with balance,
 		}
 	}
