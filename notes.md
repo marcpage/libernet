@@ -193,6 +193,7 @@ Type                                          | Encrypted | Contents | [Match](#
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
+[Karma](#karma)                               | No        | json     | karma:{block index}
 
 All data should be compressed, before encryption, if compression reduces the size of the original data.
 Data should be no larger than 1 MiB (1024 * 1024 - 32 bytes) before compression.
@@ -312,7 +313,7 @@ When choosing which head to use, your [trust](#trust) network is used to determi
 		{
 			"sha256": identifier of bundle,
 			"aes256": key to decrypt bundle,
-			"timestamp": seconds since epoch,
+			"timestamp": fractional seconds since epoch,
 			"signed": {identifier of public key: signature of bundle identifier},
 		},
 	],
@@ -398,7 +399,7 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"country": country,
 	"state": state,
 	"province": province,
-	"timestamp": seconds since the epoch used to determine latest profile,
+	"timestamp": fractional seconds since the epoch used to determine latest profile,
 	"city": city,
 	"street": street,
 	"street number": house number,
@@ -534,7 +535,7 @@ If we don't find any trust information, we then look at the identity's trust lis
 The trust document is [matched](#data-matching) with "trust:trust owner's public key identifier"
 ```
 {
-	"timestamp": seconds since epoch,
+	"timestamp": fractional seconds since epoch,
 	"trust": {
 		public key identifier: {
 			"trusted": count of times content has been marked as trusted,
@@ -603,12 +604,12 @@ You can also merge existing blocks as part of a transaction.
 
 The maximum number of Karma is 100 trillion (100,000,000,000,000).
 Karma can also be divided into 100 trillion Kismet.
-Each block is awarded 1 Kismet from each sender in the block, all the transaction fees, and the Karma created from the block.
+Each block is awarded 1 Kismet from each sender in the block (up to 2,000 Kismet), all the transaction fees, and the Karma created from the block.
 The Karma created for each block is 20 Karma - index x 200 Kismet (but cannot become negative).
 At that rate, the last 200 Kismet of the 100 trillion Karma will be created by the 10 trillionth block.
 
 Each transaction has one or more *from* identities.
-Each *from* identity must supply a verification signature for the block te be valid.
+Each *from* identity must supply a verification signature for the block to be valid.
 Any block missing a verification signature is considered a pending transaction.
 Each transaction has one or more *to* identities.
 There is no participation needed for *to* identities.
@@ -619,7 +620,7 @@ The *pending* transactions are transactions where one or more identities does no
 To be a *pending* transaction, however, it must contain at least one signature.
 
 Cancelation signatures in the *pending* section allow signatures to be withdrawn.
-To cancel a signature, instead of signing the pending transaction, the hash of the pending transaction is signed.
+To cancel a signature, instead of signing the pending transaction, the signature of the pending transaction is signed.
 The block that contains a cancellation will be the last block that contains cancellation as well as the signature that is being cancelled.
 If all signatures for a pending transaction are cancelled, then the pending transaction is no longer listed in future transactions.
 
@@ -635,7 +636,7 @@ Track every pending transaction and the identity of every balance and see if the
 If they do, you may advance the reach block.
 
 The balances section of each block should be half balances affected from transactions in the current block and half from balances carried forward to increase the reach block.
-The goal is to advance the reach block at least one on each transaction.
+The goal is to advance the reach block at least one on each block.
 While this will not always be the case, it does increase the value of the block.
 
 A reach block is a list of transaction blocks in the block chain that contains every balance and every current pending transaction.
@@ -651,8 +652,9 @@ If you add a block that is missing the *previous* field, your transactions will 
 Failing validation for any reason other than missing *previous* field, should have an increase in [mistaken demerit](#direct-trust) in your trust list.
 Shortcuts may be taken by using reach blocks (double, triple, etc), but use at your own [trust](#trust) risk.
 Critical validations to perform include:
-1. All prior transactions has been validated and all balances are correct.
+1. All prior transactions have been validated and all balances are correct.
 1. All identity balances are captured in the reach.
+1. All identity income, outgo, and overspend fields are correct.
 1. All pending, uncanceled transactions are in the reach.
 1. The block contains at least one transaction.
 1. For every new balance from the transactions in this block there is no more than one balance from outside this block to help increment the reach.
@@ -692,7 +694,8 @@ As the potential size of the next block reaches 1 MiB, blocks will start to be m
 At that point the race to generate the optimal, chosen *previous* block will begin.
 The race ends as the potential size of the next block starts to reach 1 MiB and the chances of being chosen as a previous block diminish.
 
-The goal is to eventually be able to generate up to 15 indexes per second (assuming we have enough transactions per second).
+The goal is to eventually be able to generate up to 15 indexes per second (assuming we have enough transactions per second, about 30,000).
+At this pace, we would produce about a half billion indexes per year.
 This pace will prevent too much computation cost trying to generate a block to match the index hash.
 It should also discourage wasted computation creating new keys to try and reverse match with the block.
 
@@ -715,20 +718,25 @@ When taking shortcuts, note that you do risk your node getting its trust lowered
 
 Transactions show the move of Karma from a set of identities to other identities.
 The fee is an optional amount added to the transaction to encourage more people to add the transaction to the block they are validating.
-Each transaction is about 400 bytes in size for single sender and single receiver.
+Each transaction is about 400 bytes in size for single sender, single receiver, and no memo.
+
+For validation, the sum of from amounts should equal sum of to amounts and sum of fees.
+Also, every sender should have sufficient funds as of this block for both from amounts and fee amounts.
+The timestamp should be validated not to be in the future as well as not be unreasonably too far in the past.
+The memo field, if it exists, should be less than 4k in size.
 ```
 {
 	"from": {sender identity:amount},
 	"to": {recipient identity:amount},
 	"fee": {sender identity:amount},
 	"memo": any comment but limited to 4k,
-	"timestamp": seconds since the epoch,
+	"timestamp": fractional seconds since the epoch,
 }
 ```
 
 Transactions are included in a transaction block description.
 This description includes:
-* The index of the transaction, starting at zero and monotonically increasing.
+* The index of the block, starting at zero and monotonically increasing.
 * The timestamp when the block was created
 * The identifier of the previous index transaction
 * List of balances which include not only everyone in the transactions but also any identities that are not in the reach.
@@ -736,14 +744,15 @@ This description includes:
 * List of pending transactions which not only include new pending transactions but also pending transactions not in the reach.
 * List of cancelation requests for pending transactions.
 
-The *income* and *outgo* fields of identities in the *balances* field are used to determine how much you can trust this identity.
+The *income*, *outgo*, and *overspend* fields of identities in the *balances* field are used to determine how much you can trust this identity.
 For instance, if there are thousands of income transactions and the *last* is prett recent, you can probably trust that the Karma they have sent you is not a double spend.
+The *outgo* and *overspend* field only exists if transactions that fit the category were found.
 
 The transaction block description is about 200 bytes plus about 600 bytes per single sender/receiver transaction.
 ```
 {
 	"index": transaction index starting at zero for prime block,
-	"timestamp": seconds since the epoch,
+	"timestamp": factional seconds since the epoch,
 	"previous": identifier for previous index block this is based on,
 	"reach": index in which all blocks since then have everyones balance,
 	"balances": {
@@ -761,12 +770,18 @@ The transaction block description is about 200 bytes plus about 600 bytes per si
 				"total": total of sending transactions,
 				"count": number of sending transactions
 			},
-			"last": index of last block with balance,
+			"overspend": {
+				"last": index of last block the had a pending transaction due to overspend,
+				"first": index of first block the had a pending transaction due to overspend,
+				"total": total amount of overspend transactions,
+				"count": the number of overspend transactions,
+			},
+			"pending": number of pending transactions that have not been canceled,
 		}
 	}
 	"transactions": [
 		{
-			"transaction": text of transaction above,
+			"transaction": text of transaction (see above),
 			"verification": {identity of sender:signature of transaction}
 		},
 	],
@@ -789,3 +804,6 @@ The signing block adds about 200 bytes.
 	"signature": The signature data of the block,
 }
 ```
+
+The signing block has padding adjusted to [match](#data-matching) *karma:{block index}*.
+
