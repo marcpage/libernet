@@ -11,7 +11,10 @@ public:
   Identity(const Data &data) : _data(data), _key(_convert(_data)) {}
   Identity(const Identity &other) : _data(other._data), _key(other._key) {}
   virtual ~Identity() {}
-  Identity &operator=(const Identity &other) { _data = other._data; _key = other._key(); }
+  Identity &operator=(const Identity &other) {
+    _data = other._data;
+    _key = other._key();
+  }
   std::string identifier() { return _data.identifier(); }
   data::Data value() { return _data; }
   bool valid(const std::string &text, const std::string &signature) {
