@@ -7,13 +7,15 @@ namespace data {
 
 class Identity {
 public:
-  Identity(const io::Path &file) : _data(_read(file)), _key(convert(_data)) {}
-  Identity(const Data &data) : _data(data), _key(_convert(_data)) {}
+  explicit Identity(const io::Path &file)
+      : _data(_read(file)), _key(convert(_data)) {}
+  explicit Identity(const Data &data) : _data(data), _key(_convert(_data)) {}
   Identity(const Identity &other) : _data(other._data), _key(other._key) {}
   virtual ~Identity() {}
   Identity &operator=(const Identity &other) {
     _data = other._data;
     _key = other._key();
+    return *this;
   }
   std::string identifier() { return _data.identifier(); }
   data::Data value() { return _data; }
@@ -31,7 +33,7 @@ private:
   data::Data _data;
   crypto::RSAAES256PublicKey _key;
   static crypto::RSAAES256PublicKey _convert(data::Data &data) {
-    return crypto::RSAAES256PublicKey(data.contents());
+    return crypto::RSAAES256PublicKey(data.contents(data::Data::Decompress));
   }
   static data::Data _read(const io::Path &file);
 };

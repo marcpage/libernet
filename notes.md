@@ -22,6 +22,7 @@ Table of Contents
     * [Resolving web addresses](#resolving-web-addresses)
   * [Personal Key](#personal-key)
     * [Personal Information](#personal-information)
+  * [Private Key](#private-key)
   * [Messages](#messages)
     * [Message Dictionary](#message-dictionary)
     * [Carrier Dictionary](#carrier-dictionary)
@@ -186,8 +187,8 @@ Type                                          | Encrypted | Contents | [Match](#
 [Large File](#large-file)                     | Yes       | json     | None
 [Bundle](#bundle-description)                 | Yes       | json     | None
 [Address History](#address-history)           | No        | json     | web:{lowercase/path/to/bundle}
-[Personal Key](#personal-key)                 | Yes*      | PEM      | passphrase:{passphrase}
-[Private Key](#private-key)                   | No        | PEM      | None
+[Personal Key](#personal-key)                 | No        | PEM      | None
+[Private Key](#private-key)                   | Yes*      | PEM      | private:{username}
 [Personal Information](#personal-information) | No        | json     | info:{personal key identifier}
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD(GMT):recipient personal key identifier}

@@ -69,7 +69,7 @@ public:
   Data &assign(const std::string &data, const std::string &identifier,
                const std::string &key);
   Data &assign(const std::string &data, const std::string &identifier);
-  std::string contents(Compression compression = NoCompression) {
+  std::string contents(Compression compression = Decompress) {
     std::string buffer;
     return contents(buffer, compression);
   }
