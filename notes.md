@@ -186,7 +186,8 @@ Type                                          | Encrypted | Contents | [Match](#
 [Large File](#large-file)                     | Yes       | json     | None
 [Bundle](#bundle-description)                 | Yes       | json     | None
 [Address History](#address-history)           | No        | json     | web:{lowercase/path/to/bundle}
-[Personal Key](#personal-key)                 | No        | PEM      | None
+[Personal Key](#personal-key)                 | Yes*      | PEM      | passphrase:{passphrase}
+[Private Key](#private-key)                   | No        | PEM      | None
 [Personal Information](#personal-information) | No        | json     | info:{personal key identifier}
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD(GMT):recipient personal key identifier}
@@ -194,6 +195,8 @@ Type                                          | Encrypted | Contents | [Match](#
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
 [Karma](#karma)                               | No        | json     | karma:{block index}
+
+\* [Private Key](#private-key) is not encrypted with the hash of the contents like other encrypted data, but encrypted with the hash of the passphrase.
 
 All data should be compressed, before encryption, if compression reduces the size of the original data.
 Data should be no larger than 1 MiB (1024 * 1024 - 32 bytes) before compression.
@@ -419,6 +422,20 @@ The above dictionary is stored in the following wrapper
 }
 ````
 
+## Private Key
+
+Whereas a [Personal Key](#personal-key) is an identity shared publicly, a Private Key is kept secret.
+Having the Private Key is the verification that a [Personal Key](#personal-key) is owned by you.
+Private Keys should be kept secure to prevent bad actors acting as you.
+
+```
+{
+	"identifier": [Personal Key](#personal-key) identifier,
+	"public": The  [Personal Key](#personal-key) PEM encoded public key,
+	"owner": The PEM encoded private key,
+	"padding": random data to get hash of data to match,
+}
+```
 
 ## Messages
 
