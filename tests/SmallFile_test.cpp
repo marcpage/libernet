@@ -12,9 +12,9 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 #endif
   try {
     const char *testFiles[] = {
-        "tests/Data_test.cpp",    "tests/JSONData_test.cpp",
-        "tests/Package_test.cpp", "tests/SmallFile_test.cpp",
-        "tests/one_megabyte.jpg", "tests/two_megabyte.jpg",
+        "tests/Data_test.cpp",      "tests/JSONData_test.cpp",
+        "tests/SmallFile_test.cpp", "tests/one_megabyte.jpg",
+        "tests/two_megabyte.jpg",
     };
     for (int i = 0; i < iterations; ++i) {
       for (size_t testIndex = 0;

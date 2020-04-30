@@ -12,23 +12,25 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 #endif
   try {
     const char *testFiles[] = {
-        "tests/one_megabyte.jpg", "tests/two_megabyte.jpg",
-        "tests/Data_test.cpp",    "tests/JSONData_test.cpp",
-        "tests/Package_test.cpp", "tests/SmallFile_test.cpp",
+        "tests/one_megabyte.jpg",   "tests/two_megabyte.jpg",
+        "tests/Data_test.cpp",      "tests/JSONData_test.cpp",
+        "tests/SmallFile_test.cpp",
     };
     io::Path sourceDir("bin/Bundle/Source");
     io::Path sourceSubDir("bin/Bundle/Source/Sub");
     io::Path destDir("bin/Bundle/Destination");
     sourceSubDir.mkdirs();
+    for (size_t testIndex = 0;
+         testIndex < sizeof(testFiles) / sizeof(testFiles[0]); ++testIndex) {
+      io::Path src(testFiles[testIndex]);
+      std::string filename = src.name();
+      printf("Copying %s to %s and %s\n", std::string(src).c_str(),
+             std::string(sourceDir + filename).c_str(),
+             std::string(sourceSubDir + filename).c_str());
+      src.copyContentsTo(sourceDir + filename)
+          .copyContentsTo(sourceSubDir + filename);
+    }
     for (int i = 0; i < iterations; ++i) {
-      for (size_t testIndex = 0;
-           testIndex < sizeof(testFiles) / sizeof(testFiles[0]); ++testIndex) {
-        io::Path src(testFiles[testIndex]);
-        std::string filename = src.name();
-
-        src.copyContentsTo(sourceDir + filename)
-            .copyContentsTo(sourceSubDir + filename);
-      }
 
       data::Bundle::Queue queue;
 
