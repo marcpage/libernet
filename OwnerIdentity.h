@@ -1,5 +1,5 @@
-#ifndef __OwnedIdentity_h__
-#define __OwnedIdentity_h__
+#ifndef __OwnerIdentity_h__
+#define __OwnerIdentity_h__
 
 #include "libernet/Identity.h"
 #include "os/AsymmetricEncrypt.h"
@@ -8,29 +8,34 @@
 
 namespace data {
 
-class OwnedIdentity : public Identity {
+class OwnerIdentity : public Identity {
 public:
-  OwnedIdentity() : _key() {}
-  OwnedIdentity(const int keySize = 4096)
-      : Identity(), _key(keySize, _randomPublicExponent()) {}
-  OwnedIdentity(const io::Path &file, const std::string &passphrase) : _key() {
-    _decrypt(
-        data::Data(file.contents(io::File::Binary), data::Data::Unencrypted));
+  OwnerIdentity() : Identity(), _key() {}
+  OwnerIdentity(const int keySize = 4096)
+      : Identity(), _key(keySize, _randomPublicExponent()) {
+    Identity::operator=(_key.getPublicKey());
   }
-  OwnedIdentity(const Data &data, const std::string &passphrase)
+  OwnerIdentity(const io::Path &file, const std::string &passphrase)
+      : Identity(), _key() {
+    data::Data block(file.contents(io::File::Binary), data::Data::Unencrypted);
+
+    _decrypt(block, passphrase);
+  }
+  OwnerIdentity(Data &data, const std::string &passphrase)
       : Identity(), _key() {
     _decrypt(data, passphrase);
   }
-  OwnedIdentity(const OwnedIdentity &other)
+  OwnerIdentity(const OwnerIdentity &other)
       : Identity(other), _key(other._key) {}
-  virtual ~OwnedIdentity() {}
-  OwnedIdentity &operator=(const OwnedIdentity &other) {
-    Identiter::operator=(other);
-    _key = other._key();
+  virtual ~OwnerIdentity() {}
+  OwnerIdentity &operator=(const OwnerIdentity &other) {
+    Identity::operator=(other);
+    _key = other._key;
     return *this;
   }
-  data::Data ownedValue(const std::string &username, const std::string &passphrase) {
-    return _encrypt(username, passphrase);
+  data::Data ownedValue(const std::string &username,
+                        const std::string &passphrase, int match = 6) {
+    return _encrypt(username, passphrase, match);
   }
   std::string sign(const std::string &text) {
     std::string buffer;
@@ -43,26 +48,29 @@ public:
     return _key.decrypt(encrypted, buffer);
   }
   void writeOwned(const io::Path &file, const std::string &passphrase) {
-    file.write(_encrypt("", passphrase).contents(data::Data::Decompress),
+    file.write(_encrypt("", passphrase, 0).contents(data::Data::Decompress),
                io::File::Binary);
   }
 
 private:
-  crypt::RSAAES256PrivateKey _key;
+  crypto::RSAAES256PrivateKey _key;
   static unsigned long _randomPublicExponent();
   data::Data _encrypt(const std::string &username,
-                      const std::string &passphrase);
+                      const std::string &passphrase, int matchValue);
   void _decrypt(data::Data &data, const std::string &passphrase);
   static int _matching(const std::string &s1, const std::string &ss2);
+  static std::string toHex(const std::string &binary);
+  static std::string fromHex(const std::string &hex);
 };
 
-inline unsigned long OwnedIdentity::_randomPublicExponent() {
+inline unsigned long OwnerIdentity::_randomPublicExponent() {
   static const unsigned long exponents[] = {3, 5, 17, 257, 65537};
   return exponents[rand() % (sizeof(exponents) / sizeof(exponents[0]))];
 }
 
-inline data::Data OwnedIdentity::_encrypt(const std::string &username,
-                                          const std::string &passphrase) {
+inline data::Data OwnerIdentity::_encrypt(const std::string &username,
+                                          const std::string &passphrase,
+                                          int matchValue) {
   json::Value info(json::ObjectType);
   std::string contents;
   std::string buffer;
@@ -71,25 +79,32 @@ inline data::Data OwnedIdentity::_encrypt(const std::string &username,
   hash::sha256 keyData(passphrase);
   crypto::AES256 key(reinterpret_cast<const char *>(keyData.buffer()),
                      keyData.size());
-  std::string match("private:" + username).hex();
+  std::string match(hash::sha256("private:" + username).hex());
 
   info["identifier"] = identity.identifier();
-  info["public"] = identifier.data();
+  info["public"] = toHex(identity.data());
   info["owner"] = _key.serialize(buffer);
 
+  int best = 0;
+
   do {
-  	if (username.size() > 0) {
-	    info["padding"] = int64_t(rand());
-  	}
-    info.format(contents);
-    key.crypt::SymmetricKey::encryptInPlace(contents, "", buffer);
+    if (username.size() > 0) {
+      info["padding"] = int64_t(rand());
+    }
+    info.format(contents); // crash
+    key.crypto::SymmetricKey::encryptInPlace(contents, "", buffer);
     output = data::Data(buffer, data::Data::Unencrypted);
-  } while ( (username.size() == 0) || (_matching(match, output.identifier()) < 6) );
+    if (_matching(match, output.identifier()) > best) {
+      best = _matching(match, output.identifier());
+      printf("match = %d\n", best);
+    }
+  } while ((username.size() == 0) ||
+           (_matching(match, output.identifier()) < matchValue));
 
   return output;
 }
 
-inline void OwnedIdentity::_decrypt(data::Data &data,
+inline void OwnerIdentity::_decrypt(data::Data &data,
                                     const std::string &passphrase) {
   json::Value info;
   std::string contents;
@@ -101,22 +116,53 @@ inline void OwnedIdentity::_decrypt(data::Data &data,
   key.crypto::SymmetricKey::decryptInPlace(
       data.contents(data::Data::Decompress), "", contents);
   info.parse(contents);
-  Identity::operator=(Identity(data::Data(info["public"], info["identifier"])));
-  _key = RSAAES256PrivateKey(info["owner"]);
+  Identity::operator=(
+      Identity(data::Data(fromHex(info["public"]), info["identifier"])));
+  _key = crypto::RSAAES256PrivateKey(info["owner"]);
 }
 
-inline int OwnedIdentity::_matching(const std::string &s1,
+inline int OwnerIdentity::_matching(const std::string &s1,
                                     const std::string &s2) {
-  const auto shorterLength = std::min(s1.size(), s2.size());
+  const int shorterLength = int(std::min(s1.size(), s2.size()));
 
-  for (decltype(shorterLength) i = 0; i < shorterLength; ++i) {
+  for (int i = 0; i < shorterLength; ++i) {
     if (s1[i] != s2[i]) {
-      return int(i);
+      return i;
     }
   }
   return int(shorterLength);
 }
 
+inline std::string OwnerIdentity::toHex(const std::string &binary) {
+  const char *const hexDigits = "0123456789abcdef";
+  std::string value;
+
+  for (int i = 0; (i < static_cast<int>(binary.size())); ++i) {
+    value.append(1, hexDigits[binary[i] >> 4]);
+    value.append(1, hexDigits[binary[i] & 0x0F]);
+  }
+  return value;
+}
+
+inline std::string OwnerIdentity::fromHex(const std::string &hex) {
+  std::string hexDigits("0123456789abcdef");
+  std::string value;
+
+  AssertMessageException(hex.size() % 2 == 0);
+  for (int byte = 0; (byte < static_cast<int>(hex.size() / 2)); ++byte) {
+    const int nibble1 = byte * 2 + 1;
+    std::string::size_type found1 = hexDigits.find(hex[nibble1]);
+
+    const int nibble2 = nibble1 - 1;
+    std::string::size_type found2 = hexDigits.find(hex[nibble2]);
+
+    AssertMessageException(found1 != std::string::npos);
+    AssertMessageException(found2 != std::string::npos);
+    value.append(1, (found2 << 4) | found1);
+  }
+  return value;
+}
+
 } // namespace data
 
-#endif // __OwnedIdentity_h__
+#endif // __OwnerIdentity_h__

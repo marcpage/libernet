@@ -1,20 +1,26 @@
 #ifndef __Identity_h__
 #define __Identity_h__
 
+#include "libernet/Data.h"
 #include "os/AsymmetricEncrypt.h"
+#include "os/Path.h"
+#include "protocol/JSON.h"
 
 namespace data {
 
 class Identity {
 public:
+  Identity() : _data(), _key() {}
+  Identity(const crypto::RSAAES256PublicKey &key)
+      : _data(key.serialize(), data::Data::Unencrypted), _key(key) {}
   explicit Identity(const io::Path &file)
-      : _data(_read(file)), _key(convert(_data)) {}
+      : _data(_read(file)), _key(_convert(_data)) {}
   explicit Identity(const Data &data) : _data(data), _key(_convert(_data)) {}
   Identity(const Identity &other) : _data(other._data), _key(other._key) {}
   virtual ~Identity() {}
   Identity &operator=(const Identity &other) {
     _data = other._data;
-    _key = other._key();
+    _key = other._key;
     return *this;
   }
   std::string identifier() { return _data.identifier(); }
@@ -39,7 +45,7 @@ private:
 };
 
 inline data::Data Identity::_read(const io::Path &file) {
-  json::Value info(file.read());
+  json::Value info(file.contents());
 
   return data::Data(info["data"].string(), info["identifier"].string());
 }
