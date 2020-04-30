@@ -116,9 +116,9 @@ inline void OwnerIdentity::_decrypt(data::Data &data,
   key.crypto::SymmetricKey::decryptInPlace(
       data.contents(data::Data::Decompress), "", contents);
   info.parse(contents);
-  Identity::operator=(
-      Identity(data::Data(fromHex(info["public"]), info["identifier"])));
-  _key = crypto::RSAAES256PrivateKey(info["owner"]);
+  Identity::operator=(Identity(data::Data(fromHex(info["public"].string()),
+                                          info["identifier"].string())));
+  _key = crypto::RSAAES256PrivateKey(info["owner"].string());
 }
 
 inline int OwnerIdentity::_matching(const std::string &s1,
@@ -147,7 +147,7 @@ inline std::string OwnerIdentity::toHex(const std::string &binary) {
 inline std::string OwnerIdentity::fromHex(const std::string &hex) {
   std::string hexDigits("0123456789abcdef");
   std::string value;
-
+  printf("hex='%s'\n", hex.c_str());
   AssertMessageException(hex.size() % 2 == 0);
   for (int byte = 0; (byte < static_cast<int>(hex.size() / 2)); ++byte) {
     const int nibble1 = byte * 2 + 1;
@@ -155,7 +155,8 @@ inline std::string OwnerIdentity::fromHex(const std::string &hex) {
 
     const int nibble2 = nibble1 - 1;
     std::string::size_type found2 = hexDigits.find(hex[nibble2]);
-
+    printf("nibble1 = %c nibble2 = %c found1 = %ld found2=%ld\n", hex[nibble1],
+           hex[nibble2], found1, found2);
     AssertMessageException(found1 != std::string::npos);
     AssertMessageException(found2 != std::string::npos);
     value.append(1, (found2 << 4) | found1);
