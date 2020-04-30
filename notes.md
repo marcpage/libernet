@@ -197,7 +197,7 @@ Type                                          | Encrypted | Contents | [Match](#
 [Requests](#requests)                         | No        | json     | None
 [Karma](#karma)                               | No        | json     | karma:{block index}
 
-\* [Private Key](#private-key) is not encrypted with the hash of the contents like other encrypted data, but encrypted with the hash of the passphrase.
+\* [Private Key](#private-key) is not encrypted with the hash of the contents like other encrypted data, but encrypted with the hash of a passphrase.
 
 All data should be compressed, before encryption, if compression reduces the size of the original data.
 Data should be no larger than 1 MiB (1024 * 1024 - 32 bytes) before compression.
@@ -370,12 +370,12 @@ Whenever personal information is updated, verifiers should be [messaged](#messag
 
 Whenever personal information is created, a backup (*next*) personal key should be created.
 The next field is a backup key.
-In the event that your private key for the personal key is leaked, you can set the *valid* field to false.
+In the event that your [Private Key](#private-key) for the personal key is leaked, you can set the *valid* field to false.
 Anything signed after the timestamp when the personal information is marked *valid=false* should be considered not signed.
 [Trust](#trust) trees should be updated with this timestamp and anything after this timestamp should not be trusted and treated as malevolent.
 
 If *valid=false* then the *next* value is considered an alias for valid signatures after timestamp.
-The *next* fields should be generated and its private key should be put in cold storage and not used until *valid=false*.
+The *next* fields should be generated and its [Private Key](#private-key) should be put in cold storage and not used until *valid=false*.
 The *next* should not be trusted in the same personal information in which *valid=false*.
 Previous personal information should be sought out to see other personal keys for *next*.
 The oldest *next* with personal information should be used.
@@ -431,8 +431,8 @@ Private Keys should be kept secure to prevent bad actors acting as you.
 
 ```
 {
-	"identifier": [Personal Key](#personal-key) identifier,
-	"public": The  [Personal Key](#personal-key) PEM encoded public key,
+	"identifier": Personal Key identifier,
+	"public": The Personal Key PEM encoded public key,
 	"owner": The PEM encoded private key,
 	"padding": random data to get hash of data to match,
 }
