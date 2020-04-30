@@ -61,7 +61,7 @@ The second difference is that senders can be verified as being a specific identi
 The third difference is that there is a cost to each message sent.
 
 Senders can spend CPU time as "postage" on messages to send a message first class, or spend less CPU time and send it bulk rate.
-This makes it more costly to send bulk messages and makes it easier to identify them.
+This makes it more costly to send bulk messages and makes it easier to identify bulk messages.
 If it takes 30 seconds to prep a message for three people, that is not a big deal.
 But for a company to send out a message to 3,000 people, it would take 8 hours of intense compute power.
 Companies would screen their mailing lists to only those who would truly be interested in their message.
@@ -113,7 +113,7 @@ Reasons for squelching data include:
 
 ## Data Matching
 
-Data can be matched to other data by adding random data until the first hex digits of the hashes match.
+Data can be matched to other data by adding random data until the first hex digits (or in some cases the last hex digits) of the hashes match.
 Data can be requested by exact hash, or by "similar to" search.
 The more digits that match, the more time (in general) and expense and, therefore, the higher the priority or value of the match.
 When searching "similar to" each node may drop lower priority items if the number of items being returned is "large".
@@ -126,7 +126,9 @@ When "similar to" search is done, it returns the json below.
 The json may be compressed if it reduces the size.
 ```
 {
-	{similar to identifier}: [{similar identiiers}]
+	similar to identifier: {
+		matching identifier: data size
+	}
 }
 ```
 Requests may be repeated as when a request is received, those requests are passed on to nodes likely to have that information.
@@ -166,7 +168,7 @@ Path           | Always Public | Description
 /app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
 /data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
 /data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of hashes similar to {hash}
-/data/requests | Yes           | [Requests](#requests) that this node has. Supports PUT for connecting node's requests.
+/data/requests | Yes           | [Requests](#requests) that this node has pending. Supports PUT for connecting node's requests.
 /mail          | No            | [Messages](#messages) app
 /server        | Yes           | Returns server information. Supports PUT for connecting node's information.
 /web           | No            | See [Address History](#address-history). Appending the address with  an empty query (?) will return information about how the bundle was chosen and other options as well as gives you opportunities to download and change trust in identity.
@@ -337,7 +339,7 @@ To prevent link-hijacking and cut down on requests needed to resolve paths, bund
 
 ## Personal Key
 
-A personal key is a PEM encoded public key that is stored without encryption (similar to [Address History](#address-history)) but with possible compression if it reduces the size.
+A personal key is a PEM encoded public key (possibly zlib compressed) that is stored without encryption (similar to [Address History](#address-history)) but with possible compression if it reduces the size.
 The [identity](#data-identity) of the personal key is the identifier for a person or node.
 
 
@@ -456,7 +458,7 @@ This is why best practices for very strong passwords should be used when selecti
 ```
 {
 	"identifier": Personal Key identifier,
-	"public": The Personal Key PEM encoded public key,
+	"public": The Personal Key PEM encoded public key possibly zlib compressed,
 	"owner": The PEM encoded private key,
 	"padding": random data to get hash of data to match (not in data saved to file),
 }
