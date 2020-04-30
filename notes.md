@@ -428,13 +428,36 @@ The above dictionary is stored in the following wrapper
 Whereas a [Personal Key](#personal-key) is an identity shared publicly, a Private Key is kept secret.
 Having the Private Key is the verification that a [Personal Key](#personal-key) is owned by you.
 Private Keys should be kept secure to prevent bad actors acting as you.
+If you lose your Private Key, you lose your ability to act as the [Personal Key](#personal-key) identity.
+
+The information stored for a Private Key may be stored as a data block.
+This does care the risk that your secret is available everywhere if they can guess your password.
+The benefit of storing your Private Key as a block is that your private key is available from anywhere and is backed up.
+
+The Private Key may also be stored as a file.
+Storing your Private Key on removable media is the most secure.
+You should have a back (or two or three) of the media in case of media failure.
+Backup media should be checked regularly.
+
+Regardless of where the data is saved (as a data block on the LiberNet, or in a file) if will be encrypted using the hash of a passphrase.
+The data saved is the [Personal Key](#personal-key) *identifier*, the (possibly compressed) *public* key data that matches the identifier, and the *owner* private key data.
+
+When data is saved to the LiberNet, it includes *padding* to get the identifier (hash) of the data to [match](#data-matching) ```private:{username}```.
+When searching for your private key, you perform a ["similar to" search](#data-matching) using the username and then use the hash of the passphrase as the decryption key.
+The *padding* should match to [at least 6 hex digits](#cost-to-match-digits).
+
+You must keep your username and passphrase secret and should follow best practices for passwords.
+The username provides security through obscurity in that your private data is a needle in the haystack.
+They may use size analysis to find blocks that are about the size of private keys, but they will find blocks that are small files and partial files, making it hard to find in the first place.
+Once someone has what they suspect is a Private Key, they will need to guess your passphrase to decrypt the private key.
+This is why best practices for very strong passwords should be used when selecting the password (five random words, etc) because blocks that are about the right size for a Private Key can be decrypted by guessing common passwords or brute-force attempting short passwords.
 
 ```
 {
 	"identifier": Personal Key identifier,
 	"public": The Personal Key PEM encoded public key,
 	"owner": The PEM encoded private key,
-	"padding": random data to get hash of data to match,
+	"padding": random data to get hash of data to match (not in data saved to file),
 }
 ```
 

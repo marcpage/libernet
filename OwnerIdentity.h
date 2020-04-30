@@ -29,8 +29,8 @@ public:
     _key = other._key();
     return *this;
   }
-  data::Data ownedValue(const std::string &passphrase) {
-    return _encrypt(passphrase);
+  data::Data ownedValue(const std::string &username, const std::string &passphrase) {
+    return _encrypt(username, passphrase);
   }
   std::string sign(const std::string &text) {
     std::string buffer;
@@ -43,7 +43,7 @@ public:
     return _key.decrypt(encrypted, buffer);
   }
   void writeOwned(const io::Path &file, const std::string &passphrase) {
-    file.write(_encrypt(passphrase).contents(data::Data::Decompress),
+    file.write(_encrypt("", passphrase).contents(data::Data::Decompress),
                io::File::Binary);
   }
 
@@ -78,11 +78,13 @@ inline data::Data OwnedIdentity::_encrypt(const std::string &username,
   info["owner"] = _key.serialize(buffer);
 
   do {
-    info["padding"] = int64_t(rand());
+  	if (username.size() > 0) {
+	    info["padding"] = int64_t(rand());
+  	}
     info.format(contents);
     key.crypt::SymmetricKey::encryptInPlace(contents, "", buffer);
     output = data::Data(buffer, data::Data::Unencrypted);
-  } while (_matching(match, output.identifier()) < 6);
+  } while ( (username.size() == 0) || (_matching(match, output.identifier()) < 6) );
 
   return output;
 }
