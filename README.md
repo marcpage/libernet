@@ -274,7 +274,14 @@ The *previous* can also contain the entire history if the total size is less tha
 			"Content-Type": mime type for the data},
 	},
 	"comments": any comments about this version of the bundle,
-	"previous": [list of bundle identifiers this bundle is based on]
+	"timestamp": fractional seconds since epoch,
+	"previous": [
+		{
+			"sha256": identifier of a previous version,
+			"aes256": decryption key for the previous version,
+			"timestamp": fractional seconds since epoch,
+		}
+	]
 }
 ```
 The *size* fields can be used to help determine if the file is stored as a [small file](#small-file) or a [large file](#large-file).
