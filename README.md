@@ -257,6 +257,8 @@ Each entry is around 512 bytes, so limit of files in a bundle is roughly no less
 A bundle description is a json dictionary of relative paths within the bundle to information about each file.
 The *previous* field lists bundles this bundle is based on.
 When merging bundles, place all bundle identifiers that were merged into this bundle in the *previous* list.
+The *previous* list is ordered from most recent to least recent.
+The *previous* can also contain the entire history if the total size is less than 1 MiB.
 ```
 {
 	"contents": {
@@ -271,6 +273,7 @@ When merging bundles, place all bundle identifiers that were merged into this bu
 			"size": number of bytes in the final file,
 			"Content-Type": mime type for the data},
 	},
+	"comments": any comments about this version of the bundle,
 	"previous": [list of bundle identifiers this bundle is based on]
 }
 ```
