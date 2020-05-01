@@ -54,6 +54,7 @@ public:
   // TODO: add addPrevious
   // TODO: add removePrevious
   // TODO: add hasPrevious
+  // TODO: Add setComment
 private:
   typedef std::map<std::string, LargeFile> LargeFiles;
   mutable LargeFiles _largeFileCache;
