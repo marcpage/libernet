@@ -18,6 +18,10 @@
 
 namespace data {
 
+/**
+        @todo Document
+        @todo Test
+*/
 class Bundle : public JSONData {
 public:
   typedef exec::Queue<Data> Queue;
@@ -79,10 +83,16 @@ public:
   void addFile(const std::string &path, const std::string &identifier,
                const std::string &key, const std::string &mimeType = "");
   void setFileMimeType(const std::string &path, const std::string &mimeType);
+  void addPreviousRevision(const std::string &identifier,
+                           const std::string &key, int64_t timestamp);
+  void removePreviousRevision(const std::string &identifier);
+  bool hasPreviousRevision(const std::string &identifier);
+  int previousRevisionCount();
+  void removePreviousRevision(int index);
+  std::string previousRevisionIdentifier(int index);
+  std::string previousRevisionKey(int index);
+  int64_t previousRevisionTimestamp(int index);
   // TODO: Make flush and reset virtual and override them here to clear cache
-  // TODO: add addPrevious
-  // TODO: add removePrevious
-  // TODO: add hasPrevious
 private:
   typedef std::map<std::string, LargeFile> LargeFiles;
   mutable LargeFiles _largeFileCache;
@@ -333,6 +343,84 @@ inline void Bundle::setFileMimeType(const std::string &path,
     bundle["contents"][path]["Content-Type"] = mimeType;
   }
   _changeContent(bundle);
+}
+
+inline void Bundle::addPreviousRevision(const std::string &identifier,
+                                        const std::string &key,
+                                        int64_t timestamp) {
+  json::Value bundle = JSONData::value();
+  json::Value &previous = bundle["previous"];
+  json::Value info(json::ObjectType);
+  const auto max = previous.count();
+  int insertHere = 0;
+
+  info["sha256"] = identifier;
+  info["aes256"] = key;
+  info["timestamp"] = timestamp;
+
+  while ((insertHere < max) &&
+         (previous[insertHere]["timestamp"].integer() > timestamp)) {
+    ++insertHere;
+  }
+  previous.insert(info, insertHere);
+  _changeContent(bundle);
+}
+
+inline void Bundle::removePreviousRevision(const std::string &identifier) {
+  json::Value bundle = JSONData::value();
+  json::Value &previous = bundle["previous"];
+  const auto max = previous.count();
+
+  for (auto i = 0; i < max; ++i) {
+    if (previous[i]["sha256"].string() == identifier) {
+      previous.erase(i, i + 1);
+      break;
+    }
+  }
+
+  _changeContent(bundle);
+}
+
+inline bool Bundle::hasPreviousRevision(const std::string &identifier) {
+  json::Value bundle = JSONData::value();
+  json::Value &previous = bundle["previous"];
+  const auto max = previous.count();
+
+  for (auto i = 0; i < max; ++i) {
+    if (previous[i]["sha256"].string() == identifier) {
+      return true;
+    }
+  }
+  return false;
+}
+
+inline int Bundle::previousRevisionCount() {
+  json::Value bundle = JSONData::value();
+  return bundle["previous"].count();
+}
+
+inline void Bundle::removePreviousRevision(int index) {
+  json::Value bundle = JSONData::value();
+  bundle["previous"].erase(index, index + 1);
+  _changeContent(bundle);
+}
+
+inline std::string Bundle::previousRevisionIdentifier(int index) {
+  json::Value bundle = JSONData::value();
+
+  return bundle["previous"][index]["sha256"].string();
+}
+
+inline std::string Bundle::previousRevisionKey(int index) {
+  json::Value bundle = JSONData::value();
+
+  return bundle["previous"][index]["aes256"].string();
+}
+
+inline int64_t Bundle::previousRevisionTimestamp(int index) {
+  json::Value bundle = JSONData::value();
+
+  return bundle["previous"][index]["timestamp"].integer();
 }
 
 inline void Bundle::_validate() {
