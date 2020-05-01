@@ -6,6 +6,7 @@
 #include "libernet/LargeFile.h"
 #include "libernet/MimeTypes.h"
 #include "libernet/SmallFile.h"
+#include "os/DateTime.h"
 #include "os/Exception.h"
 #include "os/File.h"
 #include "os/Hash.h"
@@ -44,24 +45,51 @@ public:
   bool write(const io::Path &path, Data &chunk);
   bool operator==(const io::Path &other);
   bool operator!=(const io::Path &other) { return !(*this == other); }
+  std::string comment() {
+    json::Value bundle = JSONData::value();
+    if (bundle.has("comments")) {
+      return bundle["comments"].string();
+    }
+    return "";
+  }
+  void resetComment(const std::string &comment = "");
+  List &files(List &fileList);
+  List files() {
+    List buffer;
+    return files(buffer);
+  }
+  bool hasFile(const std::string &path) {
+    return JSONData::value()["contents"].has(path);
+  }
+  int64_t fileSize(const std::string &path) {
+    return JSONData::value()["contents"][path]["size"].integer();
+  }
+  std::string fileMimeType(const std::string &path) {
+    return JSONData::value()["contents"][path]["Content-Type"].string();
+  }
+  std::string fileIdentifier(const std::string &path) {
+    return JSONData::value()["contents"][path]["sha256"].string();
+  }
+  std::string fileKey(const std::string &path) {
+    return JSONData::value()["contents"][path]["aes256"].string();
+  }
+  void removeFile(const std::string &path) {
+    JSONData::value()["contents"].erase(path);
+  }
+  void addFile(const std::string &path, const std::string &identifier,
+               const std::string &key, const std::string &mimeType = "");
+  void setFileMimeType(const std::string &path, const std::string &mimeType);
   // TODO: Make flush and reset virtual and override them here to clear cache
-  // TODO: add setMimeType(relativePath, mimeType)
-  // TODO: add listFiles()
-  // TODO: add addFile(pathToFile, relativePath, mimeType="")
-  // TODO: add removeFile(relativePath)
-  // TODO: add has(relativePath)
-  // TODO: add write(relativePath, absolutePath)
   // TODO: add addPrevious
   // TODO: add removePrevious
   // TODO: add hasPrevious
-  // TODO: Add setComment
 private:
   typedef std::map<std::string, LargeFile> LargeFiles;
   mutable LargeFiles _largeFileCache;
   void _validate();
   io::Path::StringList &_listRelative(const io::Path &path,
                                       io::Path::StringList &list);
-  void _changeContent(const json::Value &json);
+  void _changeContent(json::Value &json);
 };
 
 inline Bundle::Bundle(const std::string &data, const std::string &identifier,
@@ -254,6 +282,59 @@ inline bool Bundle::operator==(const io::Path &other) {
   return true;
 }
 
+inline void Bundle::resetComment(const std::string &comment) {
+  json::Value bundle = JSONData::value();
+
+  if (comment.size() == 0) {
+    bundle.erase("comments");
+  } else {
+    bundle["comments"] = comment;
+  }
+  _changeContent(bundle);
+}
+
+inline Bundle::List &Bundle::files(Bundle::List &fileList) {
+  json::Value parsed = JSONData::value();
+  const json::Value &contents = parsed["contents"];
+  auto keys = contents.keys();
+
+  for (auto key = keys.begin(); key != keys.end(); ++key) {
+    fileList.push_back(*key);
+  }
+  return fileList;
+}
+
+inline void Bundle::addFile(const std::string &path,
+                            const std::string &identifier,
+                            const std::string &key,
+                            const std::string &mimeType) {
+  json::Value bundle = JSONData::value();
+  json::Value info(json::ObjectType);
+  std::string useMimeType =
+      mimeType.size() == 0 ? mime::fromExtension(io::Path(path).extension())
+                           : mimeType;
+
+  info["sha256"] = identifier;
+  info["aes256"] = key;
+  if (mimeType.size() > 0) {
+    info["Content-Type"] = useMimeType;
+  }
+  bundle["contents"][path] = info;
+  _changeContent(bundle);
+}
+
+inline void Bundle::setFileMimeType(const std::string &path,
+                                    const std::string &mimeType) {
+  json::Value bundle = JSONData::value();
+
+  if (mimeType.size() == 0) {
+    bundle["contents"][path].erase("Content-Type");
+  } else {
+    bundle["contents"][path]["Content-Type"] = mimeType;
+  }
+  _changeContent(bundle);
+}
+
 inline void Bundle::_validate() {
   json::Value parsed = JSONData::value();
 
@@ -263,6 +344,8 @@ inline void Bundle::_validate() {
       JSONData::_validateKey(parsed, "contents", json::ObjectType);
   json::Value::StringList keys = contents.keys();
 
+  JSONData::_validatePositiveInteger(parsed, "timestamp");
+  JSONData::_validateKey(parsed, "comments", json::StringType, true);
   for (json::Value::StringList::iterator name = keys.begin();
        name != keys.end(); ++name) {
     json::Value &entry = contents[*name];
@@ -270,8 +353,7 @@ inline void Bundle::_validate() {
     JSONData::_validateHash(entry, "sha256");
     JSONData::_validateHash(entry, "aes256");
     JSONData::_validatePositiveInteger(entry, "size");
-    AssertMessageException(!entry.has("Content-Type") ||
-                           entry["Content-Type"].is(json::StringType));
+    JSONData::_validateKey(parsed, "Content-Type", json::StringType, true);
   }
 
   if (parsed.has("previous")) {
@@ -280,7 +362,11 @@ inline void Bundle::_validate() {
     const int count = previous.count();
 
     for (int i = 0; i < count; ++i) {
-      _validateHash(previous[i]);
+      json::Value &entry = previous[i];
+      // TODO Validate the timestamps are sequential
+      JSONData::_validatePositiveInteger(entry, "timestamp");
+      JSONData::_validateHash(entry, "sha256");
+      JSONData::_validateHash(entry, "aes256");
     }
   }
 }
@@ -313,7 +399,9 @@ inline io::Path::StringList &Bundle::_listRelative(const io::Path &path,
   return list;
 }
 
-inline void Bundle::_changeContent(const json::Value &json) {
+inline void Bundle::_changeContent(json::Value &json) {
+  json["timestamp"] =
+      int64_t(dt::DateTime().seconds() + AddToConvertToAppleCocoaEpoch);
   JSONData::assign(json, Data::Encrypted);
   _validate();
 }
