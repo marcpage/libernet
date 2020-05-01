@@ -286,7 +286,7 @@ Address history describes the most recent versions of a [bundle](#bundle-descrip
 Each entry is at least 330 bytes, histories can be up to 3,000 entries.
 To get the size down to 1 MiB uncompressed, entries may be removed.
 Care should be taken to have every signer represented in the *heads* list.
-If every head cannot be represented (as it would increase the size of the history beyond 1 MiB), then older entries which show up in [bundle](#bundle-description) *previous* chains me be removed.
+If every head cannot be represented (as it would increase the size of the history beyond 1 MiB), then older entries which show up in [bundle](#bundle-description) *previous* chains may be removed.
 Address histories are not encrypted, but may be compressed if compression improves size.
 The identifier of an address history is a hash of compressed contents (or uncompressed if uncompressed is smaller).
 Unlike a [small file](#small-file), address history is not encrypted.
