@@ -36,7 +36,51 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       data::Bundle source(sourceDir, queue);
 
+      source.resetComment("This is a comment");
+
+      data::Bundle copy(source);
+      data::Bundle otherCopy;
+      data::Bundle yetAnother;
+
+      yetAnother.assign(source.data(), source.identifier(), source.key());
+
+      otherCopy = source;
+      dotest(otherCopy == source);
+      dotest(source == copy);
+      dotest(source != data::Bundle());
       dotest(source == sourceDir);
+      dotest(otherCopy.comment() == "This is a comment");
+      dotest(source.hasFile("one_megabyte.jpg"));
+      dotest(source.hasFile("Sub/one_megabyte.jpg"));
+      dotest(source.hasFile("two_megabyte.jpg"));
+      dotest(source.hasFile("Sub/two_megabyte.jpg"));
+      dotest(source.hasFile("JSONData_test.cpp"));
+      dotest(source.hasFile("Sub/JSONData_test.cpp"));
+      dotest(source.fileSize("JSONData_test.cpp") < 1024 * 1024);
+      dotest(source.fileSize("one_megabyte.jpg") > 1024 * 1024);
+      dotest(source.fileSize("one_megabyte.jpg") < 2 * 1024 * 1024);
+      dotest(source.fileSize("two_megabyte.jpg") > 2 * 1024 * 1024);
+      dotest(source.fileSize("two_megabyte.jpg") < 3 * 1024 * 1024);
+      dotest(source.fileSize("Sub/JSONData_test.cpp") < 1024 * 1024);
+      dotest(source.fileSize("Sub/one_megabyte.jpg") > 1024 * 1024);
+      dotest(source.fileSize("Sub/one_megabyte.jpg") < 2 * 1024 * 1024);
+      dotest(source.fileSize("Sub/two_megabyte.jpg") > 2 * 1024 * 1024);
+      dotest(source.fileSize("Sub/two_megabyte.jpg") < 3 * 1024 * 1024);
+
+      copy.resetComment();
+      dotest(copy != source);
+      dotest(copy.timestamp() != source.timestamp());
+
+      otherCopy.addPreviousRevision(source.Data::identifier(),
+                                    source.Data::key(), source.timestamp());
+
+      dotest(otherCopy.hasPreviousRevision(source.Data::identifier()));
+      dotest(source.previousRevisionCount() == 0);
+      dotest(otherCopy.previousRevisionCount() == 1);
+      dotest(otherCopy.previousRevisionIdentifier(0) ==
+             source.Data::identifier());
+      dotest(otherCopy.previousRevisionKey(0) == source.Data::key());
+      dotest(otherCopy.previousRevisionTimestamp(0) == source.timestamp());
 
       for (int j = 0; j < queue.size(); ++j) {
         data::Data temp = queue.dequeue();

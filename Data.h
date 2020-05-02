@@ -235,6 +235,12 @@ inline Data &Data::operator=(const Data &other) {
 }
 
 inline bool Data::operator==(const Data &other) const {
+  const bool imEmpty = (_contents.size() == 0) && (_data.size() == 0);
+  const bool otherEmpty =
+      (other._contents.size() == 0) && (other._data.size() == 0);
+  if (imEmpty || otherEmpty) {
+    return imEmpty && otherEmpty;
+  }
   if (encrypted() && other.encrypted()) {
     return _hexEquals(_key, other._key);
   }

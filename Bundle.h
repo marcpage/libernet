@@ -49,15 +49,17 @@ public:
   bool write(const io::Path &path, Data &chunk);
   bool operator==(const io::Path &other);
   bool operator!=(const io::Path &other) { return !(*this == other); }
+  double timestamp() { return JSONData::value()["timestamp"].integer(); }
   std::string comment() {
     json::Value bundle = JSONData::value();
     if (bundle.has("comments")) {
       return bundle["comments"].string();
     }
-    return "";
+    return ""; // not tested
   }
   void resetComment(const std::string &comment = "");
   List &files(List &fileList);
+  /// @todo Test
   List files() {
     List buffer;
     return files(buffer);
@@ -68,15 +70,19 @@ public:
   int64_t fileSize(const std::string &path) {
     return JSONData::value()["contents"][path]["size"].integer();
   }
+  /// @todo Test
   std::string fileMimeType(const std::string &path) {
     return JSONData::value()["contents"][path]["Content-Type"].string();
   }
+  /// @todo Test
   std::string fileIdentifier(const std::string &path) {
     return JSONData::value()["contents"][path]["sha256"].string();
   }
+  /// @todo Test
   std::string fileKey(const std::string &path) {
     return JSONData::value()["contents"][path]["aes256"].string();
   }
+  /// @todo Test
   void removeFile(const std::string &path) {
     JSONData::value()["contents"].erase(path);
   }
@@ -116,8 +122,8 @@ inline Bundle &Bundle::assign(const io::Path &p, Queue &q,
 
   json::Value &previousList = bundle["previous"] = json::Value(json::ArrayType);
   for (auto i = previous.begin(); i != previous.end(); ++i) {
-    entry = *i;
-    previousList.append(entry);
+    entry = *i;                 // not tested
+    previousList.append(entry); // not tested
   }
 
   json::Value &contents = bundle["contents"] = json::Value(json::ObjectType);
@@ -154,7 +160,7 @@ inline Bundle &Bundle::assign(const std::string &data,
   _validate();
   return *this;
 }
-
+/// @todo Test
 inline Bundle::List &Bundle::objects(Bundle::List &dataList) {
   auto parsed = JSONData::value();
   auto &contents = parsed["contents"];
@@ -170,7 +176,7 @@ inline Bundle::List &Bundle::objects(Bundle::List &dataList) {
   }
   return dataList;
 }
-
+/// @todo Test
 inline bool Bundle::update(Data &chunk) {
   auto parsed = JSONData::value();
   auto &contents = parsed["contents"];
@@ -200,7 +206,7 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
   auto changed = false;
 
   if (!path.isDirectory()) {
-    path.mkdirs();
+    path.mkdirs(); // not tested
   }
 
   for (auto name = keys.begin(); name != keys.end(); ++name) {
@@ -219,7 +225,7 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
         SmallFile file(chunk.data(), chunk.identifier(), chunk.key());
 
         if (!directory.isDirectory()) {
-          directory.mkdirs();
+          directory.mkdirs(); // not tested
         }
 
         file.write(filePath);
@@ -251,12 +257,12 @@ inline bool Bundle::operator==(const io::Path &other) {
 
   _listRelative(other, existingFiles);
   if (count != static_cast<decltype(count)>(existingFiles.size())) {
-    return false;
+    return false; // not tested
   }
 
   for (auto name = existingFiles.begin(); name != existingFiles.end(); ++name) {
     if (!contents.has(*name)) {
-      return false;
+      return false; // not tested
     }
   }
 
@@ -265,14 +271,14 @@ inline bool Bundle::operator==(const io::Path &other) {
   for (auto name = keys.begin(); name != keys.end(); ++name) {
     if (std::find(existingFiles.begin(), existingFiles.end(), *name) ==
         existingFiles.end()) {
-      return false;
+      return false; // not tested
     }
   }
 
   for (auto entry = _largeFileCache.begin(); entry != _largeFileCache.end();
        ++entry) {
     if (entry->second != other + entry->first) {
-      return false;
+      return false; // not tested
     }
   }
 
@@ -281,7 +287,7 @@ inline bool Bundle::operator==(const io::Path &other) {
       try {
         if (SmallFile(other + *name).key() !=
             contents[*name]["aes256"].string()) {
-          return false;
+          return false; // not tested
         }
       } catch (const msg::Exception &) {
         return false;
@@ -302,7 +308,7 @@ inline void Bundle::resetComment(const std::string &comment) {
   }
   _changeContent(bundle);
 }
-
+/// @todo Test
 inline Bundle::List &Bundle::files(Bundle::List &fileList) {
   json::Value parsed = JSONData::value();
   const json::Value &contents = parsed["contents"];
@@ -313,7 +319,7 @@ inline Bundle::List &Bundle::files(Bundle::List &fileList) {
   }
   return fileList;
 }
-
+/// @todo Test
 inline void Bundle::addFile(const std::string &path,
                             const std::string &identifier,
                             const std::string &key,
@@ -332,7 +338,7 @@ inline void Bundle::addFile(const std::string &path,
   bundle["contents"][path] = info;
   _changeContent(bundle);
 }
-
+/// @todo Test
 inline void Bundle::setFileMimeType(const std::string &path,
                                     const std::string &mimeType) {
   json::Value bundle = JSONData::value();
@@ -358,14 +364,14 @@ inline void Bundle::addPreviousRevision(const std::string &identifier,
   info["aes256"] = key;
   info["timestamp"] = timestamp;
 
-  while ((insertHere < max) &&
-         (previous[insertHere]["timestamp"].integer() > timestamp)) {
-    ++insertHere;
+  while ((insertHere < max) && (previous[insertHere]["timestamp"].integer() >
+                                timestamp)) { // not tested
+    ++insertHere;                             // not tested
   }
   previous.insert(info, insertHere);
   _changeContent(bundle);
 }
-
+/// @todo Test
 inline void Bundle::removePreviousRevision(const std::string &identifier) {
   json::Value bundle = JSONData::value();
   json::Value &previous = bundle["previous"];
@@ -391,14 +397,14 @@ inline bool Bundle::hasPreviousRevision(const std::string &identifier) {
       return true;
     }
   }
-  return false;
+  return false; // not tested
 }
 
 inline int Bundle::previousRevisionCount() {
   json::Value bundle = JSONData::value();
   return bundle["previous"].count();
 }
-
+/// @todo Test
 inline void Bundle::removePreviousRevision(int index) {
   json::Value bundle = JSONData::value();
   bundle["previous"].erase(index, index + 1);

@@ -57,13 +57,12 @@ inline SmallFile &SmallFile::write(const io::Path &location) {
   return *this;
 }
 
-// TODO: Test
 bool SmallFile::operator==(const io::Path &other) {
   auto myContents = contents();
   auto fileSize = other.size();
 
   if (static_cast<decltype(fileSize)>(myContents.size()) != fileSize) {
-    return false;
+    return false; // not tested
   }
 
   return SmallFile(other).contents() == myContents;

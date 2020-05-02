@@ -69,7 +69,7 @@ inline int64_t JSONData::_validatePositiveInteger(json::Value &value,
                                                   const std::string &name,
                                                   bool optional) {
   if (optional && !value.has(name)) {
-    return -1;
+    return -1; // not tested
   }
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::IntegerType));
@@ -84,7 +84,7 @@ inline void JSONData::_validateHash(const json::Value &value) {
 inline void JSONData::_validateHash(json::Value &value, const std::string &name,
                                     bool optional) {
   if (optional && !value.has(name)) {
-    return;
+    return; // not tested
   }
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::StringType));
