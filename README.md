@@ -330,6 +330,12 @@ Any address histories that do not add any new head [bundles](#bundle-description
 			"aes256": key to decrypt bundle,
 			"timestamp": fractional seconds since epoch,
 			"signed": {identifier of public key: signature of bundle identifier},
+			"blocked": {
+				identifier: {
+					"reason": reason why this should not be used,
+					"signed": signature of the decryption key,
+				}
+			}
 		},
 	],
 	"padding": random number to get hash to fit the right pattern,
