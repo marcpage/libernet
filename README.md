@@ -322,8 +322,6 @@ Differences can also occur from divergent signed dictionaries.
 Signed dictionaries can be merged adding all signers of each version bundle.
 Any address histories that do not add any new head [bundles](#bundle-description) or signers may be [deleted](#deleting-data).
 
-When choosing which head to use, your [trust](#trust) network is used to determine most trusted head.
-
 ```
 {
 	"heads": [
@@ -338,6 +336,23 @@ When choosing which head to use, your [trust](#trust) network is used to determi
 }
 ```
 
+### Choosing which bundle to display
+
+If the path is a reverse DNS name (ie com/apple) or is a DNS name (ie apple.com) then [check the web server](#domain-trust) for a public key identifier.
+This key is to be preferred.
+This key is also to always have the latest version in *heads*.
+
+The next priority is the first signing identity of the very first bundle.
+The first signing of the first bundle shall be kept in the *heads* list with only one signer and never deleted.
+When there is a dispute as to the first owner, consensus among submitted Address Histories is used to determine the first.
+If consensus is not easy to confirm, conflicting "first submitters" can be kept in the *heads*.
+
+If the [domain owner](#domain-trust) or the first owner is distrusted, or is not trusted and [whitelist mode](#trust) is being used, then the most [trusted](#trust) bundle is used.
+
+The priority is then as such:
+1. [Domain Identity](#domain-trust) has been found, and is not distrusted, or if in whitelist mode, is trusted.
+1. First Identity to submit a bundle for this location, and is not distrusted, or if in whitelist mode, is trusted.
+1. The most trusted signing Identity.
 
 ### Resolving web addresses
 
