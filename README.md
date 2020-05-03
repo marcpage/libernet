@@ -77,6 +77,7 @@ Sending bulk messages is no longer free.
 * *Signing* - RSA private encryption of SHA256 hashing of the data, stored as hex.
 * *Compression* - zlib compression, level 9
 * *Dates* - All dates and times are in GMT, even YYYY/MM/DD
+* *timestamp* all time stamps are seconds from midnight, January 1, 2001 GMT
 
 
 # Concepts
