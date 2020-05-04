@@ -4,6 +4,7 @@
 #include "libernet/Data.h"
 #include "os/AsymmetricEncrypt.h"
 #include "os/Path.h"
+#include "os/Text.h"
 #include "protocol/JSON.h"
 
 namespace data {
@@ -36,10 +37,6 @@ public:
   }
   void write(const io::Path &file);
 
-protected:
-  static std::string toHex(const std::string &binary);
-  static std::string fromHex(const std::string &hex);
-
 private:
   data::Data _data;
   crypto::RSAAES256PublicKey _key;
@@ -52,7 +49,7 @@ private:
 inline data::Data Identity::_read(const io::Path &file) {
   json::Value info(file.contents());
 
-  return data::Data(fromHex(info["data"].string()),
+  return data::Data(text::fromHex(info["data"].string()),
                     info["identifier"].string());
 }
 
@@ -61,42 +58,9 @@ inline void Identity::write(const io::Path &file) {
   std::string contents;
 
   info["identifier"] = _data.identifier();
-  info["data"] = toHex(_data.data());
+  info["data"] = text::toHex(_data.data());
   info.format(contents);
   file.write(contents);
-}
-
-inline std::string Identity::toHex(const std::string &binary) {
-  const char *const hexDigits = "0123456789abcdef";
-  std::string value;
-
-  for (int i = 0; (i < static_cast<int>(binary.size())); ++i) {
-    const int lowerIndex = (binary[i] >> 4) & 0x0F;
-    const int upperIndex = binary[i] & 0x0F;
-
-    value.append(1, hexDigits[lowerIndex]);
-    value.append(1, hexDigits[upperIndex]);
-  }
-  return value;
-}
-
-inline std::string Identity::fromHex(const std::string &hex) {
-  std::string hexDigits("0123456789abcdef");
-  std::string value;
-
-  AssertMessageException(hex.size() % 2 == 0);
-  for (int byte = 0; byte < static_cast<int>(hex.size() / 2); ++byte) {
-    const int nibble1 = byte * 2 + 1;
-    std::string::size_type found1 = hexDigits.find(hex[nibble1]);
-
-    const int nibble2 = nibble1 - 1;
-    std::string::size_type found2 = hexDigits.find(hex[nibble2]);
-
-    AssertMessageException(found1 != std::string::npos);
-    AssertMessageException(found2 != std::string::npos);
-    value.append(1, (found2 << 4) | found1);
-  }
-  return value;
 }
 
 } // namespace data

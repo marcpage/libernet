@@ -3,6 +3,7 @@
 
 #include "libernet/Identity.h"
 #include "os/AsymmetricEncrypt.h"
+#include "os/Text.h"
 #include "protocol/JSON.h"
 #include <stdlib.h>
 
@@ -81,7 +82,7 @@ inline data::Data OwnerIdentity::_encrypt(const std::string &username,
   std::string match(hash::sha256("private:" + username).hex());
 
   info["identifier"] = identity.identifier();
-  info["public"] = Identity::toHex(identity.data());
+  info["public"] = text::toHex(identity.data());
   info["owner"] = _key.serialize(buffer);
 
   int best = 0;
@@ -90,7 +91,7 @@ inline data::Data OwnerIdentity::_encrypt(const std::string &username,
     if (username.size() > 0) {
       info["padding"] = int64_t(rand());
     }
-    info.format(contents); // crash
+    info.format(contents);
     key.crypto::SymmetricKey::encryptInPlace(contents, "", buffer);
     output = data::Data(buffer, data::Data::Unencrypted);
     if (_matching(match, output.identifier()) > best) {
@@ -114,9 +115,8 @@ inline void OwnerIdentity::_decrypt(data::Data &data,
   key.crypto::SymmetricKey::decryptInPlace(
       data.contents(data::Data::Decompress), "", contents);
   info.parse(contents);
-  Identity::operator=(
-      Identity(data::Data(Identity::fromHex(info["public"].string()),
-                          info["identifier"].string())));
+  Identity::operator=(Identity(data::Data(
+      text::fromHex(info["public"].string()), info["identifier"].string())));
   _key = crypto::RSAAES256PrivateKey(info["owner"].string());
 }
 
