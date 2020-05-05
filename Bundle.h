@@ -166,6 +166,8 @@ inline Bundle::List &Bundle::objects(Bundle::List &dataList) {
   auto keys = contents.keys();
 
   for (auto name : keys) {
+    // Consider using std::transform algorithm instead of a raw loop
+    // cppcheck-suppress useStlAlgorithm
     dataList.push_back(contents[name]["sha256"].string());
   }
 
@@ -273,6 +275,8 @@ inline bool Bundle::operator==(const io::Path &other) {
   }
 
   for (auto entry : _largeFileCache) {
+    // Consider using std::any_of algorithm instead of a raw loop.
+    // cppcheck-suppress useStlAlgorithm
     if (entry.second != other + entry.first) {
       return false; // not tested
     }
@@ -310,9 +314,9 @@ inline Bundle::List &Bundle::files(Bundle::List &fileList) {
   const json::Value &contents = parsed["contents"];
   auto keys = contents.keys();
 
-  for (auto key : keys) {
-    fileList.push_back(key);
-  }
+  // for (auto key : keys) {fileList.push_back(key);}
+  std::copy(fileList.begin(), fileList.end(), keys.begin());
+
   return fileList;
 }
 /// @todo Test
