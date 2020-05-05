@@ -30,7 +30,7 @@ public:
   bool valid(const std::string &text, const std::string &signature) {
     return _key.verify(text, signature);
   }
-  std::string &encrypt(const std::string &text) {
+  std::string encrypt(const std::string &text) {
     std::string buffer;
 
     return _key.encrypt(text, buffer);
