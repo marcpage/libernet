@@ -118,27 +118,26 @@ inline Bundle &Bundle::assign(const io::Path &p, Queue &q,
                               const List &previous) {
   io::Path::StringList files;
   json::Value bundle(json::ObjectType);
-  json::Value entry;
 
   json::Value &previousList = bundle["previous"] = json::Value(json::ArrayType);
-  for (auto i = previous.begin(); i != previous.end(); ++i) {
-    entry = *i;                 // not tested
-    previousList.append(entry); // not tested
+
+  for (auto i : previous) {
+    previousList.append(json::Value() = i); // not tested
   }
 
   json::Value &contents = bundle["contents"] = json::Value(json::ObjectType);
   _listRelative(p, files);
-  for (auto i = files.begin(); i != files.end(); ++i) {
-    io::Path absolute = p + *i;
-    json::Value &fileEntry = contents[std::string(*i)] =
+  for (auto i : files) {
+    io::Path absolute = p + i;
+    json::Value &fileEntry = contents[std::string(i)] =
         json::Value(json::ObjectType);
-    std::string mimeType = mime::fromExtension(io::Path(*i).extension());
+    std::string mimeType = mime::fromExtension(io::Path(i).extension());
     Data fileData;
 
     if (absolute.size() <= data_Data_MAX_CONTENTS_SIZE) {
       fileData = SmallFile(absolute);
     } else {
-      fileData = _largeFileCache[*i] = LargeFile(absolute, q);
+      fileData = _largeFileCache[i] = LargeFile(absolute, q);
     }
 
     fileEntry["sha256"] = fileData.identifier();
@@ -166,13 +165,12 @@ inline Bundle::List &Bundle::objects(Bundle::List &dataList) {
   auto &contents = parsed["contents"];
   auto keys = contents.keys();
 
-  for (auto name = keys.begin(); name != keys.end(); ++name) {
-    dataList.push_back(contents[*name]["sha256"].string());
+  for (auto name : keys) {
+    dataList.push_back(contents[name]["sha256"].string());
   }
 
-  for (auto entry = _largeFileCache.begin(); entry != _largeFileCache.end();
-       ++entry) {
-    entry->second.objects(dataList);
+  for (auto entry : _largeFileCache) {
+    entry.second.objects(dataList);
   }
   return dataList;
 }
@@ -183,14 +181,14 @@ inline bool Bundle::update(Data &chunk) {
   auto keys = contents.keys();
   auto changed = false;
 
-  for (auto name = keys.begin(); name != keys.end(); ++name) {
-    std::string identifier = contents[*name]["sha256"].string();
+  for (auto name : keys) {
+    std::string identifier = contents[name]["sha256"].string();
 
     if (identifier == chunk.identifier()) {
       try {
         LargeFile file(chunk.data(), chunk.identifier(), chunk.key());
 
-        _largeFileCache[*name] = file;
+        _largeFileCache[name] = file;
         changed = true;
       } catch (const msg::Exception &exception) {
       }
@@ -209,17 +207,17 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
     path.mkdirs(); // not tested
   }
 
-  for (auto name = keys.begin(); name != keys.end(); ++name) {
-    std::string identifier = contents[*name]["sha256"].string();
+  for (auto name : keys) {
+    std::string identifier = contents[name]["sha256"].string();
 
     if (identifier == chunk.identifier()) {
       try {
         LargeFile file(chunk.data(), chunk.identifier(), chunk.key());
 
-        _largeFileCache[*name] = file;
+        _largeFileCache[name] = file;
         changed = true;
       } catch (const msg::Exception &exception) {
-        io::Path filePath = path + *name;
+        io::Path filePath = path + name;
         io::Path directory = filePath.parent();
 
         SmallFile file(chunk.data(), chunk.identifier(), chunk.key());
@@ -234,9 +232,8 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
     }
   }
 
-  for (auto entry = _largeFileCache.begin(); entry != _largeFileCache.end();
-       ++entry) {
-    changed = entry->second.write(path + entry->first, chunk) | changed;
+  for (auto entry : _largeFileCache) {
+    changed = entry.second.write(path + entry.first, chunk) | changed;
   }
 
   return changed;
@@ -260,33 +257,32 @@ inline bool Bundle::operator==(const io::Path &other) {
     return false; // not tested
   }
 
-  for (auto name = existingFiles.begin(); name != existingFiles.end(); ++name) {
-    if (!contents.has(*name)) {
+  for (auto name : existingFiles) {
+    if (!contents.has(name)) {
       return false; // not tested
     }
   }
 
   json::Value::StringList keys = contents.keys();
 
-  for (auto name = keys.begin(); name != keys.end(); ++name) {
-    if (std::find(existingFiles.begin(), existingFiles.end(), *name) ==
+  for (auto name : keys) {
+    if (std::find(existingFiles.begin(), existingFiles.end(), name) ==
         existingFiles.end()) {
       return false; // not tested
     }
   }
 
-  for (auto entry = _largeFileCache.begin(); entry != _largeFileCache.end();
-       ++entry) {
-    if (entry->second != other + entry->first) {
+  for (auto entry : _largeFileCache) {
+    if (entry.second != other + entry.first) {
       return false; // not tested
     }
   }
 
-  for (auto name = keys.begin(); name != keys.end(); ++name) {
-    if (_largeFileCache.find(*name) == _largeFileCache.end()) {
+  for (auto name : keys) {
+    if (_largeFileCache.find(name) == _largeFileCache.end()) {
       try {
-        if (SmallFile(other + *name).key() !=
-            contents[*name]["aes256"].string()) {
+        if (SmallFile(other + name).key() !=
+            contents[name]["aes256"].string()) {
           return false; // not tested
         }
       } catch (const msg::Exception &) {
@@ -314,8 +310,8 @@ inline Bundle::List &Bundle::files(Bundle::List &fileList) {
   const json::Value &contents = parsed["contents"];
   auto keys = contents.keys();
 
-  for (auto key = keys.begin(); key != keys.end(); ++key) {
-    fileList.push_back(*key);
+  for (auto key : keys) {
+    fileList.push_back(key);
   }
   return fileList;
 }
@@ -440,9 +436,8 @@ inline void Bundle::_validate() {
 
   JSONData::_validatePositiveInteger(parsed, "timestamp");
   JSONData::_validateKey(parsed, "comments", json::StringType, true);
-  for (json::Value::StringList::iterator name = keys.begin();
-       name != keys.end(); ++name) {
-    json::Value &entry = contents[*name];
+  for (auto name : keys) {
+    json::Value &entry = contents[name];
 
     JSONData::_validateHash(entry, "sha256");
     JSONData::_validateHash(entry, "aes256");
@@ -478,9 +473,8 @@ inline io::Path::StringList &Bundle::_listRelative(const io::Path &path,
     directories.erase(directories.begin());
     names.clear();
     directory.list(io::Path::NameOnly, names, io::Path::FlatListing);
-    for (io::Path::StringList::iterator name = names.begin();
-         name != names.end(); ++name) {
-      io::Path relative = relativeBase + *name;
+    for (auto name : names) {
+      io::Path relative = relativeBase + name;
       io::Path absolute = path + relative;
 
       if (absolute.isDirectory()) {

@@ -51,12 +51,20 @@ bin/logs/clang-format.txt:tests/*.cpp *.h
 
 ../os/*.h:../os/tests/test.cpp
 
+# -fsanitize=memory
+# -fsanitize=thread
+# -flto -fsanitize=cfi
+# -fsanitize=leak
+# -fsanitize=safe-stack
+# -D_LIBCPP_DEBUG=1
 bin/test:../os/tests/test.cpp ../os/*.h *.h
 	@mkdir -p bin
-	@clang++ ../os/tests/test.cpp -o $@ -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
+	@clang++ ../os/tests/test.cpp -o $@ -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings -fsanitize=address -fsanitize-address-use-after-scope -fno-optimize-sibling-calls -O1 -fsanitize=undefined
 
 bin/%:%.cpp
-	@clang++ $< -o -o $@ -std-c++11 -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings
+	@clang++ $< -o -o $@ -std-c++11 -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings -fsanitize=address -fsanitize-address-use-after-scope -fno-optimize-sibling-calls -O1 -fsanitize=undefined
 
 clean:
 	@rm -Rf documentation bin/coverage bin/test bin/tests bin/logs/*.log bin/logs/*.txt
+
+# bin/coverage/DateTime_clang++_trace/DateTime.h.gcov| sed -E 's/^([^:]+:)([^:]+:)/\2\1/' | sort | uniq
