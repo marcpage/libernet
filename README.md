@@ -74,7 +74,7 @@ Sending bulk messages is no longer free.
 * *Encrypt* - Typically refers to AES256 encryption using the contents Hash (SHA256) as the key.
 * *Public/Private Key* - An RSA public/private key pair
 * *Public-key encrypted* - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
-* *Signing* - RSA private encryption of SHA256 hashing of the data, stored as hex.
+* *Signing* - RSA private encryption of SHA256 hashing of the data, stored as base64.
 * *Compression* - zlib compression, level 9
 * *Dates* - All dates and times are in GMT, even YYYY/MM/DD
 * *timestamp* all time stamps are seconds from midnight, January 1, 2001 GMT

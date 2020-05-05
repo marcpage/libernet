@@ -49,7 +49,7 @@ private:
 inline data::Data Identity::_read(const io::Path &file) {
   json::Value info(file.contents());
 
-  return data::Data(text::fromHex(info["data"].string()),
+  return data::Data(text::base64Decode(info["data"].string()),
                     info["identifier"].string());
 }
 
@@ -58,7 +58,7 @@ inline void Identity::write(const io::Path &file) {
   std::string contents;
 
   info["identifier"] = _data.identifier();
-  info["data"] = text::toHex(_data.data());
+  info["data"] = text::base64Encode(_data.data());
   info.format(contents);
   file.write(contents);
 }

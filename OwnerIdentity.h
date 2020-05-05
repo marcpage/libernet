@@ -82,7 +82,7 @@ inline data::Data OwnerIdentity::_encrypt(const std::string &username,
   std::string match(hash::sha256("private:" + username).hex());
 
   info["identifier"] = identity.identifier();
-  info["public"] = text::toHex(identity.data());
+  info["public"] = text::base64Encode(identity.data());
   info["owner"] = _key.serialize(buffer);
 
   int best = 0;
@@ -115,8 +115,9 @@ inline void OwnerIdentity::_decrypt(data::Data &data,
   key.crypto::SymmetricKey::decryptInPlace(
       data.contents(data::Data::Decompress), "", contents);
   info.parse(contents);
-  Identity::operator=(Identity(data::Data(
-      text::fromHex(info["public"].string()), info["identifier"].string())));
+  Identity::operator=(
+      Identity(data::Data(text::base64Decode(info["public"].string()),
+                          info["identifier"].string())));
   _key = crypto::RSAAES256PrivateKey(info["owner"].string());
 }
 
