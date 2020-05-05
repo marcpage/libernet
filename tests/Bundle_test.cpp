@@ -1,4 +1,5 @@
 #include "libernet/Bundle.h"
+#include <thread>
 
 #define dotest(condition)                                                      \
   if (!(condition)) {                                                          \
@@ -66,6 +67,10 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(source.fileSize("Sub/one_megabyte.jpg") < 2 * 1024 * 1024);
       dotest(source.fileSize("Sub/two_megabyte.jpg") > 2 * 1024 * 1024);
       dotest(source.fileSize("Sub/two_megabyte.jpg") < 3 * 1024 * 1024);
+
+      // Sleep for 1 second to ensure the source timestamp is different
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+      errno = 0; // sleep_for sets errno for some reason
 
       copy.resetComment();
       dotest(copy != source);
