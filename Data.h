@@ -10,6 +10,12 @@
 
 namespace data {
 
+/// Data size is larger than contents size due to encryption
+#define data_Data_MAX_DATA_SIZE (1024 * 1024)
+
+/// 1 MiB minus the maximum padding size for encryption
+#define data_Data_MAX_CONTENTS_SIZE (1024 * 1024 - 32)
+
 class Exception : public msg::Exception {
 public:
   // cppcheck-suppress noExplicitConstructor
@@ -47,6 +53,7 @@ public:
   virtual ~DataTooBig() {}
 };
 
+// TODO: Validate identifiers and keys are hashes
 class Data {
 public:
   enum Encryption { Encrypted, Unencrypted };
@@ -62,7 +69,7 @@ public:
   Data &assign(const std::string &data, const std::string &identifier,
                const std::string &key);
   Data &assign(const std::string &data, const std::string &identifier);
-  std::string contents(Compression compression = NoCompression) {
+  std::string contents(Compression compression = Decompress) {
     std::string buffer;
     return contents(buffer, compression);
   }
@@ -81,7 +88,7 @@ public:
   virtual std::string &contents(std::string &buffer,
                                 Compression compression = NoCompression);
   std::string &data(std::string &buffer) const;
-  std::string &key(std::string &buffer);
+  std::string &key(std::string &buffer) { return buffer = _key; }
   std::string &identifier(std::string &buffer) const;
   Data &operator=(const Data &other);
   bool operator==(const Data &other) const;
@@ -193,7 +200,7 @@ inline std::string &Data::contents(std::string &buffer,
         return buffer = _data;
       }
       try {
-        return z::uncompress(_data, buffer, 1024 * 1024);
+        return z::uncompress(_data, buffer, data_Data_MAX_DATA_SIZE);
       } catch (const z::Exception &) {
         return buffer = _data;
       }
@@ -209,8 +216,6 @@ inline std::string &Data::data(std::string &buffer) const {
   }
   return buffer = _data;
 }
-
-inline std::string &Data::key(std::string &buffer) { return buffer = _key; }
 
 inline std::string &Data::identifier(std::string &buffer) const {
   if (_identifier.size() == 0) {
@@ -230,6 +235,12 @@ inline Data &Data::operator=(const Data &other) {
 }
 
 inline bool Data::operator==(const Data &other) const {
+  const bool imEmpty = (_contents.size() == 0) && (_data.size() == 0);
+  const bool otherEmpty =
+      (other._contents.size() == 0) && (other._data.size() == 0);
+  if (imEmpty || otherEmpty) {
+    return imEmpty && otherEmpty;
+  }
   if (encrypted() && other.encrypted()) {
     return _hexEquals(_key, other._key);
   }
@@ -255,15 +266,18 @@ inline Data &Data::flush() {
   if (_data.size() > 0) {
     _contents.clear();
     _contents.reserve();
+    _data.reserve();
+    _key.reserve();
+    _identifier.reserve();
   }
   return *this;
 }
 
 inline Data &Data::reset() {
   if (_contents.size() > 0) {
+    _contents.reserve();
     _data.clear();
     _data.reserve();
-    _key.clear();
     _key.reserve();
     _identifier.clear();
     _identifier.reserve();
@@ -272,16 +286,16 @@ inline Data &Data::reset() {
 }
 
 inline void Data::_validateSize() {
-  if (_contents.size() > 1024 * 1024) {
+  if (_contents.size() > data_Data_MAX_CONTENTS_SIZE) {
     throw DataTooBig("Content size (" + std::to_string(_contents.size()) +
                          ") is larger than the maximum (" +
-                         std::to_string(1024 * 1024) + ").",
+                         std::to_string(data_Data_MAX_CONTENTS_SIZE) + ").",
                      __FILE__, __LINE__);
   }
-  if (_data.size() > 1024 * 1024) {
-    throw DataTooBig("Content size (" + std::to_string(_contents.size()) +
+  if (_data.size() > data_Data_MAX_DATA_SIZE) {
+    throw DataTooBig("Content size (" + std::to_string(_data.size()) +
                          ") is larger than the maximum (" +
-                         std::to_string(1024 * 1024) + ").",
+                         std::to_string(data_Data_MAX_DATA_SIZE) + ").",
                      __FILE__, __LINE__);
   }
 }
@@ -313,7 +327,7 @@ inline void Data::_calculateContents() {
       std::string buffer;
 
       try {
-        z::uncompress(_contents, buffer, 1024 * 1024);
+        z::uncompress(_contents, buffer, data_Data_MAX_DATA_SIZE);
       } catch (const z::Exception &exception) {
         throw CorruptData(
             "Key (" + _key + ") does not match decrypted hash (" +

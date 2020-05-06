@@ -35,6 +35,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       d4 = data::Data(d2.data(), d2.identifier(), d2.key());
       d5 = data::Data(d2.data(), d2.identifier());
 
+      dotest(data::Data(d1) == d1);
+      dotest(data::Data(d2) == d2);
+      dotest(data::Data(d3) == d3);
+      dotest(data::Data(d4) == d4);
+      dotest(data::Data(d5) == d5);
+
       dotest(data::Data(unencryptedCompressed, data::Data::Unencrypted) ==
              data::Data(d1.data(), d1.identifier()));
 
@@ -63,6 +69,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       d8 = data::Data(d6.data(), d6.identifier());
       d9 = data::Data(d7.data(), d7.identifier(), d7.key());
       d10 = data::Data(d7.data(), d7.identifier());
+
+      dotest(data::Data(d6) == d6);
+      dotest(data::Data(d7) == d7);
+      dotest(data::Data(d8) == d8);
+      dotest(data::Data(d9) == d9);
+      dotest(data::Data(d10) == d10);
 
       dotest(d8.contents(data::Data::Decompress) == unencryptedUncompressed);
 
@@ -105,6 +117,42 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       d3.assign(d1.data(), d1.identifier());
       d4.assign(d2.data(), d2.identifier(), d2.key());
       d5.assign(d2.data(), d2.identifier());
+
+      dotest(!d1.encrypted());
+      dotest(d2.encrypted());
+      dotest(!d3.encrypted());
+      dotest(d4.encrypted());
+      dotest(!d5.encrypted());
+
+      dotest(d1 == d3);
+      dotest(d2 == d4);
+      dotest(d2 == d5);
+
+      dotest(d4.contents() == encryptedCompressed);
+
+      d1.flush();
+      d2.flush();
+      d3.flush();
+      d4.flush();
+      d5.flush();
+
+      dotest(!d1.encrypted());
+      dotest(d2.encrypted());
+      dotest(!d3.encrypted());
+      dotest(d4.encrypted());
+      dotest(!d5.encrypted());
+
+      dotest(d1 == d3);
+      dotest(d2 == d4);
+      dotest(d2 == d5);
+
+      dotest(d4.contents() == encryptedCompressed);
+
+      d1.reset();
+      d2.reset();
+      d3.reset();
+      d4.reset();
+      d5.reset();
 
       dotest(!d1.encrypted());
       dotest(d2.encrypted());
