@@ -163,7 +163,7 @@ AddressHistory::bundles(AddressHistory::List &list) {
   const int count = heads.count();
 
   for (int i = 0; i < count; ++i) {
-    list.push_back(history[i]["sha256"].string());
+    list.push_back(heads[i]["sha256"].string());
   }
   return list;
 }
@@ -347,7 +347,7 @@ inline void AddressHistory::_changeContent(json::Value &value, int matchCount) {
   do {
     value["padding"] = int64_t(rand());
     JSONData::assign(value, Data::Encrypted);
-  } while (text::matching(Data::identifier(), match) <= matchCount);
+  } while (text::matching(Data::identifier(), match) < matchCount);
   _validate();
 }
 
