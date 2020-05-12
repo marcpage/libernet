@@ -24,7 +24,7 @@ public:
   AddressHistory(const std::string &data, const std::string &identifier,
                  const std::string &key, const std::string &address);
   AddressHistory(const AddressHistory &other)
-      : JSONData(other), _address(other._addresss) {}
+      : JSONData(other), _address(other._address) {}
   virtual ~AddressHistory() {}
   AddressHistory &operator=(const AddressHistory &other);
   AddressHistory &assign(const std::string &data, const std::string &identifier,
@@ -35,23 +35,23 @@ public:
   int match();
   List &bundles(List &list);
   int bundleCount() { return JSONData::value()["heads"].count(); }
-  void append(const data::Data &data,
+  void append(data::Data &data,
               const dt::DateTime &timestamp = dt::DateTime()) {
     append(data.identifier(), data.key(), timestamp);
   }
   void append(const std::string &identifier, const std::string &key,
               const dt::DateTime &timestamp = dt::DateTime());
-  void insert(int before, const data::Data &data,
+  void insert(int before, data::Data &data,
               const dt::DateTime &timestamp = dt::DateTime()) {
     insert(before, data.identifier(), data.key(), timestamp);
   }
   void insert(int before, const std::string &identifier, const std::string &key,
               const dt::DateTime &timestamp = dt::DateTime());
-  void insert(const std::string &beforeIdentifier, const data::Data &data,
+  void insert(const std::string &beforeIdentifier, data::Data &data,
               const dt::DateTime &timestamp = dt::DateTime()) {
     insert(_index(beforeIdentifier), data.identifier(), data.key(), timestamp);
   }
-  void insert(const std::string &beforeIdentifiers,
+  void insert(const std::string &beforeIdentifier,
               const std::string &identifier, const std::string &key,
               const dt::DateTime &timestamp = dt::DateTime()) {
     insert(_index(beforeIdentifier), identifier, key, timestamp);
@@ -61,7 +61,7 @@ public:
   void sign(int index, const std::string &signer, const std::string &signature);
   void sign(const std::string &bundleIdentifier, const std::string &signer,
             const std::string &signature) {
-    sign(_index(bundleIdentifier), blocker, signature);
+    sign(_index(bundleIdentifier), signer, signature);
   }
   void block(int index, const std::string &blocker,
              const std::string &signature, const std::string &reason);
@@ -121,10 +121,9 @@ inline AddressHistory::AddressHistory(const std::string &data,
                                       const std::string &identifier,
                                       const std::string &key,
                                       const std::string &address)
-    : JSONData(data, identifier, key)
     : JSONData(data, identifier, key), _address(address) {}
 
-inline AddressHistory &voperator = (const AddressHistory &other) {
+inline AddressHistory &AddressHistory::operator=(const AddressHistory &other) {
   JSONData::operator=(other);
   _address = other._address;
   return *this;
@@ -169,35 +168,34 @@ AddressHistory::bundles(AddressHistory::List &list) {
   return list;
 }
 
-inline void
-AddressHistory::append(const std::string &identifier, const std::string &key,
-                       const dt::DateTime &timestamp = dt::DateTime()) {
+inline void AddressHistory::append(const std::string &identifier,
+                                   const std::string &key,
+                                   const dt::DateTime &timestamp) {
   json::Value history = JSONData::value();
   json::Value &heads = history["heads"];
   json::Value entry(json::ObjectType);
   entry["sha256"] = identifier;
   entry["aes256"] = key;
-  entry['timestamp'] = int64_t(
+  entry["timestamp"] = int64_t(
       timestamp - dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT));
-  entry["signed"] = json::Object(json::ObjectType);
-  entry["blocked"] = json::Object(json::ObjectType);
+  entry["signed"] = json::Value(json::ObjectType);
+  entry["blocked"] = json::Value(json::ObjectType);
   heads.append(entry);
   _changeContent(history);
 }
 
-inline void
-AddressHistory::insert(int before, const std::string &identifier,
-                       const std::string &key,
-                       const dt::DateTime &timestamp = dt::DateTime()) {
+inline void AddressHistory::insert(int before, const std::string &identifier,
+                                   const std::string &key,
+                                   const dt::DateTime &timestamp) {
   json::Value history = JSONData::value();
   json::Value &heads = history["heads"];
   json::Value entry(json::ObjectType);
   entry["sha256"] = identifier;
   entry["aes256"] = key;
-  entry['timestamp'] = int64_t(
+  entry["timestamp"] = int64_t(
       timestamp - dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT));
-  entry["signed"] = json::Object(json::ObjectType);
-  entry["blocked"] = json::Object(json::ObjectType);
+  entry["signed"] = json::Value(json::ObjectType);
+  entry["blocked"] = json::Value(json::ObjectType);
   heads.insert(entry, before);
   _changeContent(history);
 }
@@ -258,7 +256,7 @@ AddressHistory::signers(int index, AddressHistory::List &identities) {
 
 inline std::string AddressHistory::signature(int bundleIndex,
                                              const std::string &signer) {
-  return JSONData::value()["heads"][index]["signed"][signer].string();
+  return JSONData::value()["heads"][bundleIndex]["signed"][signer].string();
 }
 
 inline int AddressHistory::blockCount(int index) {
@@ -277,21 +275,21 @@ AddressHistory::blockers(int index, AddressHistory::List &identities) {
 
 inline std::string AddressHistory::blockSignature(int bundleIndex,
                                                   const std::string &blocker) {
-  return JSONData::value()["heads"][index]["signed"][blocker]["signed"]
+  return JSONData::value()["heads"][bundleIndex]["signed"][blocker]["signed"]
       .string();
 }
 
 inline std::string AddressHistory::blockReason(int bundleIndex,
                                                const std::string &blocker) {
-  return JSONData::value()["heads"][index]["signed"][blocker]["reason"]
+  return JSONData::value()["heads"][bundleIndex]["signed"][blocker]["reason"]
       .string();
 }
 
 inline int AddressHistory::_index(const std::string &identifier) {
   auto identifiers = JSONData::value()["heads"].keys();
-  const auto count = identifiers.size();
+  const auto count = int(identifiers.size());
 
-  for (decltype(count) i = 0; i < count; ++i) {
+  for (auto i = 0; i < count; ++i) {
     if (identifier == identifiers[i]) {
       return int(i);
     }
@@ -306,9 +304,9 @@ inline void AddressHistory::_validate() {
 
   json::Value &heads =
       JSONData::_validateKey(history, "heads", json::ArrayType);
-  const auto count = heads.count();
+  const auto count = int(heads.count());
 
-  for (decltype(count) i = 0; i < count; ++i) {
+  for (auto i = 0; i < count; ++i) {
     json::Value &entry = heads[i];
 
     AssertMessageException(entry.is(json::ObjectType));
@@ -324,19 +322,21 @@ inline void AddressHistory::_validate() {
     auto blockers = blocking.keys();
 
     for (auto identity : signers) {
-      hash::sha256().reset(identity.string().c_str());
+      hash::sha256().reset(identity.c_str());
       text::base64Decode(
-          JSONData::_validateKey(signers, identity, json::StringType).string());
+          JSONData::_validateKey(signatures, identity, json::StringType)
+              .string());
     }
 
     for (auto identity : blockers) {
-      hash::sha256().reset(identity.string().c_str());
-      json::Value &entry =
-          JSONData::_validateKey(blockers, identity, json::ObjectType);
+      hash::sha256().reset(identity.c_str());
+      json::Value &blockingEntry =
+          JSONData::_validateKey(blocking, identity, json::ObjectType);
 
-      JSONData::_validateKey(entry, "reason", json::StringType);
+      JSONData::_validateKey(blockingEntry, "reason", json::StringType);
       text::base64Decode(
-          JSONData::_validateKey(entry, "signed", json::StringType).string());
+          JSONData::_validateKey(blockingEntry, "signed", json::StringType)
+              .string());
     }
   }
 }
@@ -346,8 +346,8 @@ inline void AddressHistory::_changeContent(json::Value &value, int matchCount) {
 
   do {
     value["padding"] = int64_t(rand());
-    JSONData::assign(json, Data::Encrypted);
-  } while (text::matching(Data::identifier(), match) >= matchCount);
+    JSONData::assign(value, Data::Encrypted);
+  } while (text::matching(Data::identifier(), match) <= matchCount);
   _validate();
 }
 

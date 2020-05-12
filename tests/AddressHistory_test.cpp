@@ -2,11 +2,6 @@
 
 #define dotest(condition)                                                      \
   if (!(condition)) {                                                          \
-    fprintf(stderr, "FAIL(%s:%d): %s\n", __FILE__, __LINE__, #condition);      \
-  }
-
-#define dotest(condition)                                                      \
-  if (!(condition)) {                                                          \
     fprintf(stderr, "FAIL(%s:%d)'%s'->'%s': %s\n", __FILE__, __LINE__,         \
             addresses[j], addresses[j + 1], #condition);                       \
   }
@@ -117,23 +112,23 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(h2.key(d4.identifier()) == d4.key());
         dotest(h2.key(d5.identifier()) == d5.key());
 
-        dotest(h2.key(d1.timestamp()) == start);
-        dotest(h2.key(d2.timestamp()) == start + 1.0);
-        dotest(h2.key(d3.timestamp()) == start + 2.0);
-        dotest(h2.key(d4.timestamp()) == start + 3.0);
-        dotest(h2.key(d5.timestamp()) == start + 4.0);
+        dotest(h2.timestamp(d1.identifier()) == start);
+        dotest(h2.timestamp(d2.identifier()) == start + 1.0);
+        dotest(h2.timestamp(d3.identifier()) == start + 2.0);
+        dotest(h2.timestamp(d4.identifier()) == start + 3.0);
+        dotest(h2.timestamp(d5.identifier()) == start + 4.0);
 
-        dotest(h2.signatureCount(d1) == 0);
-        dotest(h2.signatureCount(d2) == 0);
-        dotest(h2.signatureCount(d3) == 0);
-        dotest(h2.signatureCount(d4) == 0);
-        dotest(h2.signatureCount(d5) == 0);
+        dotest(h2.signatureCount(d1.identifier()) == 0);
+        dotest(h2.signatureCount(d2.identifier()) == 0);
+        dotest(h2.signatureCount(d3.identifier()) == 0);
+        dotest(h2.signatureCount(d4.identifier()) == 0);
+        dotest(h2.signatureCount(d5.identifier()) == 0);
 
-        dotest(h2.blockCount(d1) == 0);
-        dotest(h2.blockCount(d2) == 0);
-        dotest(h2.blockCount(d3) == 0);
-        dotest(h2.blockCount(d4) == 0);
-        dotest(h2.blockCount(d5) == 0);
+        dotest(h2.blockCount(d1.identifier()) == 0);
+        dotest(h2.blockCount(d2.identifier()) == 0);
+        dotest(h2.blockCount(d3.identifier()) == 0);
+        dotest(h2.blockCount(d4.identifier()) == 0);
+        dotest(h2.blockCount(d5.identifier()) == 0);
 
         h1.sign(d1.identifier(), d2.identifier(),
                 text::base64Encode(d3.data()));
@@ -162,11 +157,11 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
                  text::base64Encode(d4.data()), "reason5");
 
         h2 = h1;
-        dotest(h2.signatureCount(d1) == 3);
-        dotest(h2.signatureCount(d2) == 0);
-        dotest(h2.signatureCount(d3) == 1);
-        dotest(h2.signatureCount(d4) == 1);
-        dotest(h2.signatureCount(d5) == 0);
+        dotest(h2.signatureCount(d1.identifier()) == 3);
+        dotest(h2.signatureCount(d2.identifier()) == 0);
+        dotest(h2.signatureCount(d3.identifier()) == 1);
+        dotest(h2.signatureCount(d4.identifier()) == 1);
+        dotest(h2.signatureCount(d5.identifier()) == 0);
 
         dotest(h2.signers(d3.identifier(), l2).size() == 1);
         dotest(l2[0] == d3.identifier());
@@ -184,11 +179,11 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(h2.signature(d4.identifier(), d2.identifier()) ==
                text::base64Encode(d2.data()));
 
-        dotest(h2.blockCount(d1) == 4);
-        dotest(h2.blockCount(d2) == 0);
-        dotest(h2.blockCount(d3) == 1);
-        dotest(h2.blockCount(d4) == 1);
-        dotest(h2.blockCount(d5) == 0);
+        dotest(h2.blockCount(d1.identifier()) == 4);
+        dotest(h2.blockCount(d2.identifier()) == 0);
+        dotest(h2.blockCount(d3.identifier()) == 1);
+        dotest(h2.blockCount(d4.identifier()) == 1);
+        dotest(h2.blockCount(d5.identifier()) == 0);
 
         dotest(h2.blockers(d3.identifier(), l2).size() == 1);
         dotest(l2[0] == d5.identifier());
@@ -220,10 +215,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
                    d4.identifier(), d4.identifier()) == "reason5");
 
         data::Data hd2(h2);
-        data::AddressHistory reconstituted(hd2.data(), hd2.key(), addresses[j]);
+        data::AddressHistory reconstituted(hd2.data(), hd2.identifier(),
+                                           hd2.key(), addresses[j]);
         data::AddressHistory recreated;
 
-        recreated.assign(hd2.data(), hd2.key(), addresses[j + 1]);
+        recreated.assign(hd2.data(), hd2.identifier(), hd2.key(),
+                         addresses[j + 1]);
         dotest(data::AddressHistory(reconstituted).bundleCount() == 5);
         dotest(data::AddressHistory(reconstituted)
                    .blockReason(d4.identifier(), d4.identifier()) == "reason5");
@@ -248,5 +245,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(l2[1] == d2.identifier());
       }
     }
-    return 0;
+  } catch (const std::exception &e) {
+    printf("FAIL: Exception: %s\n", e.what());
   }
+  return 0;
+}
