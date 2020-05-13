@@ -8,15 +8,17 @@
 #include "os/Hash.h"
 #include "os/Text.h"
 #include "protocol/JSON.h"
-#include <algorithm> // std::replace
+#include <algorithm> // std::replace, std::copy
 #include <stdlib.h>  // rand
 #include <string>
 #include <vector>
 
 namespace data {
 
+/// @todo Document
 class AddressHistory : public JSONData {
 public:
+  enum ListAction { ClearFirst, Append };
   typedef std::vector<std::string> List;
   AddressHistory() : JSONData(), _address() {
     _changeContent(json::Value().parse("{\"heads\":[]}"));
@@ -33,7 +35,7 @@ public:
   AddressHistory &setAddress(const std::string &address);
   AddressHistory &calculate(int matchCount);
   int match();
-  List &bundles(List &list);
+  List &bundles(List &list, ListAction action = ClearFirst);
   int bundleCount() { return JSONData::value()["heads"].count(); }
   void append(data::Data &data,
               const dt::DateTime &timestamp = dt::DateTime()) {
@@ -51,6 +53,7 @@ public:
               const dt::DateTime &timestamp = dt::DateTime()) {
     insert(_index(beforeIdentifier), data.identifier(), data.key(), timestamp);
   }
+  // @todo Test
   void insert(const std::string &beforeIdentifier,
               const std::string &identifier, const std::string &key,
               const dt::DateTime &timestamp = dt::DateTime()) {
@@ -81,9 +84,10 @@ public:
   int signatureCount(const std::string &identifier) {
     return signatureCount(_index(identifier));
   }
-  List &signers(int index, List &identities);
-  List &signers(const std::string &bundleIdentifier, List &identities) {
-    return signers(_index(bundleIdentifier), identities);
+  List &signers(int index, List &identities, ListAction action = ClearFirst);
+  List &signers(const std::string &bundleIdentifier, List &identities,
+                ListAction action = ClearFirst) {
+    return signers(_index(bundleIdentifier), identities, action);
   }
   std::string signature(int bundleIndex, const std::string &signer);
   std::string signature(const std::string &bundleIdentifier,
@@ -94,9 +98,10 @@ public:
   int blockCount(const std::string &identifier) {
     return blockCount(_index(identifier));
   }
-  List &blockers(int index, List &identities);
-  List &blockers(const std::string &bundleIdentifier, List &identities) {
-    return blockers(_index(bundleIdentifier), identities);
+  List &blockers(int index, List &identities, ListAction action = ClearFirst);
+  List &blockers(const std::string &bundleIdentifier, List &identities,
+                 ListAction action = ClearFirst) {
+    return blockers(_index(bundleIdentifier), identities, action);
   }
   std::string blockSignature(int bundleIndex, const std::string &blocker);
   std::string blockSignature(const std::string &bundleIdentifier,
@@ -156,12 +161,15 @@ int AddressHistory::match() {
   return text::matching(Data::identifier(), _matchAgainst());
 }
 
-inline AddressHistory::List &
-AddressHistory::bundles(AddressHistory::List &list) {
+inline AddressHistory::List &AddressHistory::bundles(AddressHistory::List &list,
+                                                     ListAction action) {
   json::Value history = JSONData::value();
   json::Value &heads = history["heads"];
   const int count = heads.count();
 
+  if (ClearFirst == action) {
+    list.clear();
+  }
   for (int i = 0; i < count; ++i) {
     list.push_back(heads[i]["sha256"].string());
   }
@@ -232,7 +240,7 @@ inline void AddressHistory::block(int index, const std::string &signer,
 }
 
 inline std::string AddressHistory::key(int index) {
-  return JSONData::value()["heads"][index]["key"].string();
+  return JSONData::value()["heads"][index]["aes256"].string();
 }
 
 inline dt::DateTime AddressHistory::timestamp(int index) {
@@ -245,12 +253,16 @@ inline int AddressHistory::signatureCount(int index) {
 }
 
 inline AddressHistory::List &
-AddressHistory::signers(int index, AddressHistory::List &identities) {
+AddressHistory::signers(int index, AddressHistory::List &identities,
+                        ListAction action) {
   auto signerList = JSONData::value()["heads"][index]["signed"].keys();
 
-  for (auto identity : signerList) {
-    identities.push_back(identity);
+  if (ClearFirst == action) {
+    identities.clear();
   }
+  std::copy(signerList.begin(), signerList.end(),
+            std::back_inserter(identities));
+  // for (auto identity : signerList) {identities.push_back(identity);}
   return identities;
 }
 
@@ -264,37 +276,43 @@ inline int AddressHistory::blockCount(int index) {
 }
 
 inline AddressHistory::List &
-AddressHistory::blockers(int index, AddressHistory::List &identities) {
+AddressHistory::blockers(int index, AddressHistory::List &identities,
+                         ListAction action) {
   auto signerList = JSONData::value()["heads"][index]["blocked"].keys();
 
-  for (auto identity : signerList) {
-    identities.push_back(identity);
+  if (ClearFirst == action) {
+    identities.clear();
   }
+  std::copy(signerList.begin(), signerList.end(),
+            std::back_inserter(identities));
+  // for (auto identity : signerList) {identities.push_back(identity);}
   return identities;
 }
 
 inline std::string AddressHistory::blockSignature(int bundleIndex,
                                                   const std::string &blocker) {
-  return JSONData::value()["heads"][bundleIndex]["signed"][blocker]["signed"]
+  return JSONData::value()["heads"][bundleIndex]["blocked"][blocker]["signed"]
       .string();
 }
 
 inline std::string AddressHistory::blockReason(int bundleIndex,
                                                const std::string &blocker) {
-  return JSONData::value()["heads"][bundleIndex]["signed"][blocker]["reason"]
+  return JSONData::value()["heads"][bundleIndex]["blocked"][blocker]["reason"]
       .string();
 }
 
 inline int AddressHistory::_index(const std::string &identifier) {
-  auto identifiers = JSONData::value()["heads"].keys();
-  const auto count = int(identifiers.size());
+  json::Value history = JSONData::value();
+  json::Value &heads = history["heads"];
+  const auto count = int(heads.count());
 
   for (auto i = 0; i < count; ++i) {
-    if (identifier == identifiers[i]) {
+    if (identifier == heads[i]["sha256"].string()) {
       return int(i);
     }
   }
-  ThrowMessageException("bundle identifier not found " + identifier);
+  ThrowMessageException("bundle identifier not found " +
+                        identifier); // not tested
 }
 
 inline void AddressHistory::_validate() {

@@ -315,7 +315,7 @@ inline Bundle::List &Bundle::files(Bundle::List &fileList) {
   auto keys = contents.keys();
 
   // for (auto key : keys) {fileList.push_back(key);}
-  std::copy(fileList.begin(), fileList.end(), keys.begin());
+  std::copy(fileList.begin(), fileList.end(), std::back_inserter(keys));
 
   return fileList;
 }

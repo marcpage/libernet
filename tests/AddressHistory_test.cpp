@@ -13,13 +13,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 #endif
   try {
     const char *addresses[] = {
-
         " \\ test \\ me \\ now \\ ",
         "TEST / ME / NOW", // case, spaces, backslash
+        " / ",
+        " ", // root path, space, empty path
         " / test/me/now/",
         "Test/Me/Now \t\r\n", // trailing /, various whitespace
-        " / ",
-        "", // root path, space, empty path
     };
     data::AddressHistory::List l1, l2;
 
@@ -28,24 +27,25 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       for (int j = 0; j < int(sizeof(addresses) / sizeof(addresses[0]));
            j += 2) {
         data::AddressHistory h1, h2;
-        data::Data d1(addresses[j], data::Data::Unencrypted);
-        data::Data d2(addresses[j + 1], data::Data::Unencrypted);
+        data::Data d1(addresses[j], data::Data::Encrypted);
+        data::Data d2(addresses[j + 1], data::Data::Encrypted);
         data::Data d3(std::string(addresses[j]) + addresses[j + 1],
-                      data::Data::Unencrypted);
+                      data::Data::Encrypted);
         data::Data d4(std::string(addresses[j + 1]) + addresses[j],
-                      data::Data::Unencrypted);
+                      data::Data::Encrypted);
         data::Data d5(std::string(addresses[j]) + addresses[j],
-                      data::Data::Unencrypted);
+                      data::Data::Encrypted);
         dt::DateTime start;
 
         h1.setAddress(addresses[j]);
         h2.setAddress(addresses[j + 1]);
         dotest(h1.address() != h2.address());
 
-        h1.calculate(4);
-        h2.calculate(4);
+        h1.calculate(1);
+        h2.calculate(1);
 
-        dotest(h1.match() == h2.match());
+        dotest(h1.match() >= 1);
+        dotest(h2.match() >= 1);
         dotest(data::AddressHistory(h1).match() ==
                data::AddressHistory(h1).match());
         dotest(h1.bundleCount() == 0);
@@ -69,6 +69,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         h1.insert(h1.bundleCount(), d4, start + 3.0);
         dotest(h1.bundleCount() == 4);
         dotest(h1.bundles(l1).size() == 4);
+        // printf("h1.bundles.size() == %ld\n", l1.size());
         dotest(l1[0] == d3.identifier());
         dotest(l1[1] == d1.identifier());
         dotest(l1[2] == d2.identifier());
@@ -85,6 +86,13 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         h1.insert(d1.identifier(), d5, start + 4.0);
         dotest(h1.bundleCount() == 5);
         dotest(h1.bundles(l1).size() == 5);
+        // printf("l1[0]'%s' == d3'%s'\n", l1[0].c_str(),
+        // d3.identifier().c_str()); printf("l1[1]'%s' == d5'%s'\n",
+        // l1[1].c_str(), d5.identifier().c_str()); printf("l1[2]'%s' ==
+        // d1'%s'\n", l1[2].c_str(), d1.identifier().c_str()); printf("l1[3]'%s'
+        // == d2'%s'\n", l1[3].c_str(), d2.identifier().c_str());
+        // printf("l1[4]'%s' == d4'%s'\n", l1[4].c_str(),
+        // d4.identifier().c_str());
         dotest(l1[0] == d3.identifier());
         dotest(l1[1] == d5.identifier());
         dotest(l1[2] == d1.identifier());
@@ -112,11 +120,30 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(h2.key(d4.identifier()) == d4.key());
         dotest(h2.key(d5.identifier()) == d5.key());
 
-        dotest(h2.timestamp(d1.identifier()) == start);
-        dotest(h2.timestamp(d2.identifier()) == start + 1.0);
-        dotest(h2.timestamp(d3.identifier()) == start + 2.0);
-        dotest(h2.timestamp(d4.identifier()) == start + 3.0);
-        dotest(h2.timestamp(d5.identifier()) == start + 4.0);
+        /*
+printf("start = %0.3f\n", start.seconds());
+printf("h2[d1] = %0.3f\n", h2.timestamp(d1.identifier()).seconds());
+printf("h2[d2] = %0.3f\n", h2.timestamp(d2.identifier()).seconds());
+printf("h2[d3] = %0.3f\n", h2.timestamp(d3.identifier()).seconds());
+printf("h2[d4] = %0.3f\n", h2.timestamp(d4.identifier()).seconds());
+printf("h2[d5] = %0.3f\n", h2.timestamp(d5.identifier()).seconds());
+
+printf("h2[d1] timestamp = %0.3f seconds\n",
+       h2.timestamp(d1.identifier()) - start);
+printf("h2[d2] timestamp = %0.3f seconds\n",
+       h2.timestamp(d2.identifier()) - start);
+printf("h2[d3] timestamp = %0.3f seconds\n",
+       h2.timestamp(d3.identifier()) - start);
+printf("h2[d4] timestamp = %0.3f seconds\n",
+       h2.timestamp(d4.identifier()) - start);
+printf("h2[d5] timestamp = %0.3f seconds\n",
+       h2.timestamp(d5.identifier()) - start);
+    */
+        dotest(h2.timestamp(d1.identifier()) - start < 1.0);
+        dotest(h2.timestamp(d2.identifier()) - start - 1.0 < 1.0);
+        dotest(h2.timestamp(d3.identifier()) - start - 2.0 < 1.0);
+        dotest(h2.timestamp(d4.identifier()) - start - 3.0 < 1.0);
+        dotest(h2.timestamp(d5.identifier()) - start - 4.0 < 1.0);
 
         dotest(h2.signatureCount(d1.identifier()) == 0);
         dotest(h2.signatureCount(d2.identifier()) == 0);
@@ -228,21 +255,21 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(data::AddressHistory(recreated).blockReason(
                    d4.identifier(), d4.identifier()) == "reason5");
 
-        h1.remove(3);                    // d1
+        h1.remove(3);                    // d2
         h1.remove(h1.bundleCount() - 1); // d4
         h1.remove(0);                    // d3
         dotest(h1.bundleCount() == 2);
         dotest(h1.bundles(l1).size() == 2);
         dotest(l1[0] == d5.identifier());
-        dotest(l1[1] == d2.identifier());
+        dotest(l1[1] == d1.identifier());
 
-        h2.remove(d1.identifier());
+        h2.remove(d2.identifier());
         h2.remove(d4.identifier());
         h2.remove(d3.identifier());
         dotest(h2.bundleCount() == 2);
         dotest(h2.bundles(l2).size() == 2);
         dotest(l2[0] == d5.identifier());
-        dotest(l2[1] == d2.identifier());
+        dotest(l2[1] == d1.identifier());
       }
     }
   } catch (const std::exception &e) {
