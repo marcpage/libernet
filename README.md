@@ -131,28 +131,28 @@ Items are not dropped just because they are low priority, but because there are 
 
 When "similar to" search is done, it returns the json below.
 The json may be compressed if it reduces the size.
-Each matching identifier reports the size of the data as well as the shortest number of nodes away.
+Each matching identifier reports the size of the data.
 When forwarding the results from requests of other nodes, increase the node count.
-If the node sending this data has the identifier on the node, then *distance* is 1.
 
-Whenever someone requests "similar to" results, whatever information is known is returned.
+Whenever a node requests "similar to" results, whatever information is known is returned.
+The request is added to the [requests](#Requests) list.
 The request is then cycled through nodes that match at least 1 hex digit.
 If no results are found in the matched nodes, then all other nodes are queried.
-The requester may continue to make the same request.
+
+The requester may continue to make the same request, after waiting a period of time (???) for other results to come in.
 For every request, follow these steps again.
 Every search increases the distance from which results can be returned.
 
-Any results that are returned to the requester may be deleted.
-Any results that we have received since the last request are cached for a period of time (???) in case the requester continues to request the data.
+Each response can return up to around 10,000 matches.
+If there are more matches than will fit n 1 MiB then the best matches are returned (most hex digits match).
+If there are more than 1 MiB in matches that match equally then choose at random the matches to include.
+
+When passing on search results, make sure to filter out [deleted identifiers](#deleting-data).
+While this is not foolproof, it will help get more relevant results returned to the requester.
 
 ```
 {
-	similar to identifier: {
-		matching identifier: {
-			"size": size,
-			"distance": node count,
-		}
-	}
+	similar to identifier: {matching identifier: sizes}
 }
 ```
 
@@ -175,6 +175,10 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 6          | 10.9       | 24.0      | 7,156,184   | 15,579,804  | priority      | 16,777,220        | 2.8 seconds
 7          | 11.8       | 1,449     | 70,179,856  | 938,827,609 | urgent        | 268,435,500       | 45 seconds
 8          | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...    | 4,294,967,000     | 12 minutes
+
+Given that there is a limit to the number of []"similar to" results](#data-matching) that can be returned (around 10,000), in spaces that can be crowded, it may require paying the higher price just to be seen.
+For instance, after 10,000 [Address History](#address-history) entries exist for a url, even with [delete filtering](#deleting-data), you will need to increase the matching to make sure it makes it into the list.
+This means that for more established or more popular websites, it will take more and more compute power to do updates.
 
 
 # Server
