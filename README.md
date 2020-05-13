@@ -92,10 +92,16 @@ Any data block can, therefore, be validated that the identity is correct by hash
 ## Data Routing
 
 When new data is created, it is pushed (at the least) to the connected node whose identity most closely matches the identity of the data.
-When data is pushed to a node, it must either be stored, or pushed to another node.
+When data is pushed to a node, it must either be stored or pushed to another node.
 A node may not delete data (except for the cases in [Deleting Data](#deleting-data)) without first passing the data on to another node.
 When data is passed on before deleting, it is passed to the node that most closely matches the identity of the data.
 When a node originates data, it may want to push the data to more than one node, to ensure the data is seeded properly, before deleting locally.
+
+When data is requested, if the node has the data, it is returned.
+If the node does not contain the data then the node requests the data from all nodes that match at least 1 hex digit, starting with the node with the most digits that match.
+If none of the matching nodes have the data, then the non-matching nodes are queried.
+If none of the nodes have the data, we put the identifier in the [requests](#Requests) list.
+Once it receives the data, it no longer queries any other nodes.
 
 
 ## Deleting Data
@@ -125,14 +131,30 @@ Items are not dropped just because they are low priority, but because there are 
 
 When "similar to" search is done, it returns the json below.
 The json may be compressed if it reduces the size.
+Each matching identifier reports the size of the data as well as the shortest number of nodes away.
+When forwarding the results from requests of other nodes, increase the node count.
+If the node sending this data has the identifier on the node, then *distance* is 1.
+
+Whenever someone requests "similar to" results, whatever information is known is returned.
+The request is then cycled through nodes that match at least 1 hex digit.
+If no results are found in the matched nodes, then all other nodes are queried.
+The requester may continue to make the same request.
+For every request, follow these steps again.
+Every search increases the distance from which results can be returned.
+
+Any results that are returned to the requester may be deleted.
+Any results that we have received since the last request are cached for a period of time (???) in case the requester continues to request the data.
+
 ```
 {
 	similar to identifier: {
-		matching identifier: data size
+		matching identifier: {
+			"size": size,
+			"distance": node count,
+		}
 	}
 }
 ```
-Requests may be repeated as when a request is received, those requests are passed on to nodes likely to have that information.
 
 
 ### Cost to match digits
