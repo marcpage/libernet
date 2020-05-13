@@ -168,10 +168,10 @@ Path           | Always Public | Description
 /              | No            | Index app
 /app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
 /data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
-/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of hashes similar to {hash}
+/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of [hashes similar to {hash}](#similar-to-results)
 /data/requests | Yes           | [Requests](#requests) that this node has pending. Supports PUT for connecting node's requests.
 /mail          | No            | [Messages](#messages) app
-/server        | Yes           | Returns server information. Supports PUT for connecting node's information.
+/server        | Yes           | Returns [server information](#server-information). Supports PUT for connecting node's information.
 /web           | No            | See [Address History](#address-history). Appending the address with  an empty query (?) will return information about how the bundle was chosen and other options as well as gives you opportunities to download and change trust in identity.
 /{app}         | No            | Apps installed by /app
 
@@ -196,9 +196,10 @@ Type                                          | Encrypted | Contents | [Match](#
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD(GMT):recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
+[Karma](#karma)                               | No        | json     | karma:{block index}
+[server information](#server-information)     | No        | json     | None
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
-[Karma](#karma)                               | No        | json     | karma:{block index}
 
 \* [Private Key](#private-key) is not encrypted with the hash of the contents like other encrypted data, but encrypted with the hash of a passphrase.
 
