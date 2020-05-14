@@ -67,6 +67,8 @@ But for a company to send out a message to 3,000 people, it would take 8 hours o
 Companies would screen their mailing lists to only those who would truly be interested in their message.
 Sending bulk messages is no longer free.
 
+Note: We could use ZeroConf DNS-SD to advertise ourselves on the local network.
+https://github.com/mjansson/mdns
 
 # Definitions
 
@@ -101,7 +103,11 @@ When data is requested, if the node has the data, it is returned.
 If the node does not contain the data then the node requests the data from all nodes that match at least 1 hex digit, starting with the node with the most digits that match.
 If none of the matching nodes have the data, then the non-matching nodes are queried.
 If none of the nodes have the data, we put the identifier in the [requests](#Requests) list.
+
+If the original requester does not receive the data from any of the connected nodes it may, after a period of time (???), make the request again according to the steps above.
 Once it receives the data, it no longer queries any other nodes.
+Nodes receiving requests only need to pass on the requests in response to receiving requests.
+They do not need to keep requesting the data.
 
 
 ## Deleting Data
@@ -117,10 +123,13 @@ Reasons for squelching data include:
 * Old [Trust](#trust) lists (determine by timestamp)
 * [Merged Karma blocks](#choosing-a-transaction-block-to-add-your-transaction)
 
+Each node determines its own list of identifiers to delete and does not share this list with other nodes.
+This prevents a bad actor from sharing with everyone that some data needs to be deleted.
+
 
 ## Data Matching
 
-Data can be matched to other data by adding random data until the first hex digits (or in some cases the last hex digits) of the hashes match.
+Data can be matched to other data by adding random data until the first hex digits ([or in some cases the last hex digits](#karma)) of the hashes match.
 Data can be requested by exact hash, or by "similar to" search.
 The more digits that match, the more time (in general) and expense and, therefore, the higher the priority or value of the match.
 When searching "similar to" each node may drop lower priority items if the number of items being returned is "large".
@@ -132,12 +141,11 @@ Items are not dropped just because they are low priority, but because there are 
 When "similar to" search is done, it returns the json below.
 The json may be compressed if it reduces the size.
 Each matching identifier reports the size of the data.
-When forwarding the results from requests of other nodes, increase the node count.
 
 Whenever a node requests "similar to" results, whatever information is known is returned.
 The request is added to the [requests](#Requests) list.
 The request is then cycled through nodes that match at least 1 hex digit.
-If no results are found in the matched nodes, then all other nodes are queried.
+If no results are found in the matched nodes, then all other nodes are queried as well.
 
 The requester may continue to make the same request, after waiting a period of time (???) for other results to come in.
 For every request, follow these steps again.
@@ -148,7 +156,7 @@ If there are more matches than will fit n 1 MiB then the best matches are return
 If there are more than 1 MiB in matches that match equally then choose at random the matches to include.
 
 When passing on search results, make sure to filter out [deleted identifiers](#deleting-data).
-While this is not foolproof, it will help get more relevant results returned to the requester.
+While this does not completely remove the possibility of [deleted identifiers](#deleting-data) from being passed around, it will help get more relevant results returned to the requester.
 
 ```
 {
@@ -176,7 +184,7 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 7          | 11.8       | 1,449     | 70,179,856  | 938,827,609 | urgent        | 268,435,500       | 45 seconds
 8          | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...    | 4,294,967,000     | 12 minutes
 
-Given that there is a limit to the number of []"similar to" results](#data-matching) that can be returned (around 10,000), in spaces that can be crowded, it may require paying the higher price just to be seen.
+Given that there is a limit to the number of ["similar to" results](#data-matching) that can be returned (around 10,000), in spaces that can be crowded, it may require paying the higher price just to be seen.
 For instance, after 10,000 [Address History](#address-history) entries exist for a url, even with [delete filtering](#deleting-data), you will need to increase the matching to make sure it makes it into the list.
 This means that for more established or more popular websites, it will take more and more compute power to do updates.
 
@@ -194,7 +202,7 @@ Path           | Always Public | Description
 /              | No            | Index app
 /app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
 /data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
-/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of [hashes similar to {hash}](#similar-to-results)
+/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of [hashes similar to {hash}](#similar-to-results). Supports PUT requests to send search results in response to [Requests](#requests).
 /data/requests | Yes           | [Requests](#requests) that this node has pending. Supports PUT for connecting node's requests.
 /mail          | No            | [Messages](#messages) app
 /server        | Yes           | Returns [server information](#server-information). Supports PUT for connecting node's information.
@@ -386,6 +394,7 @@ The priority is then as such:
 1. [Domain Identity](#domain-trust) has been found, and is not distrusted, or if in whitelist mode, is trusted.
 1. First Identity to submit a bundle for this location, and is not distrusted, or if in whitelist mode, is trusted.
 1. The most trusted signing Identity.
+1. The best match with the web address.
 
 ### Resolving web addresses
 
@@ -433,6 +442,7 @@ Whenever personal information is created, a backup (*next*) personal key should 
 The next field is a backup key.
 In the event that your [Private Key](#private-key) for the personal key is leaked, you can set the *valid* field to false.
 Anything signed after the timestamp when the personal information is marked *valid=false* should be considered not signed.
+The personal information block in which *valid* is set to false should match at least as many, if not more, hex digits then all other personal information blocks for this identity.
 [Trust](#trust) trees should be updated with this timestamp and anything after this timestamp should not be trusted and treated as malevolent.
 
 If *valid=false* then the *next* value is considered an alias for valid signatures after timestamp.
@@ -457,6 +467,7 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"youtube": youtube url,
 	"credentials": [
 		{
+			"filename": the name of the file,
 			"sha256": identifier of image of some identification credentials,
 			"aes256": key to decrypt credential image
 		}
@@ -492,15 +503,15 @@ Private Keys should be kept secure to prevent bad actors acting as you.
 If you lose your Private Key, you lose your ability to act as the [Personal Key](#personal-key) identity.
 
 The information stored for a Private Key may be stored as a data block.
-This does cause the risk that your secret is available everywhere if they can guess your password.
-The benefit of storing your Private Key as a block is that your private key is available from anywhere and is backed up.
+This does cause the risk that your secret is available everywhere if they can guess your passphrase.
+The benefit of storing your Private Key as a block is that your private key is available from anywhere and is backed up (assuming you don't forget your username and passphrase).
 
 The Private Key may also be stored as a file.
 Storing your Private Key on removable media is the most secure.
 You should have a backup (or two or three) of the media in case of media failure.
 Backup media should be checked regularly.
 
-Regardless of where the data is saved (as a data block on the LiberNet, or in a file) if will be encrypted using the hash of a passphrase.
+Regardless of where the data is saved (as a data block on the LiberNet, or in a file) it will be encrypted using the hash of a passphrase.
 The data saved is the [Personal Key](#personal-key) *identifier*, the (possibly compressed) *public* key data that matches the identifier, and the *owner* private key data.
 
 When data is saved to the LiberNet, it includes *padding* to get the identifier (hash) of the data to [match](#data-matching) ```private:{username}```.
@@ -508,11 +519,12 @@ When searching for your private key, you perform a ["similar to" search](#data-m
 The *padding* should match to [at least 6 hex digits](#cost-to-match-digits).
 
 You must keep your username and passphrase secret and should follow best practices for passwords.
+Your username should not bne the same as your Nickname or really have any relationship to anything in your [Personal Information](#personal-information).
 The username provides security through obscurity in that your private data is a needle in the haystack.
 They may use size analysis to find blocks that are about the size of private keys, but they will find blocks that are small files and partial files, making it hard to find any Private Key in the first place.
 
 Once someone has what they suspect is a Private Key, they will need to guess your passphrase to decrypt the private key.
-This is why best practices for very strong passwords should be used when selecting the password (four random words, at least 19 characters, etc.) because blocks that are about the right size for a Private Key can be decrypted by guessing common passwords or brute-force attempting short passwords.
+This is why best practices for very strong passwords should be used when selecting the passphrase (four random words, at least 19 characters, etc.) because blocks that are about the right size for a Private Key can be decrypted by guessing common passwords or brute-force attempting short passwords.
 
 ```
 {
@@ -586,16 +598,14 @@ If the identity is not in the domain trust list, then second-order trust lists a
 Temporary trust can be given to "try out" something, to see if it is what is advertised and be able to mark as trusted.
 For websites and apps (special websites) this would allow downloading the bundle and being able to manually inspect it before trusting it.
 
-For web display, a node can specify whitelist, blacklist, or graylist mode.
+For web display, a node can specify whitelist or blacklist mode.
 Whitelist mode only allows trusted (positive score) identities.
 Blacklist mode only disallows untrusted (negative score) identities.
-Graylist mode allows whitelist and any other identity that is not blacklisted (unknowns).
 
 For [messages](#messages), senders are evaluated via this trust method.
 Trusted senders go to the inbox.
 Graylist senders (unable to determine a trust score) to to the spam folder.
 Blacklist senders go to the trash.
-
 
 ### Direct Trust
 Is it in the top level trust (we trusted or distrusted the person explicitly):
