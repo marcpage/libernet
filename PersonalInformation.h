@@ -134,7 +134,7 @@ inline void PersonalInformation::setNext(const std::string &next) {
 inline bool PersonalInformation::valid() {
   auto info = _info();
 
-  return info.has("valid") && info["value"].boolean();
+  return !info.has("valid") || info["value"].boolean();
 }
 
 inline void PersonalInformation::invalidate() {
@@ -150,7 +150,7 @@ inline bool PersonalInformation::has(const std::string &key) {
 }
 
 inline std::string PersonalInformation::value(const std::string &key) {
-  return _info()[key];
+  return _info()[key].string();
 }
 
 inline void PersonalInformation::setValue(const std::string &key,
@@ -290,7 +290,7 @@ inline void PersonalInformation::_validate() {
   auto info = _info(wrapper);
 
   JSONData::_validatePositiveInteger(wrapper, "padding");
-  JSONData::_validatePositiveInteger(wrapper, "timestamp");
+  JSONData::_validatePositiveInteger(info, "timestamp");
   JSONData::_validateKey(info, "nickname", json::StringType);
 
   JSONData::_validateKey(info, "valid", json::BooleanType, true);
@@ -335,8 +335,9 @@ inline void PersonalInformation::_validate() {
   JSONData::_validateHash(wrapper, "signer", true);
 
   json::Value &verifiers =
-      JSONData::_validateKey(wrapper, "verifiers", json::ArrayType, true);
-  const auto verifyingIdentifiers = verifiers.keys();
+      JSONData::_validateKey(wrapper, "verifiers", json::ObjectType, true);
+  const auto verifyingIdentifiers =
+      (verifiers != wrapper) ? verifiers.keys() : json::Value::StringList();
 
   for (auto identifier : verifyingIdentifiers) {
     JSONData::_validateKey(verifiers, identifier, json::StringType);
@@ -356,7 +357,8 @@ inline void PersonalInformation::_changeInfo(json::Value &info,
 
 inline void PersonalInformation::_changeContent(json::Value &value,
                                                 int matchCount) {
-  const std::string signer = value["signer"].string();
+  const std::string signer =
+      value.has("signer") ? value["signer"].string() : std::string();
 
   do {
     value["padding"] = int64_t(rand());
@@ -367,7 +369,8 @@ inline void PersonalInformation::_changeContent(json::Value &value,
 
 inline json::Value PersonalInformation::_info(const json::Value &wrapper) {
   return json::Value().parse(
-      (wrapper.is(json::NullType) ? JSONData::value() : wrapper)["identity"]);
+      (wrapper.is(json::NullType) ? JSONData::value() : wrapper)["identity"]
+          .string());
 }
 
 } // namespace data
