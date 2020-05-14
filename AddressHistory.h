@@ -362,6 +362,9 @@ inline void AddressHistory::_validate() {
 inline void AddressHistory::_changeContent(json::Value &value, int matchCount) {
   const std::string match = matchCount == 0 ? std::string() : _matchAgainst();
 
+  // TODO performance improvement, have padding be a unique pattern
+  // search and replace that pattern in the string and assign the string
+  // data instead of JSONData assign
   do {
     value["padding"] = int64_t(rand());
     JSONData::assign(value, Data::Encrypted);
