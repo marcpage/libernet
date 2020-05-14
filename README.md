@@ -79,7 +79,8 @@ https://github.com/mjansson/mdns
 * *Signing* - RSA private encryption of SHA256 hashing of the data, stored as base64.
 * *Compression* - zlib compression, level 9
 * *Dates* - All dates and times are in GMT, even YYYY/MM/DD
-* *timestamp* all time stamps are seconds from midnight, January 1, 2001 GMT
+* *timestamp* - all time stamps are seconds from midnight, January 1, 2001 GMT
+* *signature* - All signatures are base64 encoded
 
 
 # Concepts
@@ -364,11 +365,11 @@ Any address histories that do not add any new head [bundles](#bundle-description
 			"sha256": identifier of bundle,
 			"aes256": key to decrypt bundle,
 			"timestamp": fractional seconds since epoch,
-			"signed": {identifier of public key: signature of bundle identifier},
+			"signed": {identifier of public key: base64 encoded signature of bundle identifier},
 			"blocked": {
 				identifier: {
 					"reason": reason why this should not be used,
-					"signed": signature of the decryption key,
+					"signed": base64 encoded signature of the decryption key,
 				}
 			}
 		},
@@ -435,7 +436,7 @@ Personal information fields are mostly optional.
 Nickname is required as it is the display name.
 The *credentials* field may not be a good idea as the personal information may not be ideal to share.
 The *credentials* and *verifiers* fields are two ways to help people know that this person is who they say they are.
-Information that you may not want to share are email, apartment, street number (or even street or city), first name, last name.
+Information that you may not want to share are email, unit, street number (or even street or city), first name, last name.
 Whenever personal information is updated, verifiers should be [messaged](#messages) to notify them of the change to give them an opportunity to verify the updated information.
 
 Whenever personal information is created, a backup (*next*) personal key should be created.
@@ -477,9 +478,10 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"province": province,
 	"timestamp": fractional seconds since the epoch used to determine latest profile,
 	"city": city,
+	"postal code": zip code,
 	"street": street,
 	"street number": house number,
-	"apartment": apartment number,
+	"unit": unit number,
 	"valid": true or false if false then this key cannot be used,
 	"next": personal information identifier for a backup identity
 }
@@ -488,10 +490,10 @@ The above dictionary is stored in the following wrapper
 ```
 {
 	"identity": above dictionary in a string,
-	"signature": signature data of identity string from signer,
+	"signature": base64 encoded signature data of identity string from signer,
 	"signer": hash of public key,
 	"padding": random data to get hash of data to match digits with public key hash,
-	"verifiers": {identifier of public key: signature of identity}
+	"verifiers": {identifier of public key: base64 encoded signature of identity}
 }
 ````
 
@@ -566,7 +568,7 @@ The above dictionary is encoded into the following Envelope Dictionary
 ```
 {
 	"message": the above dictionary,
-	"signature": signature of message from signer,
+	"signature": base64 encoded signature of message from signer,
 	"signer": hash of public key,
 }
 ````
@@ -664,7 +666,7 @@ The above dictionary is placed in a string in the following wrapper
 ```
 {
 	"trust": string of the above dictionary,
-	"signature": signature message,
+	"signature": base64 encoded signature message,
 	"signer": hash of public key,
 	"padding": random data to get hash of data to match,
 }
@@ -895,14 +897,14 @@ The transaction block description is about 200 bytes plus about 600 bytes per si
 	"transactions": [
 		{
 			"transaction": text of transaction (see above),
-			"verification": {identity of sender:signature of transaction}
+			"verification": {identity of sender:base64 encoded signature of transaction}
 		},
 	],
 	"pending": [
 		{
 			"transaction": text of transaction above,
-			"verification": {identity of sender:signature of transaction},
-			"cancelations": {identity of the sender: signature of sha256 of transaction}
+			"verification": {identity of sender:base64 encoded signature of transaction},
+			"cancelations": {identity of the sender: base64 encoded signature of sha256 of transaction}
 		},
 	]
 }
@@ -914,7 +916,7 @@ The signing block adds about 200 bytes.
 	"block": text of the above transaction block,
 	"padding": padding added to get the hash of the block to match,
 	"signer": the identity that signs this block,
-	"signature": The signature data of the block,
+	"signature": The base64 encoded signature data of the block,
 }
 ```
 

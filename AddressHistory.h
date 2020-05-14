@@ -341,9 +341,7 @@ inline void AddressHistory::_validate() {
 
     for (auto identity : signers) {
       hash::sha256().reset(identity.c_str());
-      text::base64Decode(
-          JSONData::_validateKey(signatures, identity, json::StringType)
-              .string());
+      JSONData::_validateBase64(signatures, identity);
     }
 
     for (auto identity : blockers) {

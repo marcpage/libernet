@@ -34,6 +34,9 @@ protected:
   static void _validateHash(const json::Value &value);
   static void _validateHash(json::Value &value, const std::string &name,
                             bool optional = false);
+  static void _validateBase64(const json::Value &value);
+  static void _validateBase64(json::Value &value, const std::string &name,
+                            bool optional = false);
   static json::Value &_validateKey(json::Value &value, const std::string &key,
                                    json::Type type, bool optional = false);
 };
@@ -89,6 +92,20 @@ inline void JSONData::_validateHash(json::Value &value, const std::string &name,
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::StringType));
   _validateHash(value[name]);
+}
+
+inline void JSONData::_validateBase64(const json::Value &value) {
+	text::base64Decode(value.string())
+}
+
+inline void JSONData::_validateBase64(json::Value &value, const std::string &name, bool optional) {
+  if (optional && !value.has(name)) {
+    return;
+  }
+  AssertMessageException(value.is(json::ObjectType));
+  AssertMessageException(value.has(name));
+  AssertMessageException(value[name].is(json::StringType));
+  _validateBase64(value[name]);
 }
 
 inline json::Value &JSONData::_validateKey(json::Value &value,
