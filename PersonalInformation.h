@@ -21,7 +21,9 @@ public:
   PersonalInformation() : JSONData() {
     _changeInfo(json::Value().parse("{\"nickname\":\"\"}"));
   }
+/// @todo Test
   PersonalInformation(const PersonalInformation &other) : JSONData(other) {}
+/// @todo Test
   PersonalInformation(const std::string &data, const std::string &identifier,
                       const std::string &key)
       : JSONData(data, identifier, key) {}
@@ -74,12 +76,14 @@ private:
   json::Value _info(const json::Value &wrapper = json::Value(json::NullType));
 };
 
+/// @todo Test
 inline PersonalInformation &
 PersonalInformation::operator=(const PersonalInformation &other) {
   JSONData::operator=(other);
   return *this;
 }
 
+/// @todo Test
 inline PersonalInformation &
 PersonalInformation::assign(const std::string &data,
                             const std::string &identifier,
@@ -137,6 +141,7 @@ inline bool PersonalInformation::valid() {
   return !info.has("valid") || info["value"].boolean();
 }
 
+/// @todo Test
 inline void PersonalInformation::invalidate() {
   auto info = _info();
 
@@ -145,6 +150,7 @@ inline void PersonalInformation::invalidate() {
   _changeInfo(info);
 }
 
+/// @todo Test
 inline bool PersonalInformation::has(const std::string &key) {
   return _info().has(key);
 }
@@ -181,6 +187,7 @@ void PersonalInformation::addCredential(const std::string &identifier,
   _changeInfo(info);
 }
 
+/// @todo Test
 inline PersonalInformation::List &
 PersonalInformation::credentials(PersonalInformation::List &identifiers,
                                  PersonalInformation::ListAction action) {
@@ -217,7 +224,7 @@ inline bool PersonalInformation::authenticate(Identity &signer) {
   auto wrapper = JSONData::value();
 
   if (signer.identifier() != wrapper["signer"].string()) {
-    return false;
+    return false; // not tested
   }
   return signer.valid(wrapper["identity"].string(),
                       text::base64Decode(wrapper["signature"].string()));
@@ -236,6 +243,7 @@ inline int PersonalInformation::verifierCount() {
   return JSONData::value()["verifiers"].count();
 }
 
+/// @todo Test
 inline PersonalInformation::List &
 PersonalInformation::verifiers(PersonalInformation::List &identities,
                                PersonalInformation::ListAction action) {
@@ -255,7 +263,7 @@ inline bool PersonalInformation::verify(Identity &signer) {
   json::Value &verifiers = wrapper["verifiers"];
 
   if (!verifiers.has(signer.identifier())) {
-    return false;
+    return false; // not tested
   }
 
   return signer.valid(
@@ -273,7 +281,7 @@ inline void PersonalInformation::validate(OwnerIdentity &owner) {
 
 inline int PersonalInformation::_index(const std::string &identifier) {
   auto info = _info();
-  json::Value &credentials = info["credentails"];
+  json::Value &credentials = info["credentials"];
   const int count = credentials.count();
 
   for (auto i = 0; i < count; ++i) {
@@ -281,7 +289,7 @@ inline int PersonalInformation::_index(const std::string &identifier) {
       return i;
     }
   }
-  ThrowMessageException("credential identifier not found " +
+  ThrowMessageException("credential identifier not found " +  // not tested
                         identifier); // not tested
 }
 

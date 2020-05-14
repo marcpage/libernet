@@ -77,7 +77,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(p1.credentialFilename(yummyData.identifier()) == "yummy");
 
       dotest(p1.signer() == o1.identifier());
-      dotest(p1.authenticate(o2));
+      dotest(p1.authenticate(o1));
 
       dotest(p1.verifierCount() == 3);
       dotest(p1.verify(o2));
