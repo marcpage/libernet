@@ -14,10 +14,7 @@ namespace data {
 
 class WrapperData : public JSONData {
 public:
-  WrapperData() : JSONData() {
-    auto obj = json::Value(json::ObjectType);
-    _changeInfo(obj);
-  }
+  WrapperData() : JSONData() {}
   WrapperData(const std::string &data, const std::string &identifier,
               const std::string &key)
       : JSONData(data, identifier, key) {}
@@ -56,7 +53,7 @@ protected:
 
     return wrapper.has("signer") ? wrapper["signer"].string() : std::string();
   }
-  virtual std::string _wrapKey() { return std::string(); }
+  virtual std::string _wrapKey() = 0;
 };
 
 inline WrapperData &WrapperData::operator=(const WrapperData &other) {
