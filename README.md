@@ -81,6 +81,7 @@ https://github.com/mjansson/mdns
 * *Dates* - All dates and times are in GMT, even YYYY/MM/DD
 * *timestamp* - all time stamps are seconds from midnight, January 1, 2001 GMT
 * *signature* - All signatures are base64 encoded
+* *Karma* - the currency used to track value, recorded as a string of the format "000000000000000.00000000000000" or "{Karma}.{Kismet 0 padded to 14 digits}"
 
 
 # Concepts
@@ -689,6 +690,8 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 			"time": total time in seconds connected to the server,
 			"input": total bytes received from this node,
 			"output": total bytes sent to this node,
+			"response": total times we received an exact match for what we needed,
+			"similar": total items returned for similar-to searchs,
 			"karma": karma received from this node,
 		}
 	},
