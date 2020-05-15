@@ -309,8 +309,8 @@ inline int AddressHistory::_index(const std::string &identifier) {
       return int(i);
     }
   }
-  ThrowMessageException("bundle identifier not found " +
-                        identifier); // not tested
+  ThrowMessageException("bundle identifier not found " + // not tested
+                        identifier);
 }
 
 inline void AddressHistory::_validate() {

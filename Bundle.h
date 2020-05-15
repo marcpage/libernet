@@ -20,7 +20,6 @@ namespace data {
 
 /**
         @todo Document
-        @todo Test
 */
 class Bundle : public JSONData {
 public:
@@ -59,7 +58,6 @@ public:
   }
   void resetComment(const std::string &comment = "");
   List &files(List &fileList);
-  /// @todo Test
   List files() {
     List buffer;
     return files(buffer);
@@ -70,9 +68,12 @@ public:
   int64_t fileSize(const std::string &path) {
     return JSONData::value()["contents"][path]["size"].integer();
   }
-  /// @todo Test
+
   std::string fileMimeType(const std::string &path) {
-    return JSONData::value()["contents"][path]["Content-Type"].string();
+    auto fileInfo = JSONData::value()["contents"][path];
+
+    return fileInfo.has("Content-Type") ? fileInfo["Content-Type"].string()
+                                        : std::string();
   }
   /// @todo Test
   std::string fileIdentifier(const std::string &path) {
@@ -82,9 +83,12 @@ public:
   std::string fileKey(const std::string &path) {
     return JSONData::value()["contents"][path]["aes256"].string();
   }
-  /// @todo Test
+
   void removeFile(const std::string &path) {
-    JSONData::value()["contents"].erase(path);
+    json::Value bundle = JSONData::value();
+
+    bundle["contents"].erase(path);
+    _changeContent(bundle);
   }
   void addFile(const std::string &path, const std::string &identifier,
                const std::string &key, const std::string &mimeType = "");
@@ -308,14 +312,12 @@ inline void Bundle::resetComment(const std::string &comment) {
   }
   _changeContent(bundle);
 }
-/// @todo Test
 inline Bundle::List &Bundle::files(Bundle::List &fileList) {
   json::Value parsed = JSONData::value();
   const json::Value &contents = parsed["contents"];
   auto keys = contents.keys();
 
-  // for (auto key : keys) {fileList.push_back(key);}
-  std::copy(fileList.begin(), fileList.end(), std::back_inserter(keys));
+  std::copy(keys.begin(), keys.end(), std::back_inserter(fileList));
 
   return fileList;
 }
@@ -338,7 +340,7 @@ inline void Bundle::addFile(const std::string &path,
   bundle["contents"][path] = info;
   _changeContent(bundle);
 }
-/// @todo Test
+
 inline void Bundle::setFileMimeType(const std::string &path,
                                     const std::string &mimeType) {
   json::Value bundle = JSONData::value();

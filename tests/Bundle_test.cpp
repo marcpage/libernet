@@ -17,9 +17,9 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         "tests/Data_test.cpp",      "tests/JSONData_test.cpp",
         "tests/SmallFile_test.cpp",
     };
-    io::Path sourceDir("bin/Bundle/Source");
-    io::Path sourceSubDir("bin/Bundle/Source/Sub");
-    io::Path destDir("bin/Bundle/Destination");
+    io::Path sourceDir = io::Path("bin/Bundle").uniqueName("Source");
+    io::Path sourceSubDir = sourceDir + "Sub";
+    io::Path destDir = io::Path("bin/Bundle").uniqueName("Destination");
     sourceSubDir.mkdirs();
     for (size_t testIndex = 0;
          testIndex < sizeof(testFiles) / sizeof(testFiles[0]); ++testIndex) {
@@ -32,9 +32,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
           .copyContentsTo(sourceSubDir + filename);
     }
     for (int i = 0; i < iterations; ++i) {
-
       data::Bundle::Queue queue;
-
       data::Bundle source(sourceDir, queue);
 
       source.resetComment("This is a comment");
@@ -51,6 +49,10 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(source != data::Bundle());
       dotest(source == sourceDir);
       dotest(otherCopy.comment() == "This is a comment");
+      dotest(source.files().size() == 10);
+      dotest(copy.files().size() == 10);
+      dotest(otherCopy.files().size() == 10);
+      dotest(yetAnother.files().size() == 10);
       dotest(source.hasFile("one_megabyte.jpg"));
       dotest(source.hasFile("Sub/one_megabyte.jpg"));
       dotest(source.hasFile("two_megabyte.jpg"));
@@ -67,6 +69,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(source.fileSize("Sub/one_megabyte.jpg") < 2 * 1024 * 1024);
       dotest(source.fileSize("Sub/two_megabyte.jpg") > 2 * 1024 * 1024);
       dotest(source.fileSize("Sub/two_megabyte.jpg") < 3 * 1024 * 1024);
+      dotest(source.fileMimeType("one_megabyte.jpg") == "image/jpeg");
+      dotest(source.fileMimeType("JSONData_test.cpp") == "");
 
       // Sleep for 1 second to ensure the source timestamp is different
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -112,6 +116,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(source == destDir);
       dotest(reconstituted == destDir);
       dotest(reconstituted == sourceDir);
+
+      reconstituted.removeFile("one_megabyte.jpg");
+      printf("count = %ld\n", reconstituted.files().size());
+      dotest(reconstituted.files().size() == 9);
+      reconstituted.setFileMimeType("JSONData_test.cpp", "text/plain");
+      dotest(reconstituted.fileMimeType("JSONData_test.cpp") == "text/plain");
     }
   } catch (const std::exception &exception) {
     printf("FAIL: Exception thrown: %s\n", exception.what());
