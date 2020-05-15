@@ -34,20 +34,30 @@ protected:
                                           const std::string &name,
                                           bool optional = false);
   static int64_t _validateOptionalPositiveInteger(json::Value &value,
-                                          const std::string &name) {
-	return _validatePositiveInteger(value, name, true);
-}
+                                                  const std::string &name) {
+    return _validatePositiveInteger(value, name, true);
+  }
   static void _validateHash(const json::Value &value);
   static void _validateHash(json::Value &value, const std::string &name,
                             bool optional = false);
-  static void _validateOptionalHash(json::Value &value, const std::string &name) { return _validateHash(value, name, true); }
+  static void _validateOptionalHash(json::Value &value,
+                                    const std::string &name) {
+    return _validateHash(value, name, true);
+  }
   static void _validateBase64(const json::Value &value);
   static void _validateBase64(json::Value &value, const std::string &name,
                               bool optional = false);
-  static void _validateOptionalBase64(json::Value &value, const std::string &name) {_validateBase64(value, name, true);}
+  static void _validateOptionalBase64(json::Value &value,
+                                      const std::string &name) {
+    _validateBase64(value, name, true);
+  }
   static json::Value &_validateKey(json::Value &value, const std::string &key,
                                    json::Type type, bool optional = false);
-  static json::Value &_validateOptionalKey(json::Value &value, const std::string &key, json::Type type) { return _validateKey(value, key, type, true); }
+  static json::Value &_validateOptionalKey(json::Value &value,
+                                           const std::string &key,
+                                           json::Type type) {
+    return _validateKey(value, key, type, true);
+  }
 };
 
 inline JSONData::JSONData(const json::Value &json, Data::Encryption encryption)

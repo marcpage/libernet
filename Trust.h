@@ -9,7 +9,9 @@ namespace data {
 /// @todo add comments to Trust document for identities (also update readme)
 class Trust : public WrapperData {
 public:
-  Trust() : WrapperData("{\"trust\":{}}") {}
+  Trust() : WrapperData() {
+    _changeInfo(json::Value().parse("{\"trust\":{}}"));
+  }
   Trust(const Trust &other) : WrapperData(other) {}
   Trust(const std::string &data, const std::string &identifier,
         const std::string &key)
@@ -18,16 +20,32 @@ public:
   Trust &operator=(const Trust &other);
   Trust &assign(const std::string &data, const std::string &identifier,
                 const std::string &key);
-  List &identities(List &trusted, ListAction action = ClearFirsts);
-  bool has(const std::string &identity) { return _info()["trust"].has(identity); }
-  void addTrust(const std::string &identity) { _increment(identity, "trusted"); }
-  void addMistaken(const std::string &identity) { _increment(identity, "mistaken"); }
-  void addDisagree(const std::string &identity) { _increment(identity, "disagree"); }
-  void addMalevolent(const std::string &identity) { _increment(identity, "malevolent"); }
+  List &identities(List &trusted, ListAction action = ClearFirst);
+  bool has(const std::string &identity) {
+    return _info()["trust"].has(identity);
+  }
+  void addTrust(const std::string &identity) {
+    _increment(identity, "trusted");
+  }
+  void addMistaken(const std::string &identity) {
+    _increment(identity, "mistaken");
+  }
+  void addDisagree(const std::string &identity) {
+    _increment(identity, "disagree");
+  }
+  void addMalevolent(const std::string &identity) {
+    _increment(identity, "malevolent");
+  }
   int trust(const std::string &identity) { return _value(identity, "trusted"); }
-  int mistaken(const std::string &identity) { return _value(identity, "mistaken"); }
-  int disagree(const std::string &identity) { return _value(identity, "disagree"); }
-  int malevolent(const std::string &identity) { return _value(identity, "malevolent"); }
+  int mistaken(const std::string &identity) {
+    return _value(identity, "mistaken");
+  }
+  int disagree(const std::string &identity) {
+    return _value(identity, "disagree");
+  }
+  int malevolent(const std::string &identity) {
+    return _value(identity, "malevolent");
+  }
 
 private:
   void _validate() override;
@@ -51,52 +69,52 @@ inline Trust &Trust::assign(const std::string &data,
 
 inline JSONData::List &Trust::identities(JSONData::List &trusted,
                                          ListAction action) {
-	auto keys = _info()["trust"].keys();
+  auto keys = _info()["trust"].keys();
 
   if (ClearFirst == action) {
     trusted.clear();
   }
 
   std::copy(keys.begin(), keys.end(), std::back_inserter(trusted));
-	return trusted;
+  return trusted;
 }
 
 inline void Trust::_validate() {
-	auto info = _info();
+  auto info = _info();
   json::Value &trust =
       JSONData::_validateOptionalKey(info, "trust", json::ObjectType);
 
-	WrapperData::_validate();
-	if (trust != info) {
-		auto identifiers = trust.keys();
+  WrapperData::_validate();
+  if (trust != info) {
+    auto identifiers = trust.keys();
 
-		for (auto identifier : identifiers) {
-			json::Value &entry = trust[identifier];
+    for (auto identifier : identifiers) {
+      json::Value &entry = trust[identifier];
 
-			JSONData::_validateOptionalPositiveInteger(entry, "trusted");
-			JSONData::_validateOptionalPositiveInteger(entry, "mistaken");
-			JSONData::_validateOptionalPositiveInteger(entry, "disagree");
-			JSONData::_validateOptionalPositiveInteger(entry, "malevolent");
-		}
-	}
+      JSONData::_validateOptionalPositiveInteger(entry, "trusted");
+      JSONData::_validateOptionalPositiveInteger(entry, "mistaken");
+      JSONData::_validateOptionalPositiveInteger(entry, "disagree");
+      JSONData::_validateOptionalPositiveInteger(entry, "malevolent");
+    }
+  }
 }
 
-inline void Trust::_increment(const std::string &identity, const std::string &key) {
-	auto trust = _info();
-	json::Value &identityInfo = trust["trust"][identity];
-	const int64_t count = identityInfo.has(key) ? identityInfo[key] : 0;
+inline void Trust::_increment(const std::string &identity,
+                              const std::string &key) {
+  auto trust = _info();
+  json::Value &identityInfo = trust["trust"][identity];
+  const int64_t count = identityInfo.has(key) ? identityInfo[key].integer() : 0;
 
-	trusted[identity][key] = count + 1;
-	_changeInfo(trust);
+  identityInfo[key] = count + 1;
+  _changeInfo(trust);
 }
 
 inline int Trust::_value(const std::string &identity, const std::string &key) {
-	auto trust = _info();
-	json::Value &identityInfo = trust["trust"][identity];
+  auto trust = _info();
+  json::Value &identityInfo = trust["trust"][identity];
 
-	return  identityInfo.has(key) ? identityInfo[key].integer() : 0;
+  return identityInfo.has(key) ? identityInfo[key].integer() : 0;
 }
-
 
 } // namespace data
 
