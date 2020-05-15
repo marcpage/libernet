@@ -86,7 +86,7 @@ public:
     return identifier(buffer);
   }
   virtual std::string &contents(std::string &buffer,
-                                Compression compression = NoCompression);
+                                Compression compression = Decompress);
   std::string &data(std::string &buffer) const;
   std::string &key(std::string &buffer) { return buffer = _key; }
   std::string &identifier(std::string &buffer) const;

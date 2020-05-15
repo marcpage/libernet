@@ -20,10 +20,10 @@ public:
   JSONData &operator=(const JSONData &other);
   json::Value value() {
     std::string buffer;
-    return json::Value().parse(contents(buffer));
+    return json::Value().parse(contents(buffer, data::Data::Decompress));
   }
   std::string &contents(std::string &buffer,
-                        Compression compression = NoCompression) override;
+                        Compression compression = Decompress) override;
   bool operator==(const Data &other) const { return Data::operator==(other); }
   bool operator!=(const Data &other) const { return !(*this == other); }
 

@@ -21,9 +21,7 @@ public:
   PersonalInformation() : JSONData() {
     _changeInfo(json::Value().parse("{\"nickname\":\"\"}"));
   }
-/// @todo Test
   PersonalInformation(const PersonalInformation &other) : JSONData(other) {}
-/// @todo Test
   PersonalInformation(const std::string &data, const std::string &identifier,
                       const std::string &key)
       : JSONData(data, identifier, key) {}
@@ -76,14 +74,12 @@ private:
   json::Value _info(const json::Value &wrapper = json::Value(json::NullType));
 };
 
-/// @todo Test
 inline PersonalInformation &
 PersonalInformation::operator=(const PersonalInformation &other) {
   JSONData::operator=(other);
   return *this;
 }
 
-/// @todo Test
 inline PersonalInformation &
 PersonalInformation::assign(const std::string &data,
                             const std::string &identifier,
@@ -150,7 +146,6 @@ inline void PersonalInformation::invalidate() {
   _changeInfo(info);
 }
 
-/// @todo Test
 inline bool PersonalInformation::has(const std::string &key) {
   return _info().has(key);
 }
@@ -248,7 +243,7 @@ inline PersonalInformation::List &
 PersonalInformation::verifiers(PersonalInformation::List &identities,
                                PersonalInformation::ListAction action) {
   auto wrapper = JSONData::value();
-  json::Value &verifiers = wrapper["verifiers"];
+  const json::Value &verifiers = wrapper["verifiers"];
   auto keys = verifiers.keys();
 
   if (ClearFirst == action) {
@@ -289,8 +284,8 @@ inline int PersonalInformation::_index(const std::string &identifier) {
       return i;
     }
   }
-  ThrowMessageException("credential identifier not found " +  // not tested
-                        identifier); // not tested
+  ThrowMessageException("credential identifier not found " + // not tested
+                        identifier);                         // not tested
 }
 
 inline void PersonalInformation::_validate() {
@@ -304,7 +299,7 @@ inline void PersonalInformation::_validate() {
   JSONData::_validateKey(info, "valid", json::BooleanType, true);
   JSONData::_validateKey(info, "next", json::StringType, true);
   if (info.has("valid") && info["valid"].boolean()) {
-    AssertMessageException(info.has("next"));
+    AssertMessageException(info.has("next")); // not tested
   }
 
   json::Value &credentials =
