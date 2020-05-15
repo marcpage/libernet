@@ -23,8 +23,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       d2 = data::JSONData(uncompressable, data::Data::Unencrypted);
       d3 = data::JSONData(compressable, data::Data::Encrypted);
       d4 = data::JSONData(uncompressable, data::Data::Encrypted);
-      dotest(std::string(d1.value()) == std::string(d3.value()));
-      dotest(std::string(d2.value()) == std::string(d4.value()));
+      dotest(d1.value().format() == d3.value().format());
+      dotest(d2.value().format() == d4.value().format());
     }
   } catch (const std::exception &exception) {
     printf("FAIL: Exception thrown: %s\n", exception.what());

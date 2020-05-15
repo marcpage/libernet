@@ -44,7 +44,7 @@ protected:
 };
 
 inline JSONData::JSONData(const json::Value &json, Data::Encryption encryption)
-    : Data(json, encryption) {}
+    : Data(json.format(), encryption) {}
 
 inline JSONData::JSONData(const std::string &data,
                           const std::string &identifier)
@@ -56,7 +56,7 @@ inline JSONData::JSONData(const std::string &data,
 
 inline JSONData &JSONData::assign(const json::Value &json,
                                   Data::Encryption encryption) {
-  Data::assign(json, encryption);
+  Data::assign(json.format(), encryption);
   return *this;
 }
 
