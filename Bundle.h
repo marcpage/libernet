@@ -439,14 +439,14 @@ inline void Bundle::_validate() {
   json::Value::StringList keys = contents.keys();
 
   JSONData::_validatePositiveInteger(parsed, "timestamp");
-  JSONData::_validateKey(parsed, "comments", json::StringType, true);
+  JSONData::_validateOptionalKey(parsed, "comments", json::StringType);
   for (auto name : keys) {
     json::Value &entry = contents[name];
 
     JSONData::_validateHash(entry, "sha256");
     JSONData::_validateHash(entry, "aes256");
     JSONData::_validatePositiveInteger(entry, "size");
-    JSONData::_validateKey(parsed, "Content-Type", json::StringType, true);
+    JSONData::_validateOptionalKey(parsed, "Content-Type", json::StringType);
   }
 
   if (parsed.has("previous")) {

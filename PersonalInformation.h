@@ -147,9 +147,11 @@ PersonalInformation::credentials(JSONData::List &identifiers,
   if (ClearFirst == action) {
     identifiers.clear();
   }
+
   for (int i = 0; i < count; ++i) {
     identifiers.push_back(credentials[i]["sha256"].string());
   }
+
   return identifiers;
 }
 
@@ -173,13 +175,12 @@ inline int PersonalInformation::verifierCount() {
 inline JSONData::List &
 PersonalInformation::verifiers(JSONData::List &identities,
                                PersonalInformation::ListAction action) {
-  auto wrapper = JSONData::value();
-  const json::Value &verifiers = wrapper["verifiers"];
-  auto keys = verifiers.keys();
+  auto keys = JSONData::value()["verifiers"].keys();
 
   if (ClearFirst == action) {
     identities.clear();
   }
+
   std::copy(keys.begin(), keys.end(), std::back_inserter(identities));
   return identities;
 }
@@ -226,14 +227,14 @@ inline void PersonalInformation::_validate() {
   WrapperData::_validate();
   JSONData::_validateKey(info, "nickname", json::StringType);
 
-  JSONData::_validateKey(info, "valid", json::BooleanType, true);
-  JSONData::_validateKey(info, "next", json::StringType, true);
+  JSONData::_validateOptionalKey(info, "valid", json::BooleanType);
+  JSONData::_validateOptionalKey(info, "next", json::StringType);
   if (info.has("valid") && info["valid"].boolean()) {
     AssertMessageException(info.has("next")); // not tested
   }
 
   json::Value &credentials =
-      JSONData::_validateKey(info, "credentials", json::ArrayType, true);
+      JSONData::_validateOptionalKey(info, "credentials", json::ArrayType);
 
   if (credentials != info) {
     const auto count = credentials.count();
@@ -247,25 +248,25 @@ inline void PersonalInformation::_validate() {
     }
   }
 
-  JSONData::_validateKey(info, "image", json::StringType, true);
-  JSONData::_validateKey(info, "first name", json::StringType, true);
-  JSONData::_validateKey(info, "last name", json::StringType, true);
-  JSONData::_validateKey(info, "domain", json::StringType, true);
-  JSONData::_validateKey(info, "email", json::StringType, true);
-  JSONData::_validateKey(info, "website", json::StringType, true);
-  JSONData::_validateKey(info, "twitter", json::StringType, true);
-  JSONData::_validateKey(info, "facebook", json::StringType, true);
-  JSONData::_validateKey(info, "youtube", json::StringType, true);
-  JSONData::_validateKey(info, "country", json::StringType, true);
-  JSONData::_validateKey(info, "state", json::StringType, true);
-  JSONData::_validateKey(info, "province", json::StringType, true);
-  JSONData::_validateKey(info, "city", json::StringType, true);
-  JSONData::_validateKey(info, "street", json::StringType, true);
-  JSONData::_validateKey(info, "street number", json::StringType, true);
-  JSONData::_validateKey(info, "apartment", json::StringType, true);
+  JSONData::_validateOptionalKey(info, "image", json::StringType);
+  JSONData::_validateOptionalKey(info, "first name", json::StringType);
+  JSONData::_validateOptionalKey(info, "last name", json::StringType);
+  JSONData::_validateOptionalKey(info, "domain", json::StringType);
+  JSONData::_validateOptionalKey(info, "email", json::StringType);
+  JSONData::_validateOptionalKey(info, "website", json::StringType);
+  JSONData::_validateOptionalKey(info, "twitter", json::StringType);
+  JSONData::_validateOptionalKey(info, "facebook", json::StringType);
+  JSONData::_validateOptionalKey(info, "youtube", json::StringType);
+  JSONData::_validateOptionalKey(info, "country", json::StringType);
+  JSONData::_validateOptionalKey(info, "state", json::StringType);
+  JSONData::_validateOptionalKey(info, "province", json::StringType);
+  JSONData::_validateOptionalKey(info, "city", json::StringType);
+  JSONData::_validateOptionalKey(info, "street", json::StringType);
+  JSONData::_validateOptionalKey(info, "street number", json::StringType);
+  JSONData::_validateOptionalKey(info, "apartment", json::StringType);
 
   json::Value &verifiers =
-      JSONData::_validateKey(wrapper, "verifiers", json::ObjectType, true);
+      JSONData::_validateOptionalKey(wrapper, "verifiers", json::ObjectType);
   const auto verifyingIdentifiers =
       (verifiers != wrapper) ? verifiers.keys() : json::Value::StringList();
 

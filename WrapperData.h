@@ -108,8 +108,8 @@ inline void WrapperData::_validate() {
   JSONData::_validatePositiveInteger(wrapper, "padding");
   JSONData::_validatePositiveInteger(info, "timestamp");
 
-  JSONData::_validateBase64(wrapper, "signature", true);
-  JSONData::_validateHash(wrapper, "signer", true);
+  JSONData::_validateOptionalBase64(wrapper, "signature");
+  JSONData::_validateOptionalHash(wrapper, "signer");
 }
 
 inline void WrapperData::_changeInfo(json::Value &info,
