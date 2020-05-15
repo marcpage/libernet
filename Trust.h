@@ -6,7 +6,7 @@
 namespace data {
 
 /// @todo document
-/// @todo add comments
+/// @todo add comments to Trust document for identities (also update readme)
 class Trust : public WrapperData {
 public:
   Trust() : WrapperData("{\"trust\":{}}") {}
@@ -93,39 +93,11 @@ inline void Trust::_increment(const std::string &identity, const std::string &ke
 inline int Trust::_value(const std::string &identity, const std::string &key) {
 	auto trust = _info();
 	json::Value &identityInfo = trust["trust"][identity];
-	const int64_t count = identityInfo.has(key) ? identityInfo[key] : 0;
 
-	return count;
+	return  identityInfo.has(key) ? identityInfo[key].integer() : 0;
 }
 
 
 } // namespace data
 
 #endif // __Trust_h__
-
-/*
-{
-        "timestamp": fractional seconds since epoch,
-        "trust": {
-                public key identifier: {
-                        "trusted": count of times content has been marked as
-trusted, "mistaken": count of times content was marked mistaken (honest mistake
-suspected) "disagree": count of times content was marked as disagree (maybe not
-correct, or maybe correct, but dislike presenation or stance) "malevolent":
-count of times contents was marked as malevolent intent "timestamp": optional
-field that if set marks that trust information is only valid until this
-timestamp
-                }
-        }
-}
-
-The above dictionary is placed in a string in the following wrapper
-
-{
-        "trust": string of the above dictionary,
-        "signature": signature message,
-        "signer": hash of public key,
-        "padding": random data to get hash of data to match,
-}
-
-*/
