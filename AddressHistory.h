@@ -18,8 +18,6 @@ namespace data {
 /// @todo Document
 class AddressHistory : public JSONData {
 public:
-  enum ListAction { ClearFirst, Append };
-  typedef std::vector<std::string> List;
   AddressHistory() : JSONData(), _address() {
     _changeContent(json::Value().parse("{\"heads\":[]}"));
   }
@@ -161,8 +159,8 @@ int AddressHistory::match() {
   return text::matching(Data::identifier(), _matchAgainst());
 }
 
-inline AddressHistory::List &AddressHistory::bundles(AddressHistory::List &list,
-                                                     ListAction action) {
+inline JSONData::List &AddressHistory::bundles(JSONData::List &list,
+                                               ListAction action) {
   json::Value history = JSONData::value();
   json::Value &heads = history["heads"];
   const int count = heads.count();
@@ -252,9 +250,9 @@ inline int AddressHistory::signatureCount(int index) {
   return JSONData::value()["heads"][index]["signed"].count();
 }
 
-inline AddressHistory::List &
-AddressHistory::signers(int index, AddressHistory::List &identities,
-                        ListAction action) {
+inline JSONData::List &AddressHistory::signers(int index,
+                                               JSONData::List &identities,
+                                               ListAction action) {
   auto signerList = JSONData::value()["heads"][index]["signed"].keys();
 
   if (ClearFirst == action) {
@@ -275,9 +273,9 @@ inline int AddressHistory::blockCount(int index) {
   return JSONData::value()["heads"][index]["blocked"].count();
 }
 
-inline AddressHistory::List &
-AddressHistory::blockers(int index, AddressHistory::List &identities,
-                         ListAction action) {
+inline JSONData::List &AddressHistory::blockers(int index,
+                                                JSONData::List &identities,
+                                                ListAction action) {
   auto signerList = JSONData::value()["heads"][index]["blocked"].keys();
 
   if (ClearFirst == action) {

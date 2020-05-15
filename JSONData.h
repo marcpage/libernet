@@ -8,6 +8,8 @@ namespace data {
 
 class JSONData : public Data {
 public:
+  enum ListAction { ClearFirst, Append };
+  typedef std::vector<std::string> List;
   JSONData() : Data() {}
   explicit JSONData(const Data &data) : Data(data) {}
   virtual ~JSONData() {}

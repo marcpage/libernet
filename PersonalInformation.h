@@ -2,8 +2,8 @@
 #define __PersonalInformation_h__
 
 #include "libernet/Identity.h"
-#include "libernet/JSONData.h"
 #include "libernet/OwnerIdentity.h"
+#include "libernet/WrapperData.h"
 #include "os/DateTime.h"
 #include "os/Text.h"
 #include "protocol/JSON.h"
@@ -14,28 +14,19 @@
 
 namespace data {
 
-class PersonalInformation : public JSONData {
+class PersonalInformation : public WrapperData {
 public:
-  enum ListAction { ClearFirst, Append };
-  typedef std::vector<std::string> List;
-  PersonalInformation() : JSONData() {
+  PersonalInformation() : WrapperData() {
     _changeInfo(json::Value().parse("{\"nickname\":\"\"}"));
   }
-  PersonalInformation(const PersonalInformation &other) : JSONData(other) {}
+  PersonalInformation(const PersonalInformation &other) : WrapperData(other) {}
   PersonalInformation(const std::string &data, const std::string &identifier,
                       const std::string &key)
-      : JSONData(data, identifier, key) {}
+      : WrapperData(data, identifier, key) {}
   virtual ~PersonalInformation() {}
   PersonalInformation &operator=(const PersonalInformation &other);
-  PersonalInformation &assign(const std::string &data,
-                              const std::string &identifier,
-                              const std::string &key);
-  PersonalInformation &calculate(int matchCount);
-  int match();
   std::string nickname();
   void setNickname(const std::string &nickname);
-  dt::DateTime timestamp();
-  void setTimestamp(const dt::DateTime &timestamp);
   std::string next();
   void setNext(const std::string &next);
   bool valid();
@@ -56,9 +47,6 @@ public:
   std::string credentialFilename(const std::string &identifier) {
     return credentialFilename(_index(identifier));
   }
-  std::string signer();
-  bool authenticate(Identity &signer);
-  void sign(OwnerIdentity &owner);
   int verifierCount();
   List &verifiers(List &identities, ListAction action);
   bool verify(Identity &signer);
@@ -66,37 +54,14 @@ public:
 
 private:
   int _index(const std::string &identifier);
-  void _validate();
-  void _changeInfo(json::Value &info,
-                   const dt::DateTime &timestamp = dt::DateTime(),
-                   int matchCount = 0);
-  void _changeContent(json::Value &value, int matchCount = 0);
-  json::Value _info(const json::Value &wrapper = json::Value(json::NullType));
+  void _validate() override;
+  std::string _wrapKey() override { return "identity"; }
 };
 
 inline PersonalInformation &
 PersonalInformation::operator=(const PersonalInformation &other) {
-  JSONData::operator=(other);
+  WrapperData::operator=(other);
   return *this;
-}
-
-inline PersonalInformation &
-PersonalInformation::assign(const std::string &data,
-                            const std::string &identifier,
-                            const std::string &key) {
-  Data::assign(data, identifier, key);
-  _validate();
-  return *this;
-}
-
-inline PersonalInformation &PersonalInformation::calculate(int matchCount) {
-  auto wrapper = JSONData::value();
-  _changeContent(wrapper, matchCount);
-  return *this;
-}
-
-inline int PersonalInformation::match() {
-  return text::matching(Data::identifier(), signer());
 }
 
 inline std::string PersonalInformation::nickname() {
@@ -107,17 +72,6 @@ inline void PersonalInformation::setNickname(const std::string &nickname) {
   auto info = _info();
   info["nickname"] = nickname;
   _changeInfo(info);
-}
-
-inline dt::DateTime PersonalInformation::timestamp() {
-  return dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT) +
-         double(_info()["timestamp"].integer());
-}
-
-inline void PersonalInformation::setTimestamp(const dt::DateTime &timestamp) {
-  auto info = _info();
-
-  _changeInfo(info, timestamp);
 }
 
 inline std::string PersonalInformation::next() {
@@ -183,8 +137,8 @@ void PersonalInformation::addCredential(const std::string &identifier,
 }
 
 /// @todo Test
-inline PersonalInformation::List &
-PersonalInformation::credentials(PersonalInformation::List &identifiers,
+inline JSONData::List &
+PersonalInformation::credentials(JSONData::List &identifiers,
                                  PersonalInformation::ListAction action) {
   auto info = _info();
   json::Value &credentials = info["credentials"];
@@ -211,36 +165,13 @@ inline std::string PersonalInformation::credentialFilename(int index) {
   return _info()["credentials"][index]["filename"].string();
 }
 
-inline std::string PersonalInformation::signer() {
-  return JSONData::value()["signer"].string();
-}
-
-inline bool PersonalInformation::authenticate(Identity &signer) {
-  auto wrapper = JSONData::value();
-
-  if (signer.identifier() != wrapper["signer"].string()) {
-    return false; // not tested
-  }
-  return signer.valid(wrapper["identity"].string(),
-                      text::base64Decode(wrapper["signature"].string()));
-}
-
-inline void PersonalInformation::sign(OwnerIdentity &owner) {
-  auto wrapper = JSONData::value();
-
-  wrapper["signer"] = owner.identifier();
-  wrapper["signature"] =
-      text::base64Encode(owner.sign(wrapper["identity"].string()));
-  _changeContent(wrapper);
-}
-
 inline int PersonalInformation::verifierCount() {
   return JSONData::value()["verifiers"].count();
 }
 
 /// @todo Test
-inline PersonalInformation::List &
-PersonalInformation::verifiers(PersonalInformation::List &identities,
+inline JSONData::List &
+PersonalInformation::verifiers(JSONData::List &identities,
                                PersonalInformation::ListAction action) {
   auto wrapper = JSONData::value();
   const json::Value &verifiers = wrapper["verifiers"];
@@ -292,8 +223,7 @@ inline void PersonalInformation::_validate() {
   auto wrapper = JSONData::value();
   auto info = _info(wrapper);
 
-  JSONData::_validatePositiveInteger(wrapper, "padding");
-  JSONData::_validatePositiveInteger(info, "timestamp");
+  WrapperData::_validate();
   JSONData::_validateKey(info, "nickname", json::StringType);
 
   JSONData::_validateKey(info, "valid", json::BooleanType, true);
@@ -334,9 +264,6 @@ inline void PersonalInformation::_validate() {
   JSONData::_validateKey(info, "street number", json::StringType, true);
   JSONData::_validateKey(info, "apartment", json::StringType, true);
 
-  JSONData::_validateBase64(wrapper, "signature", true);
-  JSONData::_validateHash(wrapper, "signer", true);
-
   json::Value &verifiers =
       JSONData::_validateKey(wrapper, "verifiers", json::ObjectType, true);
   const auto verifyingIdentifiers =
@@ -345,35 +272,6 @@ inline void PersonalInformation::_validate() {
   for (auto identifier : verifyingIdentifiers) {
     JSONData::_validateKey(verifiers, identifier, json::StringType);
   }
-}
-
-inline void PersonalInformation::_changeInfo(json::Value &info,
-                                             const dt::DateTime &timestamp,
-                                             int matchCount) {
-  json::Value wrapper(json::ObjectType);
-
-  info["timestamp"] = int64_t(
-      timestamp - dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT));
-  wrapper["identity"] = info.format();
-  _changeContent(wrapper, matchCount);
-}
-
-inline void PersonalInformation::_changeContent(json::Value &value,
-                                                int matchCount) {
-  const std::string signer =
-      value.has("signer") ? value["signer"].string() : std::string();
-
-  do {
-    value["padding"] = int64_t(rand());
-    JSONData::assign(value, Data::Unencrypted);
-  } while (text::matching(Data::identifier(), signer) < matchCount);
-  _validate();
-}
-
-inline json::Value PersonalInformation::_info(const json::Value &wrapper) {
-  return json::Value().parse(
-      (wrapper.is(json::NullType) ? JSONData::value() : wrapper)["identity"]
-          .string());
 }
 
 } // namespace data
