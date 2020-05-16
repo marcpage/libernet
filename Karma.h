@@ -55,11 +55,11 @@ inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
 
 inline Karma::Karma(uint64_t karma, uint64_t kismet)
     : _karma(karma), _kismet(kismet) {
-  const uint64_t oneKarmaInKismet = 100000000000000;
+  const uint64_t kismetPerKarma = 100000000000000;
 
-  while (_kismet > oneKarmaInKismet) {
+  while (_kismet > kismetPerKarma) {
     _karma += 1;
-    _kismet -= oneKarmaInKismet;
+    _kismet -= kismetPerKarma;
   }
 }
 
@@ -81,25 +81,25 @@ inline std::string &Karma::string(std::string &buffer) {
 }
 
 inline Karma &Karma::operator+=(const Karma &other) {
-  const uint64_t oneKarmaInKismet = 100000000000000;
+  const uint64_t kismetPerKarma = 100000000000000;
 
   _karma += other._karma;
   _kismet += other._kismet;
 
-  while (_kismet >= oneKarmaInKismet) {
-    _kismet -= oneKarmaInKismet;
+  while (_kismet >= kismetPerKarma) {
+    _kismet -= kismetPerKarma;
     _karma += 1;
   }
   return *this;
 }
 
 inline Karma &Karma::operator-=(const Karma &other) {
-  const uint64_t oneKarmaInKismet = 100000000000000;
+  const uint64_t kismetPerKarma = 100000000000000;
 
   AssertMessageException(*this >= other);
 
   while (_kismet < other._kismet) {
-    _kismet += oneKarmaInKismet;
+    _kismet += kismetPerKarma;
     _karma -= 1;
   }
 
@@ -110,8 +110,8 @@ inline Karma &Karma::operator-=(const Karma &other) {
 
 inline Karma &Karma::operator*=(uint32_t scaler) {
   const uint64_t mask32 = 0x00000000FFFFFFFF;
-  const uint64_t oneKarmaInKismet = 100000000000000;
-  const uint64_t oneKarmaInKismetH = (oneKarmaInKismet >> 32) & mask32;
+  const uint64_t kismetPerKarma = 100000000000000;
+  const uint64_t kismetPerKarmaH = (kismetPerKarma >> 32) & mask32;
   const uint64_t maxKarma = 100000000000000;
   const uint64_t maxKarmaH = (maxKarma >> 32) & mask32;
   const uint64_t kismetL = _kismet & mask32;
@@ -124,8 +124,8 @@ inline Karma &Karma::operator*=(uint32_t scaler) {
   const uint64_t karmaHigh = scaler * karmaH;
   uint64_t karmaCarry = 0;
 
-  while (kismetHigh > oneKarmaInKismetH) {
-    kismetHigh -= oneKarmaInKismetH;
+  while (kismetHigh > kismetPerKarmaH) {
+    kismetHigh -= kismetPerKarmaH;
     karmaCarry += 1;
   }
 
