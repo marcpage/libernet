@@ -16,21 +16,24 @@ public:
   uint64_t getWholeKarma() const { return _karma; }
   uint64_t getKismet() const { return _kismet; }
   ~Karma() {}
-  std::string &string(std::string &buffer);
+  std::string &string(std::string &buffer) const;
   std::string string() const {
     std::string buffer;
 
     return string(buffer);
   }
+  /// @todo test
   operator std::string() const { return string(); }
   Karma operator+(const Karma &other) const { return Karma(*this) += other; }
   Karma &operator+=(const Karma &other);
   Karma operator-(const Karma &other) const { return Karma(*this) -= other; }
   Karma &operator-=(const Karma &other);
-  Karma operator*(uint32_t scaler) const { return Karma(*this) *= other; }
+  Karma operator*(uint32_t scaler) const { return Karma(*this) *= scaler; }
   Karma &operator*=(uint32_t scaler);
-  Karma operator/(uint32_t scaler) const { return Karma(*this) /= other; }
+  /* TODO find more efficient division, if division is needed
+  Karma operator/(uint32_t scaler) const { return Karma(*this) /= scaler; }
   Karma &operator/=(uint32_t scaler);
+  */
   bool operator==(const Karma &other) const;
   bool operator!=(const Karma &other) const { return !(*this == other); }
   bool operator<(const Karma &other) const;
@@ -49,7 +52,13 @@ inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
   _karma = std::stoll(value.substr(0, dot));
 
   if (std::string::npos != dot) {
-    _kismet = std::stoll(value.substr(dot, 14));
+    std::string kismet = value.substr(dot + 1, 14);
+
+    while (kismet.size() < 14) {
+      kismet += '0';
+    }
+
+    _kismet = std::stoll(kismet);
   }
 }
 
@@ -63,7 +72,7 @@ inline Karma::Karma(uint64_t karma, uint64_t kismet)
   }
 }
 
-inline std::string &Karma::string(std::string &buffer) {
+inline std::string &Karma::string(std::string &buffer) const {
   buffer.clear();
 
   if (_kismet > 0) {
@@ -73,10 +82,13 @@ inline std::string &Karma::string(std::string &buffer) {
       buffer = '0' + buffer;
     }
 
-    buffer += '.';
+    buffer = '.' + buffer;
+    while (buffer[buffer.size() - 1] == '0') {
+      buffer.erase(buffer.size() - 1);
+    }
   }
 
-  buffer += std::to_string(_karma);
+  buffer = std::to_string(_karma) + buffer;
   return buffer;
 }
 
@@ -118,10 +130,10 @@ inline Karma &Karma::operator*=(uint32_t scaler) {
   const uint64_t kismetH = (_kismet >> 32) & mask32;
   const uint64_t karmaL = _kismet & mask32;
   const uint64_t karmaH = (_kismet >> 32) & mask32;
-  const uint64_t kismetLow = scaler * kismetL;
-  const uint64_t kismetHigh = scaler * kismetH;
-  const uint64_t karmaLow = scaler * karmaL;
-  const uint64_t karmaHigh = scaler * karmaH;
+  uint64_t kismetLow = scaler * kismetL;
+  uint64_t kismetHigh = scaler * kismetH;
+  uint64_t karmaLow = scaler * karmaL;
+  uint64_t karmaHigh = scaler * karmaH;
   uint64_t karmaCarry = 0;
 
   while (kismetHigh > kismetPerKarmaH) {
@@ -136,20 +148,20 @@ inline Karma &Karma::operator*=(uint32_t scaler) {
   _karma = (karmaHigh << 32) + karmaLow + karmaCarry;
   return *this;
 }
-
+/*
 inline Karma &Karma::operator/=(uint32_t scaler) {
   AssertMessageException(scaler != 0);
   Karma remainder(*this);
   const Karma denominator(0, scaler);
 
-  *this = 0;
+  *this = Karma(0);
   while (remainder >= denominator) {
-    *this += 1;
+    *this += Karma(0, 1);
     remainder -= denominator;
   }
   return *this;
 }
-
+*/
 inline bool Karma::operator==(const Karma &other) const {
   return (_karma == other._karma) && (_kismet == other._kismet);
 }
