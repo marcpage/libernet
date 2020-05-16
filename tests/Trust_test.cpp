@@ -40,7 +40,7 @@ void validate(data::Trust &t, const char *name, const std::string &d,
 }
 
 int main(const int /*argc*/, const char *const /*argv*/[]) {
-  int iterations = 2;
+  int iterations = 60;
 #ifdef __Tracer_h__
   iterations = 1;
 #endif

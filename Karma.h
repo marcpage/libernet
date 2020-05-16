@@ -67,8 +67,8 @@ inline Karma::Karma(uint64_t karma, uint64_t kismet)
   const uint64_t kismetPerKarma = 100000000000000;
 
   while (_kismet > kismetPerKarma) {
-    _karma += 1;
-    _kismet -= kismetPerKarma;
+    _karma += 1;               // not tested
+    _kismet -= kismetPerKarma; // not tested
   }
 }
 
@@ -99,8 +99,8 @@ inline Karma &Karma::operator+=(const Karma &other) {
   _kismet += other._kismet;
 
   while (_kismet >= kismetPerKarma) {
-    _kismet -= kismetPerKarma;
-    _karma += 1;
+    _kismet -= kismetPerKarma; // not tested
+    _karma += 1;               // not tested
   }
   return *this;
 }
@@ -111,8 +111,8 @@ inline Karma &Karma::operator-=(const Karma &other) {
   AssertMessageException(*this >= other);
 
   while (_kismet < other._kismet) {
-    _kismet += kismetPerKarma;
-    _karma -= 1;
+    _kismet += kismetPerKarma; // not tested
+    _karma -= 1;               // not tested
   }
 
   _kismet -= other._kismet;
@@ -137,8 +137,8 @@ inline Karma &Karma::operator*=(uint32_t scaler) {
   uint64_t karmaCarry = 0;
 
   while (kismetHigh > kismetPerKarmaH) {
-    kismetHigh -= kismetPerKarmaH;
-    karmaCarry += 1;
+    kismetHigh -= kismetPerKarmaH; // not tested
+    karmaCarry += 1;               // not tested
   }
 
   _kismet = (kismetHigh << 32) + kismetLow;
