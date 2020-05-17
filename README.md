@@ -693,12 +693,12 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 			"latest": timestamp latest successful connection,
 			"connections": number of times connected,
 			"failed": number of failed connection attempts,
-			"time": total time in seconds connected to the server,
+			"time": total time in microseconds connected to the server,
 			"input": total bytes received from this node,
 			"output": total bytes sent to this node,
 			"response": total times we received an exact match for what we needed,
 			"similar": total items returned for similar-to searchs,
-			"karma": karma received from this node,
+			"received": karma received from this node,
 		}
 	},
 }

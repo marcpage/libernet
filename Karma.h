@@ -48,8 +48,12 @@ private:
 
 inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
   const auto dot = value.find('.');
+  size_t after;
 
-  _karma = std::stoll(value.substr(0, dot));
+  if (dot != 0) {
+    _karma = std::stoll(value.substr(0, dot), &after);
+    AssertMessageException((dot == std::string::npos) || (dot == after));
+  }
 
   if (std::string::npos != dot) {
     std::string kismet = value.substr(dot + 1, 14);
@@ -58,7 +62,8 @@ inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
       kismet += '0';
     }
 
-    _kismet = std::stoll(kismet);
+    _kismet = std::stoll(kismet, &after);
+    AssertMessageException(kismet.size() == after);
   }
 }
 

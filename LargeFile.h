@@ -32,7 +32,9 @@ public:
   }
   LargeFile &assign(const std::string &data, const std::string &identifier,
                     const std::string &key);
-  bool operator==(const Data &other) const { return JSONData::operator==(other); }
+  bool operator==(const Data &other) const {
+    return JSONData::operator==(other);
+  }
   bool operator!=(const Data &other) const { return !(*this == other); }
   List &objects(List &dataList);
   bool write(const io::Path &path, const Data &chunk);
