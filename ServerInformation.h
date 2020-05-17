@@ -3,92 +3,95 @@
 
 #include "libernet/JSONData.h"
 #include "libernet/Karma.h"
+#include "os/DateTime.h"
 #include "protocol/JSON.h"
 #include <algorithm> // std::copy
 #include <string>
+s namespace data {
 
-namespace data {
+  class ServerInformation : public JSONData {
+  public:
+    enum Connection { FirstConnection, LastConnection };
+    ServerInformation() : JSONData() {
+      _changeInfo(json::Value(json::ObjectType));
+    }
+    ServerInformation(const std::string &data, const std::string &identifier)
+        : JSONData(data, identifier) {}
+    ServerInformation(const ServerInformation &other) : JSONData(other) {}
+    virtual ~ServerInformation() {}
+    void assign(const std::string &data, const std::string &identifier) {
+      Data::assign(data, identifier);
+    }
+    ServerInformation &operator=(const ServerInformation &other) {
+      JSONData::operator=(other);
+    }
+    bool operator==(const ServerInformation &other) {
+      JSONData::operator==(other);
+    }
+    bool operator!=(const ServerInformation &other) {
+      return !(*this == other);
+    }
+    std::string name() { return _get("name").string(); }
+    void setName(const std::string &newName) { _set("name", newName); }
+    std::string owner() { return _get("identifier").string(); }
+    void setOwner(const std::string &newIdentifier) {
+      _set("identifier", newIdentifier);
+    }
+    std::string address() { return _get("address").string(); }
+    void setAddress(const std::string &newAddress) {
+      _set("address", newAddress);
+    }
+    int port() { return _get("port", json::IntegerType).integer(); }
+    void setPort(int newPort) { _set("port", int64_t(newPort)); }
+    List &servers(List &identifiers, ListAction action = ClearFirst);
+    dt::DateTime connection(const std::string &identifier,
+                            Connection which = LastConnection);
+    void setConnection(const std::string &identifier,
+                       const dt::DateTime &when = dt::DateTime(),
+                       Connection which = LastConnection);
+    std::string name(const std::string &identifier) {
+      return _get(identifier, "name").string();
+    }
+    void setName(const std::string &identifier, const std::string &newName) {
+      _set(identifier, "name", newName);
+    }
+    std::string address(const std::string &identifier) {
+      return _get(identifier, "address").string();
+    }
+    void setAddress(const std::string &identifier,
+                    const std::string &newAddress) {
+      _set(identifier, "address", newAddress);
+    }
+    int port(const std::string &identifier) {
+      return _get(identifier, "port", json::IntegerType).integer();
+    }
+    void setPort(const std::string &identifier, int newPort) {
+      _set(identifier, "port", int64_t(newPort));
+    }
+    int64_t count(const std::string &identifier, const std::string &type) {
+      return _get(identifier, type, json::IntegerType).integer();
+    }
+    void increment(const std::string &identifier, const std::string &type,
+                   int64_t amount = 1);
 
-class ServerInformation : public JSONData {
-public:
-  enum Connection { FirstConnection, LastConnection };
-  ServerInformation() : JSONData() {
-    _changeInfo(json::Value(json::ObjectType));
-  }
-  ServerInformation(const std::string &data, const std::string &identifier)
-      : JSONData(data, identifier) {}
-  ServerInformation(const ServerInformation &other) : JSONData(other) {}
-  virtual ~WrapperData() {}
-  void assign(const std::string &data, const std::string &identifier) {
-    Data::assign(data, identifier);
-  }
-  ServerInformation &operator=(const ServerInformation &other) {
-    JSONData::operator=(other);
-  }
-  bool operator==(const ServerInformation &other) {
-    JSONData::operator==(other);
-  }
-  bool operator!=(const ServerInformation &other) { return !(*this == other); }
-  std::string name() { return _get("name").string(); }
-  void setName(const std::string &newName) { _set("name", newName); }
-  std::string owner() { return _get("identifier").string(); }
-  void setOwner(const std::string &newIdentifier) {
-    _set("identifier", newIdentifier);
-  }
-  std::string address() { return _get("address").string(); }
-  void setAddress(const std::string &newAddress) {
-    _set("address", newAddress);
-  }
-  int port() { return _get("port", json::IntegerType).integer(); }
-  void setPort(int newPort) { _set("port", int64_t(newPort)); }
-  List &servers(List &identifiers, ListAction action = ClearFirst);
-  dt::DateTime connection(const std::string &identifier,
-                          Connection which = LastConnection);
-  void setConnection(const std::string &identifier,
-                     const dt::DateTime &when = dt::DateTime(),
-                     Connection which = LastConnection);
-  std::string name(const std::string &identifier) {
-    return _get(identifier, "name").string();
-  }
-  void setName(const std::string &identifier, const std::string &newName) {
-    _set(identifier, "name", newName);
-  }
-  std::string address(const std::string &identifier) {
-    return _get(identifier, "address").string();
-  }
-  void setAddress(const std::string &identifier,
-                  const std::string &newAddress) {
-    _set(identifier, "address", newAddress);
-  }
-  int port(const std::string &identifier) {
-    return _get(identifier, "port", json::IntegerType).integer();
-  }
-  void setPort(const std::string &identifier, int newPort) {
-    _set(identifier, "port", int64_t(newPort));
-  }
-  int64_t count(const std::string &identifier, const std::string &type) {
-    return _get(identifier, type, json::IntegerType).integer();
-  }
-  void increment(const std::string &identifier, const std::string &type,
-                 int64_t amount = 1);
-
-private:
-  void _validate();
-  json::Value _get(json::Value &value, const std::string &key,
-                   json::Type expected = json::StringType);
-  json::Value _get(const std::string &key,
-                   json::Type expected = json::StringType) {
-    return _get(JSONData::value(), key, expected);
-  }
-  void _set(const std::string &key, const std::string &value);
-  void _set(const std::string &key, int64_t value);
-  json::Value _get(const std::string &identifier, const std::string &key,
-                   json::Type expected = json::StringType);
-  void _set(const std::string &identifier, const std::string &key,
-            const std::string &value);
-  void _set(const std::string &identifier, const std::string &key,
-            int64_t value);
-};
+  private:
+    void _validate();
+    json::Value _get(json::Value &value, const std::string &key,
+                     json::Type expected = json::StringType);
+    json::Value _get(const std::string &key,
+                     json::Type expected = json::StringType) {
+      return _get(JSONData::value(), key, expected);
+    }
+    void _set(const std::string &key, const std::string &value);
+    void _set(const std::string &key, int64_t value);
+    json::Value _get(const std::string &identifier, const std::string &key,
+                     json::Type expected = json::StringType);
+    void _set(const std::string &identifier, const std::string &key,
+              const std::string &value);
+    void _set(const std::string &identifier, const std::string &key,
+              int64_t value);
+    void _changeIinfo(const json::Value &value);
+  };
 
 } // namespace data
 
@@ -140,7 +143,7 @@ inline void ServerInformation::increment(const std::string &identifier,
   }
 
   entry[type] += amount;
-  JSONData::assign(info, Data::Unencrypted);
+  _changeIinfo(info);
 }
 
 inline void ServerInformation::_validate() {
@@ -195,14 +198,14 @@ inline void ServerInformation::_set(const std::string &key,
   auto info = JSONData::value();
 
   info[key] = value;
-  JSONData::assign(info, Data::Unencrypted);
+  _changeIinfo(info);
 }
 
 inline void ServerInformation::_set(const std::string &key, int64_t value) {
   auto info = JSONData::value();
 
   info[key] = value;
-  JSONData::assign(info, Data::Unencrypted);
+  _changeIinfo(info);
 }
 
 inline json::Value
@@ -225,7 +228,7 @@ inline void ServerInformation::_set(const std::string &identifier,
     info["servers"].makeObject();
   }
   info[key] = value;
-  JSONData::assign(info, Data::Unencrypted);
+  _changeIinfo(info);
 }
 
 inline void ServerInformation::_set(const std::string &identifier,
@@ -236,7 +239,12 @@ inline void ServerInformation::_set(const std::string &identifier,
     info["servers"].makeObject();
   }
   info[key] = value;
+  _changeIinfo(info);
+}
+
+inline void ServerInformation::_changeIinfo(const json::Value &value) {
   JSONData::assign(info, Data::Unencrypted);
+  _validate();
 }
 
 #endif // __ServerInformation_h__

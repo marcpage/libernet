@@ -26,8 +26,8 @@ public:
   }
   std::string &contents(std::string &buffer,
                         Compression compression = Decompress) override;
-  bool operator==(const Data &other) const { return value() == other.value(); }
-  bool operator!=(const Data &other) const { return !(*this == other); }
+  bool operator==(const JSONData &other) { return value() == other.value(); }
+  bool operator!=(const JSONData &other) { return !(*this == other); }
 
 protected:
   static int64_t _validatePositiveInteger(json::Value &value,
