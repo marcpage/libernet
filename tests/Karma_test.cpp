@@ -30,7 +30,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(k0 * 10 == k0);
       dotest(k0 * 100 == k0);
-      // dotest(k1k / 1000 == k1);
+      dotest(k1k / 1000 == k1);
       dotest(k0 + k1 == k1);
       dotest(k0 + k1k_1 == k1k_1);
       dotest(k1 + kismet == k1_n_kismet);
