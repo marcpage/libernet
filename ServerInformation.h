@@ -177,33 +177,6 @@ inline void ServerInformation::_validate() {
       karma::Karma(received);
     }
   }
-
-  // todo implement
-
-  /*
-  {
-          "identifier": hash identifier of the node,
-          "name": the name of this node,
-          "address": the address of this node,
-          "port": the port number this node is listening on,
-          "servers": {
-                  "identifier": {
-                          "name": the node's name,
-                          "address": name or ip address,
-                          "port": port listening on,
-                          "first": timestamp of first successful connection,
-                          "latest": timestamp latest successful connection,
-                          "connections": number of times connected,
-                          "failed": number of failed connection attempts,
-                          "time": total time in seconds connected to the server,
-                          "input": total bytes received from this node,
-                          "output": total bytes sent to this node,
-                          "response": total times we received an exact match for
-  what we needed, "similar": total items returned for similar-to searchs,
-                          "karma": karma received from this node,
-                  }
-          },
-  }*/
 }
 
 inline json::Value
@@ -240,6 +213,7 @@ ServerInformation::_get(const std::string &identifier, const std::string &key,
   }
   return _get(info["servers"], key, expected);
 }
+
 inline void ServerInformation::_set(const std::string &identifier,
                                     const std::string &key,
                                     const std::string &value) {
@@ -251,6 +225,7 @@ inline void ServerInformation::_set(const std::string &identifier,
   info[key] = value;
   JSONData::assign(info, Data::Unencrypted);
 }
+
 inline void ServerInformation::_set(const std::string &identifier,
                                     const std::string &key, int64_t value) {
   auto info = JSONData::value();
