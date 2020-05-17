@@ -7,7 +7,6 @@
 namespace karma {
 
 /// @todo document
-/// @todo test
 class Karma {
 public:
   explicit Karma(const std::string &value);
@@ -30,10 +29,8 @@ public:
   Karma &operator-=(const Karma &other);
   Karma operator*(uint32_t scaler) const { return Karma(*this) *= scaler; }
   Karma &operator*=(uint32_t scaler);
-  /* TODO find more efficient division, if division is needed
   Karma operator/(uint32_t scaler) const { return Karma(*this) /= scaler; }
   Karma &operator/=(uint32_t scaler);
-  */
   bool operator==(const Karma &other) const;
   bool operator!=(const Karma &other) const { return !(*this == other); }
   bool operator<(const Karma &other) const;
@@ -157,20 +154,26 @@ inline Karma &Karma::operator*=(uint32_t scaler) {
   _karma = (karmaHigh << 32) + karmaLow + karmaCarry;
   return *this;
 }
-/*
+
 inline Karma &Karma::operator/=(uint32_t scaler) {
   AssertMessageException(scaler != 0);
-  Karma remainder(*this);
-  const Karma denominator(0, scaler);
+  const uint64_t mask32 = 0x00000000FFFFFFFF;
+  const uint64_t denominator = scaler;
+  const uint64_t highDivision = _karma / denominator;
+  const uint64_t highRemainder = _karma % denominator;
+  const uint64_t midNumerator =
+      (highRemainder << 32) | ((_kismet >> 32) & mask32);
+  const uint64_t midDivision = midNumerator / denominator;
+  const uint64_t midRemainder = midNumerator % denominator;
+  const uint64_t lowNumerator = (midRemainder << 32) | (_kismet & mask32);
+  const uint64_t lowDivision = lowNumerator / denominator;
+  // const uint64_t lowRemainder = lowNumerator % denominator;
 
-  *this = Karma(0);
-  while (remainder >= denominator) {
-    *this += Karma(0, 1);
-    remainder -= denominator;
-  }
+  _karma = highDivision;
+  _kismet = (midDivision << 32) | lowDivision;
   return *this;
 }
-*/
+
 inline bool Karma::operator==(const Karma &other) const {
   return (_karma == other._karma) && (_kismet == other._kismet);
 }
