@@ -11,11 +11,10 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
   iterations = 1;
 #endif
   try {
-    std::string identifier1 = dummy("test1").identifier();
-    std::string identifier2 = dummy("test2").identifier();
-    std::string identifier3 = dummy("test3").identifier();
-  dt:
-    DateTime start;
+    std::string identifier1 = hash::sha256("test1").hex();
+    std::string identifier2 = hash::sha256("test2").hex();
+    std::string identifier3 = hash::sha256("test3").hex();
+    dt::DateTime start;
 
     for (int i = 0; i < iterations; ++i) {
       data::ServerInformation i1, i2, i3;
@@ -28,7 +27,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       i1.setName(identifier2, "Henry");
       i1.setAddress(identifier2, "127.0.0.1");
-      i1.setPort(identitifier2, 8000);
+      i1.setPort(identifier2, 8000);
       i1.setConnection(identifier2, start,
                        data::ServerInformation::FirstConnection);
       i1.setConnection(identifier2, start + 5.0,
@@ -50,7 +49,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       i1.setName(identifier3, "Fred");
       i1.setAddress(identifier3, "localhost");
-      i1.setPort(identitifier2, 8080);
+      i1.setPort(identifier2, 8080);
       i1.setConnection(identifier3, start + 2.0,
                        data::ServerInformation::FirstConnection);
       i1.setConnection(identifier3, start + 3.0,
@@ -82,36 +81,38 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(fabs(start - i1.connection(
                               identifier2,
                               data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + start -
-                  i1.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i1.count("connections") == 2);
-      dotest(i1.count("failed") == 4);
-      dotest(i1.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i1.count("input") == 2048);
-      dotest(i1.count("output") == 2 * 4096);
-      dotest(i1.count("response") == 200);
-      dotest(i1.count("similar") == 2000);
+      dotest(fabs(5.0 + (start -
+                         i1.connection(
+                             identifier2,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i1.count(identifier2, "connections") == 2);
+      dotest(i1.count(identifier2, "failed") == 4);
+      dotest(i1.count(identifier2, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i1.count(identifier2, "input") == 2048);
+      dotest(i1.count(identifier2, "output") == 2 * 4096);
+      dotest(i1.count(identifier2, "response") == 200);
+      dotest(i1.count(identifier2, "similar") == 2000);
 
-      dotest(i1.name(identifier2) == "Fred");
-      dotest(i1.address(identifier2) == "localhost");
+      dotest(i1.name(identifier3) == "Fred");
+      dotest(i1.address(identifier3) == "localhost");
       dotest(i1.port() == 8080);
-      dotest(fabs(2.0 + start -
-                  i1.connection(identifier2,
-                                data::ServerInformation::FirstConnection)) <
-             1.0);
-      dotest(fabs(3.0 + start -
-                  i1.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i1.count("connections") == 0);
-      dotest(i1.count("failed") == 6);
-      dotest(i1.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i1.count("input") == 1024);
-      dotest(i1.count("output") == 4096);
-      dotest(i1.count("response") == 100);
-      dotest(i1.count("similar") == 10000);
+      dotest(fabs(2.0 + (start -
+                         i1.connection(
+                             identifier3,
+                             data::ServerInformation::FirstConnection))) < 1.0);
+      dotest(fabs(3.0 + (start -
+                         i1.connection(
+                             identifier3,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i1.count(identifier3, "connections") == 0);
+      dotest(i1.count(identifier3, "failed") == 6);
+      dotest(i1.count(identifier3, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i1.count(identifier3, "input") == 1024);
+      dotest(i1.count(identifier3, "output") == 4096);
+      dotest(i1.count(identifier3, "response") == 100);
+      dotest(i1.count(identifier3, "similar") == 10000);
 
       dotest(i2 != i1);
       dotest(i2 == i1);
@@ -130,36 +131,38 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(fabs(start - i2.connection(
                               identifier2,
                               data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + start -
-                  i2.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i2.count("connections") == 2);
-      dotest(i2.count("failed") == 4);
-      dotest(i2.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i2.count("input") == 2048);
-      dotest(i2.count("output") == 2 * 4096);
-      dotest(i2.count("response") == 200);
-      dotest(i2.count("similar") == 2000);
+      dotest(fabs(5.0 + (start -
+                         i1.connection(
+                             identifier2,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i2.count(identifier2, "connections") == 2);
+      dotest(i2.count(identifier2, "failed") == 4);
+      dotest(i2.count(identifier2, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i2.count(identifier2, "input") == 2048);
+      dotest(i2.count(identifier2, "output") == 2 * 4096);
+      dotest(i2.count(identifier2, "response") == 200);
+      dotest(i2.count(identifier2, "similar") == 2000);
 
-      dotest(i2.name(identifier2) == "Fred");
-      dotest(i2.address(identifier2) == "localhost");
+      dotest(i2.name(identifier3) == "Fred");
+      dotest(i2.address(identifier3) == "localhost");
       dotest(i2.port() == 8080);
-      dotest(fabs(2.0 + start -
-                  i2.connection(identifier2,
-                                data::ServerInformation::FirstConnection)) <
-             1.0);
-      dotest(fabs(3.0 + start -
-                  i2.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i2.count("connections") == 0);
-      dotest(i2.count("failed") == 6);
-      dotest(i2.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i2.count("input") == 1024);
-      dotest(i2.count("output") == 4096);
-      dotest(i2.count("response") == 100);
-      dotest(i2.count("similar") == 10000);
+      dotest(fabs(2.0 + (start -
+                         i2.connection(
+                             identifier3,
+                             data::ServerInformation::FirstConnection))) < 1.0);
+      dotest(fabs(3.0 + (start -
+                         i1.connection(
+                             identifier3,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i2.count(identifier3, "connections") == 0);
+      dotest(i2.count(identifier3, "failed") == 6);
+      dotest(i2.count(identifier3, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i2.count(identifier3, "input") == 1024);
+      dotest(i2.count(identifier3, "output") == 4096);
+      dotest(i2.count(identifier3, "response") == 100);
+      dotest(i2.count(identifier3, "similar") == 10000);
 
       i3.assign(i2.data(), i2.identifier());
       dotest(i3 == i2);
@@ -176,36 +179,38 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(fabs(start - i3.connection(
                               identifier2,
                               data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + start -
-                  i3.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i3.count("connections") == 2);
-      dotest(i3.count("failed") == 4);
-      dotest(i3.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i3.count("input") == 2048);
-      dotest(i3.count("output") == 2 * 4096);
-      dotest(i3.count("response") == 200);
-      dotest(i3.count("similar") == 2000);
+      dotest(fabs(5.0 + (start -
+                         i3.connection(
+                             identifier2,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i3.count(identifier2, "connections") == 2);
+      dotest(i3.count(identifier2, "failed") == 4);
+      dotest(i3.count(identifier2, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i3.count(identifier2, "input") == 2048);
+      dotest(i3.count(identifier2, "output") == 2 * 4096);
+      dotest(i3.count(identifier2, "response") == 200);
+      dotest(i3.count(identifier2, "similar") == 2000);
 
-      dotest(i3.name(identifier2) == "Fred");
-      dotest(i3.address(identifier2) == "localhost");
+      dotest(i3.name(identifier3) == "Fred");
+      dotest(i3.address(identifier3) == "localhost");
       dotest(i3.port() == 8080);
-      dotest(fabs(2.0 + start -
-                  i3.connection(identifier2,
-                                data::ServerInformation::FirstConnection)) <
-             1.0);
-      dotest(fabs(3.0 + start -
-                  i3.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i3.count("connections") == 0);
-      dotest(i3.count("failed") == 6);
-      dotest(i3.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i3.count("input") == 1024);
-      dotest(i3.count("output") == 4096);
-      dotest(i3.count("response") == 100);
-      dotest(i3.count("similar") == 10000);
+      dotest(fabs(2.0 + (start -
+                         i3.connection(
+                             identifier3,
+                             data::ServerInformation::FirstConnection))) < 1.0);
+      dotest(fabs(3.0 + (start -
+                         i3.connection(
+                             identifier3,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i3.count(identifier3, "connections") == 0);
+      dotest(i3.count(identifier3, "failed") == 6);
+      dotest(i3.count(identifier3, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i3.count(identifier3, "input") == 1024);
+      dotest(i3.count(identifier3, "output") == 4096);
+      dotest(i3.count(identifier3, "response") == 100);
+      dotest(i3.count(identifier3, "similar") == 10000);
 
       data::ServerInformation i4(i3);
       dotest(i4 == i3);
@@ -223,36 +228,38 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(fabs(start - i4.connection(
                               identifier2,
                               data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + start -
-                  i4.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i4.count("connections") == 2);
-      dotest(i4.count("failed") == 4);
-      dotest(i4.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i4.count("input") == 2048);
-      dotest(i4.count("output") == 2 * 4096);
-      dotest(i4.count("response") == 200);
-      dotest(i4.count("similar") == 2000);
+      dotest(fabs(5.0 + (start -
+                         i4.connection(
+                             identifier2,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i4.count(identifier2, "connections") == 2);
+      dotest(i4.count(identifier2, "failed") == 4);
+      dotest(i4.count(identifier2, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i4.count(identifier2, "input") == 2048);
+      dotest(i4.count(identifier2, "output") == 2 * 4096);
+      dotest(i4.count(identifier2, "response") == 200);
+      dotest(i4.count(identifier2, "similar") == 2000);
 
-      dotest(i4.name(identifier2) == "Fred");
-      dotest(i4.address(identifier2) == "localhost");
+      dotest(i4.name(identifier3) == "Fred");
+      dotest(i4.address(identifier3) == "localhost");
       dotest(i4.port() == 8080);
-      dotest(fabs(2.0 + start -
-                  i4.connection(identifier2,
-                                data::ServerInformation::FirstConnection)) <
-             1.0);
-      dotest(fabs(3.0 + start -
-                  i4.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i4.count("connections") == 0);
-      dotest(i4.count("failed") == 6);
-      dotest(i4.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i4.count("input") == 1024);
-      dotest(i4.count("output") == 4096);
-      dotest(i4.count("response") == 100);
-      dotest(i4.count("similar") == 10000);
+      dotest(fabs(2.0 + (start -
+                         i4.connection(
+                             identifier3,
+                             data::ServerInformation::FirstConnection))) < 1.0);
+      dotest(fabs(3.0 + (start -
+                         i4.connection(
+                             identifier3,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i4.count(identifier3, "connections") == 0);
+      dotest(i4.count(identifier3, "failed") == 6);
+      dotest(i4.count(identifier3, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i4.count(identifier3, "input") == 1024);
+      dotest(i4.count(identifier3, "output") == 4096);
+      dotest(i4.count(identifier3, "response") == 100);
+      dotest(i4.count(identifier3, "similar") == 10000);
 
       data::ServerInformation i5(i4.data(), i4.identifier());
       dotest(i5 == i4);
@@ -271,36 +278,38 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(fabs(start - i5.connection(
                               identifier2,
                               data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + start -
-                  i5.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i5.count("connections") == 2);
-      dotest(i5.count("failed") == 4);
-      dotest(i5.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i5.count("input") == 2048);
-      dotest(i5.count("output") == 2 * 4096);
-      dotest(i5.count("response") == 200);
-      dotest(i5.count("similar") == 2000);
+      dotest(fabs(5.0 + (start -
+                         i5.connection(
+                             identifier2,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i5.count(identifier2, "connections") == 2);
+      dotest(i5.count(identifier2, "failed") == 4);
+      dotest(i5.count(identifier2, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i5.count(identifier2, "input") == 2048);
+      dotest(i5.count(identifier2, "output") == 2 * 4096);
+      dotest(i5.count(identifier2, "response") == 200);
+      dotest(i5.count(identifier2, "similar") == 2000);
 
-      dotest(i5.name(identifier2) == "Fred");
-      dotest(i5.address(identifier2) == "localhost");
+      dotest(i5.name(identifier3) == "Fred");
+      dotest(i5.address(identifier3) == "localhost");
       dotest(i5.port() == 8080);
-      dotest(fabs(2.0 + start -
-                  i5.connection(identifier2,
-                                data::ServerInformation::FirstConnection)) <
-             1.0);
-      dotest(fabs(3.0 + start -
-                  i5.connection(identifier2,
-                                data::ServerInformation::LastConnection)) <
-             1.0);
-      dotest(i5.count("connections") == 0);
-      dotest(i5.count("failed") == 6);
-      dotest(i5.count("time") < 2 * (dt::DateTime() - start) * 1000 * 1000);
-      dotest(i5.count("input") == 1024);
-      dotest(i5.count("output") == 4096);
-      dotest(i5.count("response") == 100);
-      dotest(i5.count("similar") == 10000);
+      dotest(fabs(2.0 + (start -
+                         i5.connection(
+                             identifier3,
+                             data::ServerInformation::FirstConnection))) < 1.0);
+      dotest(fabs(3.0 + (start -
+                         i5.connection(
+                             identifier3,
+                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i5.count(identifier3, "connections") == 0);
+      dotest(i5.count(identifier3, "failed") == 6);
+      dotest(i5.count(identifier3, "time") <
+             2 * (dt::DateTime() - start) * 1000 * 1000);
+      dotest(i5.count(identifier3, "input") == 1024);
+      dotest(i5.count(identifier3, "output") == 4096);
+      dotest(i5.count(identifier3, "response") == 100);
+      dotest(i5.count(identifier3, "similar") == 10000);
     }
   } catch (const std::exception &e) {
     printf("FAIL: Exception: %s\n", e.what());
