@@ -233,7 +233,7 @@ Type                                          | Encrypted | Contents | [Match](#
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD(GMT):recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
 [Karma](#karma)                               | No        | json     | karma:{block index}
-[server information](#server-information)     | No        | json     | None
+[Server Information](#server-information)     | No        | json     | None
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
 
@@ -684,7 +684,10 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 	"name": the name of this node,
 	"servers": {
 		"identifier": {
-			"address": address and port,
+			"address": name or ip address,
+			"port": port listening on,
+			"first": timestamp of first successful connection,
+			"latest": timestamp latest successful connection,
 			"connections": number of times connected,
 			"failed": number of failed connection attempts,
 			"time": total time in seconds connected to the server,
