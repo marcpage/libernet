@@ -103,7 +103,7 @@ inline JSONData::List &ServerInformation::servers(JSONData::List &identifiers,
   }
 
   if (!info.has("servers")) {
-    return identifiers;
+    return identifiers; // not tested
   }
 
   auto keys = info["servers"].keys();
@@ -137,7 +137,7 @@ inline void ServerInformation::increment(const std::string &identifier,
   json::Value &servers = info["servers"];
 
   if (!servers.has(identifier)) {
-    servers[identifier].makeObject();
+    servers[identifier].makeObject(); // not tested
   }
 
   json::Value &entry = servers[identifier];
@@ -185,7 +185,7 @@ inline void ServerInformation::_validate() {
           JSONData::_validateOptionalKey(entry, "received", json::StringType);
 
       if (received != entry) {
-        karma::Karma k(received.string());
+        karma::Karma k(received.string()); // not tested
       }
     }
   }
@@ -195,7 +195,7 @@ inline json::Value ServerInformation::_get(json::Value &value,
                                            const std::string &key,
                                            json::Type expected) {
   if (!value.has(key)) {
-    return json::Value(expected);
+    return json::Value(expected); // not tested
   }
   return value[key];
 }
@@ -221,13 +221,13 @@ inline json::Value ServerInformation::_get(const std::string &identifier,
   auto info = JSONData::value();
 
   if (!info.has("servers")) {
-    return json::Value(expected);
+    return json::Value(expected); // not tested
   }
 
   json::Value servers = info["servers"];
 
   if (!servers.has(identifier)) {
-    return json::Value(expected);
+    return json::Value(expected); // not tested
   }
 
   return _get(servers[identifier], key, expected);
@@ -257,13 +257,13 @@ inline void ServerInformation::_set(const std::string &identifier,
   auto info = JSONData::value();
 
   if (!info.has("servers")) {
-    info["servers"].makeObject();
+    info["servers"].makeObject(); // not tested
   }
 
   json::Value &servers = info["servers"];
 
   if (!servers.has(identifier)) {
-    servers[identifier].makeObject();
+    servers[identifier].makeObject(); // not tested
   }
 
   servers[identifier][key] = value;
