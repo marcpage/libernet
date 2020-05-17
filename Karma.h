@@ -65,6 +65,7 @@ inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
     _kismet = std::stoll(kismet, &after);
     AssertMessageException(kismet.size() == after);
     AssertMessageException(_kismet < kismetPerKarma);
+    AssertMessageException((_karma < maxKarma) || (_kismet == 0));
   }
 }
 

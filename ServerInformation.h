@@ -31,8 +31,8 @@ public:
   bool operator!=(const ServerInformation &other) { return !(*this == other); }
   std::string name() { return _get("name").string(); }
   void setName(const std::string &newName) { _set("name", newName); }
-  std::string identifier() { return _get("identifier").string(); }
-  void setIdentifier(const std::string &newIdentifier) {
+  std::string owner() { return _get("identifier").string(); }
+  void setOwner(const std::string &newIdentifier) {
     _set("identifier", newIdentifier);
   }
   std::string address() { return _get("address").string(); }
@@ -66,10 +66,11 @@ public:
   void setPort(const std::string &identifier, int newPort) {
     _set(identifier, "port", int64_t(newPort));
   }
-  int64_t getCount(const std::string &identifier, const std::string &type) {
+  int64_t count(const std::string &identifier, const std::string &type) {
     return _get(identifier, type, json::IntegerType).integer();
   }
-  void increment(const std::string &identifier, const std::string &type);
+  void increment(const std::string &identifier, const std::string &type,
+                 int64_t amount = 1);
 
 private:
   void _validate();
@@ -123,7 +124,8 @@ ServerInformation::setConnection(const std::string &identifier,
 }
 
 inline void ServerInformation::increment(const std::string &identifier,
-                                         const std::string &type) {
+                                         const std::string &type,
+                                         int64_t amount) {
   auto info = JSONData::value();
   json::Value &servers = info["servers"];
 
@@ -137,7 +139,7 @@ inline void ServerInformation::increment(const std::string &identifier,
     entry[type] = 0;
   }
 
-  entry[type] += 1;
+  entry[type] += amount;
   JSONData::assign(info, Data::Unencrypted);
 }
 
