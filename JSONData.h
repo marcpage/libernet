@@ -6,6 +6,8 @@
 
 namespace data {
 
+/// @todo document
+/// @todo cache json, move _changeContent here, changes get pushed then
 class JSONData : public Data {
 public:
   enum ListAction { ClearFirst, Append };
