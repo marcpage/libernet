@@ -95,7 +95,7 @@ inline int64_t JSONData::_validatePositiveInteger(json::Value &value,
   }
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::IntegerType));
-  AssertMessageException(value[name].integer() > 0);
+  AssertMessageException(value[name].integer() >= 0);
   return value[name].integer();
 }
 

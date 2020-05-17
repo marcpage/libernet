@@ -5,8 +5,14 @@
     fprintf(stderr, "FAIL(%s:%d): %s\n", __FILE__, __LINE__, #condition);      \
   }
 
+#define testclose(f1, f2)                                                      \
+  if (fabs(f1 - f2) < 0.1) {                                                   \
+    fprintf(stderr, "FAIL(%s:%d): %s (%0.6f) %s (%0.6f)\n", __FILE__,          \
+            __LINE__, #f1, double(f1), #f2, double(f2));                       \
+  }
+
 int main(const int /*argc*/, const char *const /*argv*/[]) {
-  int iterations = 2;
+  int iterations = 10;
 #ifdef __Tracer_h__
   iterations = 1;
 #endif
@@ -49,7 +55,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       i1.setName(identifier3, "Fred");
       i1.setAddress(identifier3, "localhost");
-      i1.setPort(identifier2, 8080);
+      i1.setPort(identifier3, 8080);
       i1.setConnection(identifier3, start + 2.0,
                        data::ServerInformation::FirstConnection);
       i1.setConnection(identifier3, start + 3.0,
@@ -77,14 +83,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i1.name(identifier2) == "Henry");
       dotest(i1.address(identifier2) == "127.0.0.1");
-      dotest(i1.port() == 8000);
-      dotest(fabs(start - i1.connection(
-                              identifier2,
-                              data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + (start -
-                         i1.connection(
-                             identifier2,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i1.port(identifier2) == 8000);
+      testclose(start, i1.connection(identifier2,
+                                     data::ServerInformation::FirstConnection));
+      testclose(
+          start + 5.0,
+          i1.connection(identifier2, data::ServerInformation::LastConnection));
       dotest(i1.count(identifier2, "connections") == 2);
       dotest(i1.count(identifier2, "failed") == 4);
       dotest(i1.count(identifier2, "time") <
@@ -96,15 +100,13 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i1.name(identifier3) == "Fred");
       dotest(i1.address(identifier3) == "localhost");
-      dotest(i1.port() == 8080);
-      dotest(fabs(2.0 + (start -
-                         i1.connection(
-                             identifier3,
-                             data::ServerInformation::FirstConnection))) < 1.0);
-      dotest(fabs(3.0 + (start -
-                         i1.connection(
-                             identifier3,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i1.port(identifier3) == 8080);
+      testclose(
+          start + 2.0,
+          i1.connection(identifier3, data::ServerInformation::FirstConnection));
+      testclose(
+          start + 3.0,
+          i1.connection(identifier3, data::ServerInformation::LastConnection));
       dotest(i1.count(identifier3, "connections") == 0);
       dotest(i1.count(identifier3, "failed") == 6);
       dotest(i1.count(identifier3, "time") <
@@ -115,7 +117,6 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
       dotest(i1.count(identifier3, "similar") == 10000);
 
       dotest(i2 != i1);
-      dotest(i2 == i1);
 
       i2 = i1;
       dotest(i2 == i1);
@@ -127,14 +128,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i2.name(identifier2) == "Henry");
       dotest(i2.address(identifier2) == "127.0.0.1");
-      dotest(i2.port() == 8000);
-      dotest(fabs(start - i2.connection(
-                              identifier2,
-                              data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + (start -
-                         i1.connection(
-                             identifier2,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i2.port(identifier2) == 8000);
+      testclose(start, i2.connection(identifier2,
+                                     data::ServerInformation::FirstConnection));
+      testclose(
+          start + 5.0,
+          i1.connection(identifier2, data::ServerInformation::LastConnection));
       dotest(i2.count(identifier2, "connections") == 2);
       dotest(i2.count(identifier2, "failed") == 4);
       dotest(i2.count(identifier2, "time") <
@@ -146,15 +145,13 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i2.name(identifier3) == "Fred");
       dotest(i2.address(identifier3) == "localhost");
-      dotest(i2.port() == 8080);
-      dotest(fabs(2.0 + (start -
-                         i2.connection(
-                             identifier3,
-                             data::ServerInformation::FirstConnection))) < 1.0);
-      dotest(fabs(3.0 + (start -
-                         i1.connection(
-                             identifier3,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i2.port(identifier3) == 8080);
+      testclose(
+          start + 2.0,
+          i2.connection(identifier3, data::ServerInformation::FirstConnection));
+      testclose(
+          start + 3.0,
+          i1.connection(identifier3, data::ServerInformation::LastConnection));
       dotest(i2.count(identifier3, "connections") == 0);
       dotest(i2.count(identifier3, "failed") == 6);
       dotest(i2.count(identifier3, "time") <
@@ -175,14 +172,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i3.name(identifier2) == "Henry");
       dotest(i3.address(identifier2) == "127.0.0.1");
-      dotest(i3.port() == 8000);
-      dotest(fabs(start - i3.connection(
-                              identifier2,
-                              data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + (start -
-                         i3.connection(
-                             identifier2,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i3.port(identifier2) == 8000);
+      testclose(start, i3.connection(identifier2,
+                                     data::ServerInformation::FirstConnection));
+      testclose(
+          start + 5.0,
+          i3.connection(identifier2, data::ServerInformation::LastConnection));
       dotest(i3.count(identifier2, "connections") == 2);
       dotest(i3.count(identifier2, "failed") == 4);
       dotest(i3.count(identifier2, "time") <
@@ -194,15 +189,13 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i3.name(identifier3) == "Fred");
       dotest(i3.address(identifier3) == "localhost");
-      dotest(i3.port() == 8080);
-      dotest(fabs(2.0 + (start -
-                         i3.connection(
-                             identifier3,
-                             data::ServerInformation::FirstConnection))) < 1.0);
-      dotest(fabs(3.0 + (start -
-                         i3.connection(
-                             identifier3,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i3.port(identifier3) == 8080);
+      testclose(
+          start + 2.0,
+          i3.connection(identifier3, data::ServerInformation::FirstConnection));
+      testclose(
+          start + 3.0,
+          i3.connection(identifier3, data::ServerInformation::LastConnection));
       dotest(i3.count(identifier3, "connections") == 0);
       dotest(i3.count(identifier3, "failed") == 6);
       dotest(i3.count(identifier3, "time") <
@@ -224,14 +217,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i4.name(identifier2) == "Henry");
       dotest(i4.address(identifier2) == "127.0.0.1");
-      dotest(i4.port() == 8000);
-      dotest(fabs(start - i4.connection(
-                              identifier2,
-                              data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + (start -
-                         i4.connection(
-                             identifier2,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i4.port(identifier2) == 8000);
+      testclose(start, i4.connection(identifier2,
+                                     data::ServerInformation::FirstConnection));
+      testclose(
+          start + 5.0,
+          i4.connection(identifier2, data::ServerInformation::LastConnection));
       dotest(i4.count(identifier2, "connections") == 2);
       dotest(i4.count(identifier2, "failed") == 4);
       dotest(i4.count(identifier2, "time") <
@@ -243,15 +234,13 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i4.name(identifier3) == "Fred");
       dotest(i4.address(identifier3) == "localhost");
-      dotest(i4.port() == 8080);
-      dotest(fabs(2.0 + (start -
-                         i4.connection(
-                             identifier3,
-                             data::ServerInformation::FirstConnection))) < 1.0);
-      dotest(fabs(3.0 + (start -
-                         i4.connection(
-                             identifier3,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i4.port(identifier3) == 8080);
+      testclose(
+          start + 2.0,
+          i4.connection(identifier3, data::ServerInformation::FirstConnection));
+      testclose(
+          start + 3.0,
+          i4.connection(identifier3, data::ServerInformation::LastConnection));
       dotest(i4.count(identifier3, "connections") == 0);
       dotest(i4.count(identifier3, "failed") == 6);
       dotest(i4.count(identifier3, "time") <
@@ -274,14 +263,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i5.name(identifier2) == "Henry");
       dotest(i5.address(identifier2) == "127.0.0.1");
-      dotest(i5.port() == 8000);
-      dotest(fabs(start - i5.connection(
-                              identifier2,
-                              data::ServerInformation::FirstConnection)) < 1.0);
-      dotest(fabs(5.0 + (start -
-                         i5.connection(
-                             identifier2,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i5.port(identifier2) == 8000);
+      testclose(start, i5.connection(identifier2,
+                                     data::ServerInformation::FirstConnection));
+      testclose(
+          start + 5.0,
+          i5.connection(identifier2, data::ServerInformation::LastConnection));
       dotest(i5.count(identifier2, "connections") == 2);
       dotest(i5.count(identifier2, "failed") == 4);
       dotest(i5.count(identifier2, "time") <
@@ -293,15 +280,13 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       dotest(i5.name(identifier3) == "Fred");
       dotest(i5.address(identifier3) == "localhost");
-      dotest(i5.port() == 8080);
-      dotest(fabs(2.0 + (start -
-                         i5.connection(
-                             identifier3,
-                             data::ServerInformation::FirstConnection))) < 1.0);
-      dotest(fabs(3.0 + (start -
-                         i5.connection(
-                             identifier3,
-                             data::ServerInformation::LastConnection))) < 1.0);
+      dotest(i5.port(identifier3) == 8080);
+      testclose(
+          start + 2.0,
+          i5.connection(identifier3, data::ServerInformation::FirstConnection));
+      testclose(
+          start + 3.0,
+          i5.connection(identifier3, data::ServerInformation::LastConnection));
       dotest(i5.count(identifier3, "connections") == 0);
       dotest(i5.count(identifier3, "failed") == 6);
       dotest(i5.count(identifier3, "time") <

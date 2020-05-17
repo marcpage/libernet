@@ -96,10 +96,18 @@ private:
 
 inline JSONData::List &ServerInformation::servers(JSONData::List &identifiers,
                                                   JSONData::ListAction action) {
-  auto keys = JSONData::value().keys();
+  auto info = JSONData::value();
+
   if (ClearFirst == action) {
     identifiers.clear();
   }
+
+  if (!info.has("servers")) {
+    return identifiers;
+  }
+
+  auto keys = info["servers"].keys();
+
   std::copy(keys.begin(), keys.end(), std::back_inserter(identifiers));
   return identifiers;
 }
@@ -152,30 +160,33 @@ inline void ServerInformation::_validate() {
 
   json::Value &servers =
       JSONData::_validateOptionalKey(info, "servers", json::ObjectType);
-  auto identifiers = servers.keys();
 
-  for (auto identifier : identifiers) {
-    json::Value &entry =
-        JSONData::_validateKey(servers, identifier, json::ObjectType);
+  if (servers != info) {
+    auto identifiers = servers.keys();
 
-    JSONData::_validateOptionalKey(entry, "name", json::StringType);
-    JSONData::_validateOptionalKey(entry, "adddress", json::StringType);
-    JSONData::_validateOptionalPositiveInteger(entry, "port");
-    JSONData::_validateOptionalPositiveInteger(entry, "first");
-    JSONData::_validateOptionalPositiveInteger(entry, "latest");
-    JSONData::_validateOptionalPositiveInteger(entry, "connections");
-    JSONData::_validateOptionalPositiveInteger(entry, "failed");
-    JSONData::_validateOptionalPositiveInteger(entry, "time");
-    JSONData::_validateOptionalPositiveInteger(entry, "input");
-    JSONData::_validateOptionalPositiveInteger(entry, "output");
-    JSONData::_validateOptionalPositiveInteger(entry, "response");
-    JSONData::_validateOptionalPositiveInteger(entry, "similar");
+    for (auto identifier : identifiers) {
+      json::Value &entry =
+          JSONData::_validateKey(servers, identifier, json::ObjectType);
 
-    auto received =
-        JSONData::_validateOptionalKey(entry, "received", json::StringType);
+      JSONData::_validateOptionalKey(entry, "name", json::StringType);
+      JSONData::_validateOptionalKey(entry, "adddress", json::StringType);
+      JSONData::_validateOptionalPositiveInteger(entry, "port");
+      JSONData::_validateOptionalPositiveInteger(entry, "first");
+      JSONData::_validateOptionalPositiveInteger(entry, "latest");
+      JSONData::_validateOptionalPositiveInteger(entry, "connections");
+      JSONData::_validateOptionalPositiveInteger(entry, "failed");
+      JSONData::_validateOptionalPositiveInteger(entry, "time");
+      JSONData::_validateOptionalPositiveInteger(entry, "input");
+      JSONData::_validateOptionalPositiveInteger(entry, "output");
+      JSONData::_validateOptionalPositiveInteger(entry, "response");
+      JSONData::_validateOptionalPositiveInteger(entry, "similar");
 
-    if (received != entry) {
-      karma::Karma k(received.string());
+      auto received =
+          JSONData::_validateOptionalKey(entry, "received", json::StringType);
+
+      if (received != entry) {
+        karma::Karma k(received.string());
+      }
     }
   }
 }
