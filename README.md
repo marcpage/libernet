@@ -682,9 +682,12 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 {
 	"identifier": hash identifier of the node,
 	"name": the name of this node,
+	"address": the address of this node,
+	"port": the port number this node is listening on,
 	"servers": {
 		"identifier": {
-			"address": name or ip address,
+			"name": the node's name,
+			"address": dns name or ip address,
 			"port": port listening on,
 			"first": timestamp of first successful connection,
 			"latest": timestamp latest successful connection,

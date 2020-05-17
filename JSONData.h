@@ -26,7 +26,7 @@ public:
   }
   std::string &contents(std::string &buffer,
                         Compression compression = Decompress) override;
-  bool operator==(const Data &other) const { return Data::operator==(other); }
+  bool operator==(const Data &other) const { return value() == other.value(); }
   bool operator!=(const Data &other) const { return !(*this == other); }
 
 protected:
