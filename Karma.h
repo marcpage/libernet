@@ -47,12 +47,15 @@ private:
 };
 
 inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
+  const uint64_t maxKarma = 100000000000000;
+  const uint64_t kismetPerKarma = 100000000000000;
   const auto dot = value.find('.');
   size_t after;
 
   if (dot != 0) {
     _karma = std::stoll(value.substr(0, dot), &after);
     AssertMessageException((dot == std::string::npos) || (dot == after));
+    AssertMessageException(_karma <= maxKarma);
   }
 
   if (std::string::npos != dot) {
@@ -64,6 +67,7 @@ inline Karma::Karma(const std::string &value) : _karma(0), _kismet(0) {
 
     _kismet = std::stoll(kismet, &after);
     AssertMessageException(kismet.size() == after);
+    AssertMessageException(_kismet < kismetPerKarma);
   }
 }
 
