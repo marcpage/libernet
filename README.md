@@ -207,7 +207,7 @@ Path           | Always Public | Description
 /              | No            | Index app
 /api           | No            | [API](#api) for javascript apps to perform operations.
 /app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
-/data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
+/data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}. /data/sha256/{hash}/aes256/{key} returns the raw contents decrypted. /data/sha256/{hash}/aes256/{key}/ (note appended slash) gets the default file from the bundle.
 /data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of [hashes similar to {hash}](#similar-to-results). Supports PUT requests to send search results in response to [Requests](#requests).
 /data/requests | Yes           | [Requests](#requests) that this node has pending. Supports PUT for connecting node's requests.
 /mail          | No            | [Messages](#messages) app
@@ -337,6 +337,8 @@ This json is treated like a [small file](#small-file).
 A bundle description describes a bundle of files.
 Each entry is around 512 bytes, so limit of files in a bundle is roughly no less than 2,000 files.
 A bundle description is a json dictionary of relative paths within the bundle to information about each file.
+An empty path is the default path, which will show up when the user opens the bundle but does not specify a file.
+
 The *previous* field lists bundles this bundle is based on.
 When merging bundles, place all bundle identifiers that were merged into this bundle in the *previous* list.
 The *previous* list is ordered from most recent to least recent.
@@ -344,6 +346,12 @@ The *previous* can also contain the entire history if the total size is less tha
 ```
 {
 	"contents": {
+		"": {
+			"sha256": identifier of Small or Large file,
+			"aes256": key to decrypt Large file description or small file,
+			"size": number of bytes in the final file,
+			"Content-Type": mime type for the data},
+		}
 		"index.html": {
 			"sha256": identifier of Small or Large file,
 			"aes256": key to decrypt Large file description or small file,
