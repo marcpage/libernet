@@ -239,20 +239,23 @@ The following operations are supported via the /api url.
 ```
 	{
 		"sha256": identifier of the data block,
-		"aes256": the encryption key if encrypt=aes256
+		"aes256": the encryption key if encrypt=aes256,
+		"identity": the identity whose private key can decrypt if encrypt={identity}
 	}
 ```
 
 **Description**
+
 Store the given data in a block.
 The default (and only currently supported method) is sha256.
 
 The default encryption is none.
-Encryption supported is aes256 (using the sha256 of the original contents as the key).
+Encryption supported is aes256 (using the sha256 of the original contents as the key) and public key encryption.
+If encrypt is the identity of a public key, the block is encrypted such that only the matching private key can decrypt it.
 
 The default for compress is true.
 If compression is false, the data will not be compressed.
-If compression is true, the data will be compressed if the compressed data is smaller than the original data.
+If compression is true, the data will be zlib compressed if the compressed data is smaller than the original data.
 
 The default for local is false.
 Local data does not leave this node.
