@@ -72,16 +72,16 @@ https://github.com/mjansson/mdns
 
 # Definitions
 
-* *Hash* - SHA256 is used.
-* *Encrypt* - Typically refers to AES256 encryption using the contents Hash (SHA256) as the key.
-* *Public/Private Key* - An RSA public/private key pair
-* *Public-key encrypted* - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
-* *Signing* - RSA private encryption of SHA256 hashing of the data, stored as base64.
-* *Compression* - zlib compression, level 9
-* *Dates* - All dates and times are in GMT, even YYYY/MM/DD
-* *timestamp* - all time stamps are seconds from midnight, January 1, 2001 GMT
-* *signature* - All signatures are base64 encoded
-* *Karma* - the currency used to track value, recorded as a string of the format "000000000000000.00000000000000" or "{Karma}.{Kismet 0 padded to 14 digits}"
+* **Hash** - SHA256 is used.
+* **Encrypt** - Typically refers to AES256 encryption using the contents Hash (SHA256) as the key.
+* **Public/Private Key** - An RSA public/private key pair
+* **Public-key encrypted** - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
+* **Signing** - RSA private encryption of SHA256 hashing of the data, stored as base64.
+* **Compression** - zlib compression, level 9
+* **Dates** - All dates and times are in GMT, even YYYY/MM/DD
+* **timestamp** - all time stamps are seconds from midnight, January 1, 2001 GMT
+* **signature** - All signatures are base64 encoded
+* **Karma** - the currency used to track value, recorded as a string of the format "000000000000000.00000000000000" or "{Karma}.{Kismet 0 padded to 14 digits}"
 
 
 # Concepts
@@ -202,6 +202,7 @@ Some paths may only be available when connecting to localhost, others are availa
 Path           | Always Public | Description
 ------         | ------------- | -----------
 /              | No            | Index app
+/api           | No            | [API](#api) for javascript apps to perform operations.
 /app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
 /data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
 /data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of [hashes similar to {hash}](#similar-to-results). Supports PUT requests to send search results in response to [Requests](#requests).
@@ -217,6 +218,40 @@ Path           | Always Public | Description
 Servers communicate via http.
 Server to server communication is done via /data, /data/like, /data/requests, and /server.
 
+## API
+
+The following operations are supported via the /api url.
+
+### /api/encode
+
+**Method:** GET
+**Parameter** apikey={apikey}
+**Parameter** *method=sha256*
+**Parameter** *encrypt=aes256 or encrypt={identity}*
+**Parameter** *local=true*
+**Parameter** *compress=false*
+**Body** data to encode
+**Reply**
+```
+	{
+		"sha256": identifier of the data block,
+		"aes256": the encryption key if encrypt=aes256
+	}
+```
+**Description**
+Store the given data in a block.
+The default (and only currently supported method) is sha256.
+
+The default encryption is none.
+Encryption supported is aes256 (using the sha256 of the original contents as the key).
+
+The default for compress is true.
+If compression is false, the data will not be compressed.
+If compression is true, the data will be compressed if the compressed data is smaller than the original data.
+
+The default for local is false.
+Local data does not leave this node.
+This is typically for settings or private data being stored.
 
 # Data Types
 
