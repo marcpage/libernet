@@ -165,7 +165,9 @@ While this does not completely remove the possibility of [deleted identifiers](#
 
 ```
 {
-	similar to identifier: {matching identifier: sizes}
+	"sha256": {
+		{similar to identifier}: {matching identifier: sizes}
+	}
 }
 ```
 

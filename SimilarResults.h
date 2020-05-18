@@ -39,11 +39,18 @@ private:
 
 inline JSONData::List &SimilarResults::searches(JSONData::List &list,
                                                 JSONData::ListAction action) {
-  auto searchingFor = JSONData::value().keys();
+  auto info = JSONData::value();
 
   if (ClearFirst == action) {
     list.clear();
   }
+
+  if (!info.has("sha256")) {
+    return list; // not tested
+  }
+
+  auto searchingFor = info["sha256"].keys();
+
   std::copy(searchingFor.begin(), searchingFor.end(), std::back_inserter(list));
   return list;
 }
@@ -57,11 +64,17 @@ inline JSONData::List &SimilarResults::results(const std::string &search,
     list.clear();
   }
 
-  if (!info.has(search)) {
+  if (!info.has("sha256")) {
+    return list; // not tested
+  }
+
+  json::Value &searchingFor = info["sha256"];
+
+  if (!searchingFor.has(search)) {
     return list;
   }
 
-  auto found = info[search].keys();
+  auto found = searchingFor[search].keys();
 
   std::copy(found.begin(), found.end(), std::back_inserter(list));
   return list;
@@ -71,11 +84,17 @@ inline int SimilarResults::size(const std::string &search,
                                 const std::string &identifier) {
   auto info = JSONData::value();
 
-  if (!info.has(search)) {
+  if (!info.has("sha256")) {
+    return -1; // not tested
+  }
+
+  json::Value &searchingFor = info["sha256"];
+
+  if (!searchingFor.has(search)) {
     return -1;
   }
 
-  json::Value &results = info[search];
+  json::Value &results = searchingFor[search];
 
   if (!results.has(identifier)) {
     return -1;
@@ -88,16 +107,20 @@ inline void SimilarResults::add(const std::string &search,
                                 const std::string &identifier, int size) {
   auto info = JSONData::value();
 
-  info[search][identifier] = size;
+  info["sha256"][search][identifier] = size;
   _changeInfo(info);
 }
 
 inline void SimilarResults::remove(const std::string &search) {
   auto info = JSONData::value();
 
-  if (info.has(search)) {
-    info.erase(search);
-    _changeInfo(info);
+  if (info.has("sha256")) {
+    json::Value &searchingFor = info["sha256"];
+
+    if (searchingFor.has(search)) {
+      searchingFor.erase(search);
+      _changeInfo(info);
+    }
   }
 }
 
@@ -105,12 +128,16 @@ inline void SimilarResults::remove(const std::string &search,
                                    const std::string &identifier) {
   auto info = JSONData::value();
 
-  if (info.has(search)) {
-    json::Value &found = info[search];
+  if (info.has("sha256")) {
+    json::Value &searchingFor = info["sha256"];
 
-    if (found.has(identifier)) {
-      found.erase(identifier);
-      _changeInfo(info);
+    if (searchingFor.has(search)) {
+      json::Value &found = searchingFor[search];
+
+      if (found.has(identifier)) {
+        found.erase(identifier);
+        _changeInfo(info);
+      }
     }
   }
 }
@@ -122,10 +149,12 @@ inline void SimilarResults::_changeInfo(const json::Value &value) {
 
 inline void SimilarResults::_validate() {
   auto info = JSONData::value();
-  auto searches = info.keys();
+  json::Value &searchInfo =
+      JSONData::_validateOptionalKey(info, "sha256", json::ObjectType);
+  auto searches = searchInfo.keys();
 
   for (auto searchTerm : searches) {
-    json::Value &results = info[searchTerm];
+    json::Value &results = searchInfo[searchTerm];
     auto found = results.keys();
 
     for (auto identifier : found) {
