@@ -126,7 +126,7 @@ inline void SimilarResults::_validate() {
 
   for (auto searchTerm : searches) {
     json::Value &results = info[searchTerm];
-    auto found = info.keys();
+    auto found = results.keys();
 
     for (auto identifier : found) {
       JSONData::_validatePositiveInteger(results, identifier);
