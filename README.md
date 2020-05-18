@@ -227,13 +227,13 @@ The following operations are supported via the /api url.
 
 ### /api/encode
 
-* ***Method** GET
+* **Method** GET
 * **Parameter** apikey={apikey}
-* ***Parameter** *method=sha256*
-* ***Parameter** *encrypt=aes256 or encrypt={identity}*
-* ***Parameter** *local=true*
-* ***Parameter** *compress=false*
-* ***Body** data to encode
+* **Parameter** *method=sha256*
+* **Parameter** *encrypt=aes256 or encrypt={identity}*
+* **Parameter** *local=true*
+* **Parameter** *compress=false*
+* **Body** data to encode
 
 **Reply**
 ```
