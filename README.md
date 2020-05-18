@@ -227,13 +227,14 @@ The following operations are supported via the /api url.
 
 ### /api/encode
 
-**Method:** GET
-**Parameter** apikey={apikey}
-**Parameter** *method=sha256*
-**Parameter** *encrypt=aes256 or encrypt={identity}*
-**Parameter** *local=true*
-**Parameter** *compress=false*
-**Body** data to encode
+* ***Method** GET
+* **Parameter** apikey={apikey}
+* ***Parameter** *method=sha256*
+* ***Parameter** *encrypt=aes256 or encrypt={identity}*
+* ***Parameter** *local=true*
+* ***Parameter** *compress=false*
+* ***Body** data to encode
+
 **Reply**
 ```
 	{
@@ -241,6 +242,7 @@ The following operations are supported via the /api url.
 		"aes256": the encryption key if encrypt=aes256
 	}
 ```
+
 **Description**
 Store the given data in a block.
 The default (and only currently supported method) is sha256.
@@ -255,6 +257,7 @@ If compression is true, the data will be compressed if the compressed data is sm
 The default for local is false.
 Local data does not leave this node.
 This is typically for settings or private data being stored.
+
 
 # Data Types
 
