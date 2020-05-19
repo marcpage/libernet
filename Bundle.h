@@ -210,7 +210,7 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
   auto changed = false;
 
   if (!path.isDirectory()) {
-    path.mkdirs(); // not tested
+    path.mkdirs();
   }
 
   for (auto name : keys) {
@@ -229,7 +229,7 @@ inline bool Bundle::write(const io::Path &path, Data &chunk) {
         SmallFile file(chunk.data(), chunk.identifier(), chunk.key());
 
         if (!directory.isDirectory()) {
-          directory.mkdirs(); // not tested
+          directory.mkdirs();
         }
 
         file.write(filePath);

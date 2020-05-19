@@ -33,6 +33,7 @@ public:
   LargeFile &assign(const std::string &data, const std::string &identifier,
                     const std::string &key);
   bool operator==(LargeFile &other) { return JSONData::operator==(other); }
+  // cppcheck-suppress constParameter
   bool operator!=(LargeFile &other) { return !(*this == other); }
   List &objects(List &dataList);
   bool write(const io::Path &path, const Data &chunk);
@@ -120,7 +121,7 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   }
 
   if (index >= count) {
-    return false; // no test coverage
+    return false;
   }
 
   std::string contents =

@@ -178,7 +178,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
       data::PersonalInformation p3(p2.data(), p2.identifier(), p2.key());
 
-      dotest(p3.match() >= 2); // throws exception
+      dotest(p3.match() >= 2);
       dotest(p3.nickname() == "Joe");
       dotest(p3.next() == dummyIdentifier);
       dotest(p3.valid());

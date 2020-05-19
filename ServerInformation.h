@@ -29,6 +29,7 @@ public:
   bool operator==(ServerInformation &other) {
     return JSONData::operator==(other);
   }
+  // cppcheck-suppress constParameter
   bool operator!=(ServerInformation &other) { return !(*this == other); }
   std::string name() { return _get("name").string(); }
   void setName(const std::string &newName) { _set("name", newName); }

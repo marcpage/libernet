@@ -23,6 +23,7 @@ public:
     return *this;
   }
   bool operator==(SimilarResults &other) { return JSONData::operator==(other); }
+  // cppcheck-suppress constParameter
   bool operator!=(SimilarResults &other) { return !(*this == other); }
   List &searches(List &list, ListAction action = ClearFirst);
   List &results(const std::string &search, List &list,

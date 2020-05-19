@@ -29,6 +29,7 @@ public:
   std::string &contents(std::string &buffer,
                         Compression compression = Decompress) override;
   bool operator==(JSONData &other) { return value() == other.value(); }
+  // cppcheck-suppress constParameter
   bool operator!=(JSONData &other) { return !(*this == other); }
 
 protected:
@@ -93,7 +94,7 @@ inline int64_t JSONData::_validatePositiveInteger(json::Value &value,
                                                   const std::string &name,
                                                   bool optional) {
   if (optional && !value.has(name)) {
-    return -1; // not tested
+    return -1;
   }
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::IntegerType));
@@ -108,7 +109,7 @@ inline void JSONData::_validateHash(const json::Value &value) {
 inline void JSONData::_validateHash(json::Value &value, const std::string &name,
                                     bool optional) {
   if (optional && !value.has(name)) {
-    return; // not tested
+    return;
   }
   AssertMessageException(value.has(name));
   AssertMessageException(value[name].is(json::StringType));
