@@ -23,6 +23,9 @@ bin/logs/lint.txt: *.h
 	@-cat $@ | grep error: || true
 	@grep -rniw todo *.h
 	@echo `grep -rniw todo *.h | wc -l` TODO items
+	@cat bin/coverage/*/*.gcov | grep -E '[0-9]+:' | grep -ve -: | grep -v "#####" > bin/logs/all_code_coverage.txt
+	@grep // bin/logs/all_code_coverage.txt | grep -i test | grep -vw libernet | sort | uniq  || true
+	@echo `grep // bin/logs/all_code_coverage.txt | grep -i test | grep -vw libernet | sort | uniq | wc -l` lines now tested
 
 documentation/index.html:
 	@mkdir -p documentation
