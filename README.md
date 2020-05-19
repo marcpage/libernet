@@ -847,13 +847,13 @@ The following criteria should be used to evaluate which *previous* block, among 
 When ranking by quality, the first criteria is the most important.
 If there is a tie in the first criteria, move on to the second criteria, and so forth.
 1. Fully validated. (correct)
-1. The signing identity with the largest key size (up to 4096) and the best (reverse) [match](#data-matching) of the block identity. (diversity)
 1. The block with the best [match](#data-matching) to the hash of "karma:{block index}". (cost)
-1. Most trusted signer. (trust)
+1. The signing identity with the largest key size (up to 4096) and the best (reverse) [match](#data-matching) of the block identity. (diversity)
 1. Closest to matching new balance changes with old balance changes and cancelations. (balance)
 1. The reach distance is smallest. (clean)
 1. Contains the most completed transactions. (breadth)
 1. Fees are the highest. (value)
+1. Most trusted signer. (trust)
 1. The signer with the highest balance. (stake)
 
 The most important criteria is that the block is correct.
