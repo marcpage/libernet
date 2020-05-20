@@ -14,11 +14,14 @@ Table of Contents
 * [Server](#server)
   * [HTTP server](#http-server)
   * [Data transfer](#data-transfer)
+  * [API](#api)
+    * [/api/encode](#apiencode)
 * [Data Types](#data-types)
   * [Small file](#small-file)
   * [Large file](#large-file)
   * [Bundle Description](#bundle-description)
   * [Address History](#address-history)
+    * [Choosing which bundle to display](#choosing-which-bundle-to-display)
     * [Resolving web addresses](#resolving-web-addresses)
   * [Personal Key](#personal-key)
     * [Personal Information](#personal-information)
@@ -67,17 +70,21 @@ But for a company to send out a message to 3,000 people, it would take 8 hours o
 Companies would screen their mailing lists to only those who would truly be interested in their message.
 Sending bulk messages is no longer free.
 
+Note: We could use ZeroConf DNS-SD to advertise ourselves on the local network.
+https://github.com/mjansson/mdns
 
 # Definitions
 
-* *Hash* - SHA256 is used.
-* *Encrypt* - Typically refers to AES256 encryption using the contents Hash (SHA256) as the key.
-* *Public/Private Key* - An RSA public/private key pair
-* *Public-key encrypted* - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
-* *Signing* - RSA private encryption of SHA256 hashing of the data, stored as base64.
-* *Compression* - zlib compression, level 9
-* *Dates* - All dates and times are in GMT, even YYYY/MM/DD
-* *timestamp* all time stamps are seconds from midnight, January 1, 2001 GMT
+* **Hash** - SHA256 is used.
+* **Encrypt** - Typically refers to AES256 encryption using the contents Hash (SHA256) as the key.
+* **Public/Private Key** - An RSA public/private key pair
+* **Public-key encrypted** - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
+* **Signing** - RSA private encryption of SHA256 hashing of the data, stored as base64.
+* **Compression** - zlib compression, level 9
+* **Dates** - All dates and times are in GMT, even YYYY/MM/DD
+* **timestamp** - all time stamps are seconds from midnight, January 1, 2001 GMT
+* **signature** - All signatures are base64 encoded
+* **Karma** - the currency used to track value, recorded as a string of the format "000000000000000.00000000000000" or "{Karma}.{Kismet 0 padded to 14 digits}"
 
 
 # Concepts
@@ -92,10 +99,20 @@ Any data block can, therefore, be validated that the identity is correct by hash
 ## Data Routing
 
 When new data is created, it is pushed (at the least) to the connected node whose identity most closely matches the identity of the data.
-When data is pushed to a node, it must either be stored, or pushed to another node.
+When data is pushed to a node, it must either be stored or pushed to another node.
 A node may not delete data (except for the cases in [Deleting Data](#deleting-data)) without first passing the data on to another node.
 When data is passed on before deleting, it is passed to the node that most closely matches the identity of the data.
 When a node originates data, it may want to push the data to more than one node, to ensure the data is seeded properly, before deleting locally.
+
+When data is requested, if the node has the data, it is returned.
+If the node does not contain the data then the node requests the data from all nodes that match at least 1 hex digit, starting with the node with the most digits that match.
+If none of the matching nodes have the data, then the non-matching nodes are queried.
+If none of the nodes have the data, we put the identifier in the [requests](#Requests) list.
+
+If the original requester does not receive the data from any of the connected nodes it may, after a period of time (???), make the request again according to the steps above.
+Once it receives the data, it no longer queries any other nodes.
+Nodes receiving requests only need to pass on the requests in response to receiving requests.
+They do not need to keep requesting the data.
 
 
 ## Deleting Data
@@ -111,10 +128,13 @@ Reasons for squelching data include:
 * Old [Trust](#trust) lists (determine by timestamp)
 * [Merged Karma blocks](#choosing-a-transaction-block-to-add-your-transaction)
 
+Each node determines its own list of identifiers to delete and does not share this list with other nodes.
+This prevents a bad actor from sharing with everyone that some data needs to be deleted.
+
 
 ## Data Matching
 
-Data can be matched to other data by adding random data until the first hex digits (or in some cases the last hex digits) of the hashes match.
+Data can be matched to other data by adding random data until the first hex digits ([or in some cases the last hex digits](#karma)) of the hashes match.
 Data can be requested by exact hash, or by "similar to" search.
 The more digits that match, the more time (in general) and expense and, therefore, the higher the priority or value of the match.
 When searching "similar to" each node may drop lower priority items if the number of items being returned is "large".
@@ -125,14 +145,31 @@ Items are not dropped just because they are low priority, but because there are 
 
 When "similar to" search is done, it returns the json below.
 The json may be compressed if it reduces the size.
+Each matching identifier reports the size of the data.
+
+Whenever a node requests "similar to" results, whatever information is known is returned.
+The request is added to the [requests](#Requests) list.
+The request is then cycled through nodes that match at least 1 hex digit.
+If no results are found in the matched nodes, then all other nodes are queried as well.
+
+The requester may continue to make the same request, after waiting a period of time (???) for other results to come in.
+For every request, follow these steps again.
+Every search increases the distance from which results can be returned.
+
+Each response can return up to around 10,000 matches.
+If there are more matches than will fit n 1 MiB then the best matches are returned (most hex digits match).
+If there are more than 1 MiB in matches that match equally then choose at random the matches to include.
+
+When passing on search results, make sure to filter out [deleted identifiers](#deleting-data).
+While this does not completely remove the possibility of [deleted identifiers](#deleting-data) from being passed around, it will help get more relevant results returned to the requester.
+
 ```
 {
-	similar to identifier: {
-		matching identifier: data size
+	"sha256": {
+		{similar to identifier}: {matching identifier: sizes}
 	}
 }
 ```
-Requests may be repeated as when a request is received, those requests are passed on to nodes likely to have that information.
 
 
 ### Cost to match digits
@@ -154,6 +191,10 @@ Hex Digits | Low Time   | High Time | Low Tries   | High Tries  | Category      
 7          | 11.8       | 1,449     | 70,179,856  | 938,827,609 | urgent        | 268,435,500       | 45 seconds
 8          | 300        | 300       | 188,138,959 | 188,138,959 | urgent ...    | 4,294,967,000     | 12 minutes
 
+Given that there is a limit to the number of ["similar to" results](#data-matching) that can be returned (around 10,000), in spaces that can be crowded, it may require paying the higher price just to be seen.
+For instance, after 10,000 [Address History](#address-history) entries exist for a url, even with [delete filtering](#deleting-data), you will need to increase the matching to make sure it makes it into the list.
+This means that for more established or more popular websites, it will take more and more compute power to do updates.
+
 
 # Server
 
@@ -166,12 +207,13 @@ Some paths may only be available when connecting to localhost, others are availa
 Path           | Always Public | Description
 ------         | ------------- | -----------
 /              | No            | Index app
+/api           | No            | [API](#api) for javascript apps to perform operations.
 /app           | No            | Configuration app. Chooses and configures apps, which are [bundles](#bundle-description) mapped to root paths.
-/data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}
-/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of hashes similar to {hash}
+/data          | Yes           | Data is stored here at the address /data/sha256/{hash} and bundles can be accessed via /data/sha256/{hash}/aes256/{key}/relative/path/file.html. PUT is supported on /data/sha256/{hash}. /data/sha256/{hash}/aes256/{key} returns the raw contents decrypted. /data/sha256/{hash}/aes256/{key}/ (note appended slash) gets the default file from the bundle.
+/data/like     | Yes           | ["similar to" search](#data-matching) /data/like/sha256/{hash} will return a list of [hashes similar to {hash}](#similar-to-results). Supports PUT requests to send search results in response to [Requests](#requests).
 /data/requests | Yes           | [Requests](#requests) that this node has pending. Supports PUT for connecting node's requests.
 /mail          | No            | [Messages](#messages) app
-/server        | Yes           | Returns server information. Supports PUT for connecting node's information.
+/server        | Yes           | Returns [server information](#server-information). Supports PUT for connecting node's information.
 /web           | No            | See [Address History](#address-history). Appending the address with  an empty query (?) will return information about how the bundle was chosen and other options as well as gives you opportunities to download and change trust in identity.
 /{app}         | No            | Apps installed by /app
 
@@ -180,6 +222,46 @@ Path           | Always Public | Description
 
 Servers communicate via http.
 Server to server communication is done via /data, /data/like, /data/requests, and /server.
+
+## API
+
+The following operations are supported via the /api url.
+
+### /api/encode
+
+* **Method** GET
+* **Parameter** apikey={apikey}
+* **Parameter** *method=sha256*
+* **Parameter** *encrypt=aes256 or encrypt={identity}*
+* **Parameter** *local=true*
+* **Parameter** *compress=false*
+* **Body** data to encode
+
+**Reply**
+```
+	{
+		"sha256": identifier of the data block,
+		"aes256": the encryption key if encrypt=aes256,
+		"identity": the identity whose private key can decrypt if encrypt={identity}
+	}
+```
+
+**Description**
+
+Store the given data in a block.
+The default (and only currently supported method) is sha256.
+
+The default encryption is none.
+Encryption supported is aes256 (using the sha256 of the original contents as the key) and public key encryption.
+If encrypt is the identity of a public key, the block is encrypted such that only the matching private key can decrypt it.
+
+The default for compress is true.
+If compression is false, the data will not be compressed.
+If compression is true, the data will be zlib compressed if the compressed data is smaller than the original data.
+
+The default for local is false.
+Local data does not leave this node.
+This is typically for settings or private data being stored.
 
 
 # Data Types
@@ -196,9 +278,10 @@ Type                                          | Encrypted | Contents | [Match](#
 [Message Envelope](#message-dictionary)       | Yes       | json     | None
 [Message Carrier](#carrier-dictionary)        | No        | json     | message:{YYYY:MM:DD(GMT):recipient personal key identifier}
 [Trust Document](#trust-document)             | No        | json     | trust:{trust owner's personal key identifier}
+[Karma](#karma)                               | No        | json     | karma:{block index}
+[Server Information](#server-information)     | No        | json     | None
 [Similar to results](#similar-to-results)     | No        | json     | None
 [Requests](#requests)                         | No        | json     | None
-[Karma](#karma)                               | No        | json     | karma:{block index}
 
 \* [Private Key](#private-key) is not encrypted with the hash of the contents like other encrypted data, but encrypted with the hash of a passphrase.
 
@@ -256,6 +339,8 @@ This json is treated like a [small file](#small-file).
 A bundle description describes a bundle of files.
 Each entry is around 512 bytes, so limit of files in a bundle is roughly no less than 2,000 files.
 A bundle description is a json dictionary of relative paths within the bundle to information about each file.
+An empty path is the default path, which will show up when the user opens the bundle but does not specify a file.
+
 The *previous* field lists bundles this bundle is based on.
 When merging bundles, place all bundle identifiers that were merged into this bundle in the *previous* list.
 The *previous* list is ordered from most recent to least recent.
@@ -263,6 +348,12 @@ The *previous* can also contain the entire history if the total size is less tha
 ```
 {
 	"contents": {
+		"": {
+			"sha256": identifier of Small or Large file,
+			"aes256": key to decrypt Large file description or small file,
+			"size": number of bytes in the final file,
+			"Content-Type": mime type for the data},
+		}
 		"index.html": {
 			"sha256": identifier of Small or Large file,
 			"aes256": key to decrypt Large file description or small file,
@@ -329,11 +420,11 @@ Any address histories that do not add any new head [bundles](#bundle-description
 			"sha256": identifier of bundle,
 			"aes256": key to decrypt bundle,
 			"timestamp": fractional seconds since epoch,
-			"signed": {identifier of public key: signature of bundle identifier},
+			"signed": {identifier of public key: base64 encoded signature of bundle identifier},
 			"blocked": {
 				identifier: {
 					"reason": reason why this should not be used,
-					"signed": signature of the decryption key,
+					"signed": base64 encoded signature of the decryption key,
 				}
 			}
 		},
@@ -359,6 +450,7 @@ The priority is then as such:
 1. [Domain Identity](#domain-trust) has been found, and is not distrusted, or if in whitelist mode, is trusted.
 1. First Identity to submit a bundle for this location, and is not distrusted, or if in whitelist mode, is trusted.
 1. The most trusted signing Identity.
+1. The best match with the web address.
 
 ### Resolving web addresses
 
@@ -399,13 +491,14 @@ Personal information fields are mostly optional.
 Nickname is required as it is the display name.
 The *credentials* field may not be a good idea as the personal information may not be ideal to share.
 The *credentials* and *verifiers* fields are two ways to help people know that this person is who they say they are.
-Information that you may not want to share are email, apartment, street number (or even street or city), first name, last name.
+Information that you may not want to share are email, unit, street number (or even street or city), first name, last name.
 Whenever personal information is updated, verifiers should be [messaged](#messages) to notify them of the change to give them an opportunity to verify the updated information.
 
 Whenever personal information is created, a backup (*next*) personal key should be created.
 The next field is a backup key.
 In the event that your [Private Key](#private-key) for the personal key is leaked, you can set the *valid* field to false.
 Anything signed after the timestamp when the personal information is marked *valid=false* should be considered not signed.
+The personal information block in which *valid* is set to false should match at least as many, if not more, hex digits then all other personal information blocks for this identity.
 [Trust](#trust) trees should be updated with this timestamp and anything after this timestamp should not be trusted and treated as malevolent.
 
 If *valid=false* then the *next* value is considered an alias for valid signatures after timestamp.
@@ -430,6 +523,7 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"youtube": youtube url,
 	"credentials": [
 		{
+			"filename": the name of the file,
 			"sha256": identifier of image of some identification credentials,
 			"aes256": key to decrypt credential image
 		}
@@ -439,9 +533,10 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"province": province,
 	"timestamp": fractional seconds since the epoch used to determine latest profile,
 	"city": city,
+	"postal code": zip code,
 	"street": street,
 	"street number": house number,
-	"apartment": apartment number,
+	"unit": unit number,
 	"valid": true or false if false then this key cannot be used,
 	"next": personal information identifier for a backup identity
 }
@@ -450,10 +545,10 @@ The above dictionary is stored in the following wrapper
 ```
 {
 	"identity": above dictionary in a string,
-	"signature": signature data of identity string from signer,
+	"signature": base64 encoded signature data of identity string from signer,
 	"signer": hash of public key,
 	"padding": random data to get hash of data to match digits with public key hash,
-	"verifiers": {identifier of public key: signature of identity}
+	"verifiers": {identifier of public key: base64 encoded signature of identity}
 }
 ````
 
@@ -465,15 +560,15 @@ Private Keys should be kept secure to prevent bad actors acting as you.
 If you lose your Private Key, you lose your ability to act as the [Personal Key](#personal-key) identity.
 
 The information stored for a Private Key may be stored as a data block.
-This does cause the risk that your secret is available everywhere if they can guess your password.
-The benefit of storing your Private Key as a block is that your private key is available from anywhere and is backed up.
+This does cause the risk that your secret is available everywhere if they can guess your passphrase.
+The benefit of storing your Private Key as a block is that your private key is available from anywhere and is backed up (assuming you don't forget your username and passphrase).
 
 The Private Key may also be stored as a file.
 Storing your Private Key on removable media is the most secure.
 You should have a backup (or two or three) of the media in case of media failure.
 Backup media should be checked regularly.
 
-Regardless of where the data is saved (as a data block on the LiberNet, or in a file) if will be encrypted using the hash of a passphrase.
+Regardless of where the data is saved (as a data block on the LiberNet, or in a file) it will be encrypted using the hash of a passphrase.
 The data saved is the [Personal Key](#personal-key) *identifier*, the (possibly compressed) *public* key data that matches the identifier, and the *owner* private key data.
 
 When data is saved to the LiberNet, it includes *padding* to get the identifier (hash) of the data to [match](#data-matching) ```private:{username}```.
@@ -481,11 +576,12 @@ When searching for your private key, you perform a ["similar to" search](#data-m
 The *padding* should match to [at least 6 hex digits](#cost-to-match-digits).
 
 You must keep your username and passphrase secret and should follow best practices for passwords.
+Your username should not bne the same as your Nickname or really have any relationship to anything in your [Personal Information](#personal-information).
 The username provides security through obscurity in that your private data is a needle in the haystack.
 They may use size analysis to find blocks that are about the size of private keys, but they will find blocks that are small files and partial files, making it hard to find any Private Key in the first place.
 
 Once someone has what they suspect is a Private Key, they will need to guess your passphrase to decrypt the private key.
-This is why best practices for very strong passwords should be used when selecting the password (four random words, at least 19 characters, etc.) because blocks that are about the right size for a Private Key can be decrypted by guessing common passwords or brute-force attempting short passwords.
+This is why best practices for very strong passwords should be used when selecting the passphrase (four random words, at least 19 characters, etc.) because blocks that are about the right size for a Private Key can be decrypted by guessing common passwords or brute-force attempting short passwords.
 
 ```
 {
@@ -527,7 +623,7 @@ The above dictionary is encoded into the following Envelope Dictionary
 ```
 {
 	"message": the above dictionary,
-	"signature": signature of message from signer,
+	"signature": base64 encoded signature of message from signer,
 	"signer": hash of public key,
 }
 ````
@@ -559,16 +655,14 @@ If the identity is not in the domain trust list, then second-order trust lists a
 Temporary trust can be given to "try out" something, to see if it is what is advertised and be able to mark as trusted.
 For websites and apps (special websites) this would allow downloading the bundle and being able to manually inspect it before trusting it.
 
-For web display, a node can specify whitelist, blacklist, or graylist mode.
+For web display, a node can specify whitelist or blacklist mode.
 Whitelist mode only allows trusted (positive score) identities.
 Blacklist mode only disallows untrusted (negative score) identities.
-Graylist mode allows whitelist and any other identity that is not blacklisted (unknowns).
 
 For [messages](#messages), senders are evaluated via this trust method.
 Trusted senders go to the inbox.
 Graylist senders (unable to determine a trust score) to to the spam folder.
 Blacklist senders go to the trash.
-
 
 ### Direct Trust
 Is it in the top level trust (we trusted or distrusted the person explicitly):
@@ -627,7 +721,7 @@ The above dictionary is placed in a string in the following wrapper
 ```
 {
 	"trust": string of the above dictionary,
-	"signature": signature message,
+	"signature": base64 encoded signature message,
 	"signer": hash of public key,
 	"padding": random data to get hash of data to match,
 }
@@ -642,15 +736,23 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 {
 	"identifier": hash identifier of the node,
 	"name": the name of this node,
+	"address": the address of this node,
+	"port": the port number this node is listening on,
 	"servers": {
 		"identifier": {
-			"address": address and port,
+			"name": the node's name,
+			"address": dns name or ip address,
+			"port": port listening on,
+			"first": timestamp of first successful connection,
+			"latest": timestamp latest successful connection,
 			"connections": number of times connected,
 			"failed": number of failed connection attempts,
-			"time": total time in seconds connected to the server,
+			"time": total time in microseconds connected to the server,
 			"input": total bytes received from this node,
 			"output": total bytes sent to this node,
-			"karma": karma received from this node,
+			"response": total times we received an exact match for what we needed,
+			"similar": total items returned for similar-to searchs,
+			"received": karma received from this node,
 		}
 	},
 }
@@ -745,13 +847,13 @@ The following criteria should be used to evaluate which *previous* block, among 
 When ranking by quality, the first criteria is the most important.
 If there is a tie in the first criteria, move on to the second criteria, and so forth.
 1. Fully validated. (correct)
-1. The signing identity with the largest key size (up to 4096) and the best (reverse) [match](#data-matching) of the block identity. (diversity)
 1. The block with the best [match](#data-matching) to the hash of "karma:{block index}". (cost)
-1. Most trusted signer. (trust)
+1. The signing identity with the largest key size (up to 4096) and the best (reverse) [match](#data-matching) of the block identity. (diversity)
 1. Closest to matching new balance changes with old balance changes and cancelations. (balance)
 1. The reach distance is smallest. (clean)
 1. Contains the most completed transactions. (breadth)
 1. Fees are the highest. (value)
+1. Most trusted signer. (trust)
 1. The signer with the highest balance. (stake)
 
 The most important criteria is that the block is correct.
@@ -858,14 +960,14 @@ The transaction block description is about 200 bytes plus about 600 bytes per si
 	"transactions": [
 		{
 			"transaction": text of transaction (see above),
-			"verification": {identity of sender:signature of transaction}
+			"verification": {identity of sender:base64 encoded signature of transaction}
 		},
 	],
 	"pending": [
 		{
 			"transaction": text of transaction above,
-			"verification": {identity of sender:signature of transaction},
-			"cancelations": {identity of the sender: signature of sha256 of transaction}
+			"verification": {identity of sender:base64 encoded signature of transaction},
+			"cancelations": {identity of the sender: base64 encoded signature of sha256 of transaction}
 		},
 	]
 }
@@ -877,7 +979,7 @@ The signing block adds about 200 bytes.
 	"block": text of the above transaction block,
 	"padding": padding added to get the hash of the block to match,
 	"signer": the identity that signs this block,
-	"signature": The signature data of the block,
+	"signature": The base64 encoded signature data of the block,
 }
 ```
 

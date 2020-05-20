@@ -60,7 +60,6 @@ private:
   data::Data _encrypt(const std::string &username,
                       const std::string &passphrase, int matchValue);
   void _decrypt(data::Data &data, const std::string &passphrase);
-  static int _matching(const std::string &s1, const std::string &ss2);
 };
 
 inline unsigned long OwnerIdentity::_randomPublicExponent() {
@@ -94,11 +93,11 @@ inline data::Data OwnerIdentity::_encrypt(const std::string &username,
     info.format(contents);
     key.crypto::SymmetricKey::encryptInPlace(contents, "", buffer);
     output = data::Data(buffer, data::Data::Unencrypted);
-    if (_matching(match, output.identifier()) > best) {
-      best = _matching(match, output.identifier());
+    if (text::matching(match, output.identifier()) > best) {
+      best = text::matching(match, output.identifier());
     }
   } while ((username.size() > 0) &&
-           (_matching(match, output.identifier()) < matchValue));
+           (text::matching(match, output.identifier()) < matchValue));
 
   return output;
 }
@@ -119,18 +118,6 @@ inline void OwnerIdentity::_decrypt(data::Data &data,
       Identity(data::Data(text::base64Decode(info["public"].string()),
                           info["identifier"].string())));
   _key = crypto::RSAAES256PrivateKey(info["owner"].string());
-}
-
-inline int OwnerIdentity::_matching(const std::string &s1,
-                                    const std::string &s2) {
-  const int shorterLength = int(std::min(s1.size(), s2.size()));
-
-  for (int i = 0; i < shorterLength; ++i) {
-    if (s1[i] != s2[i]) {
-      return i;
-    }
-  }
-  return int(shorterLength); // hard to test, won't usually entirely match
 }
 
 } // namespace data

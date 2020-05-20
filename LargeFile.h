@@ -32,8 +32,9 @@ public:
   }
   LargeFile &assign(const std::string &data, const std::string &identifier,
                     const std::string &key);
-  bool operator==(const Data &other) const { return Data::operator==(other); }
-  bool operator!=(const Data &other) const { return !(*this == other); }
+  bool operator==(LargeFile &other) { return JSONData::operator==(other); }
+  // cppcheck-suppress constParameter
+  bool operator!=(LargeFile &other) { return !(*this == other); }
   List &objects(List &dataList);
   bool write(const io::Path &path, const Data &chunk);
   bool operator==(const io::Path &other);
@@ -91,7 +92,7 @@ inline LargeFile &LargeFile::assign(const io::Path &path,
 inline LargeFile &LargeFile::assign(const std::string &data,
                                     const std::string &identifier,
                                     const std::string &key) {
-  Data::assign(data, identifier, key);
+  *this = LargeFile(data, identifier, key);
   _validate();
   return *this;
 }
@@ -120,7 +121,7 @@ inline bool LargeFile::write(const io::Path &path, const Data &chunk) {
   }
 
   if (index >= count) {
-    return false; // no test coverage
+    return false;
   }
 
   std::string contents =
