@@ -6,6 +6,17 @@ lint:bin/logs/lint.txt
 
 OPENSSL_PATH=$(subst openssl=,-I,$(OS_OPTIONS))/include
 
+PLATFORM = $(shell uname)
+
+ifeq ($(PLATFORM),Darwin)
+  CLANG_FORMAT_FLAGS = --verbose
+  SANITIZERS = -fsanitize=address -fsanitize-address-use-after-scope -fsanitize=undefined
+endif
+
+ifeq ($(PLATFORM),Linux)
+  USE_OPENSSL = -DOpenSSLAvailable=1 -lcrypto
+endif
+
 KNOWN_ERRORS:= --suppress=unusedFunction \
     			--inline-suppr \
 				-U_DEBUG_FILE
@@ -47,7 +58,7 @@ format:bin/logs/clang-format.txt
 bin/logs/clang-format.txt:tests/*.cpp *.h
 	@echo Cleaning code ...
 	@mkdir -p bin/logs/
-	@clang-format --verbose -i *.h tests/*.cpp 2> bin/logs/clang-format.txt
+	@clang-format $(CLANG_FORMAT_FLAGS) -i *.h tests/*.cpp 2> bin/logs/clang-format.txt
 
 ../os/tests/test.cpp:
 	@git clone http://github.com/marcpage/os ../os
@@ -62,10 +73,10 @@ bin/logs/clang-format.txt:tests/*.cpp *.h
 # -D_LIBCPP_DEBUG=1
 bin/test:../os/tests/test.cpp ../os/*.h *.h
 	@mkdir -p bin
-	@clang++ ../os/tests/test.cpp -o $@ -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings -fsanitize=address -fsanitize-address-use-after-scope -fno-optimize-sibling-calls -O1 -fsanitize=undefined
+	@clang++ ../os/tests/test.cpp -o $@ $(USE_OPENSSL) -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 bin/%:%.cpp
-	@clang++ $< -o -o $@ -std-c++11 -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings -fsanitize=address -fsanitize-address-use-after-scope -fno-optimize-sibling-calls -O1 -fsanitize=undefined
+	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 clean:
 	@rm -Rf documentation bin/coverage bin/test bin/tests bin/logs/*.log bin/logs/*.txt
