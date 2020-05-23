@@ -73,6 +73,77 @@ Sending bulk messages is no longer free.
 Note: We could use ZeroConf DNS-SD to advertise ourselves on the local network.
 https://github.com/mjansson/mdns
 
+# Platform Support
+
+macOS is fully supported.
+Linux support is under progress (see issues below).
+Windows support is expected at some point.
+
+## Linux issues
+
+We're using alpine linux docker image to build.
+The following modules need to be installed.
+* git
+* g++
+* clang
+* make
+* doxygen
+* cppcheck
+* sqlite-dev
+* openssl-dev
+* zlib-dev
+* compiler-rt-static
+
+### Library test unable to load zlib
+
+`FAILED: EXCEPTION(libz.dylib:zlibVersion): (found) failed:Unable to open library: /usr/lib/libz.so File: ../os/Library.h Line: 227`
+
+Need to debug why it is not loading.
+
+<b>Affected tests:</b> os/Library
+
+### Listing directory returns an invalid argument
+
+Need to debug.
+
+`FAILED: Exception: [EINVAL (22): Invalid argument]: ep = ::readdir(dp) File: ../os/Path.h Line: 553`
+
+<b>Affected tests:</b> os/Path
+
+### openssl error in aes256
+
+Need to debug.
+
+`FAILED: Exception: OpenSSL Error (EVP_CipherFinal_ex(context, outBuffer, &bytesWritten)): error:06065064:digital envelope routines:EVP_DecryptFinal_ex:bad decrypt File: ../os/SymmetricEncrypt.h Line: 216`
+
+<b>Affected tests:</b> os/SymmetricEncrypt, libernet/Bundle, libernet/Data, libernet/OwnerIdentity
+
+### Unable to use utf8 text facet (used in lowercase)
+
+Sounds like a system environment.
+I've looked into [building and installing musl-locales](https://grrr.tech/posts/2020/add-locales-to-alpine-linux-docker-image/), but didn't seem to work.
+
+`FAIL: Exception not caught: locale::facet::_S_create_c_locale name not valid`
+
+<b>Affected tests:</b> os/Text, libernet/AddressHistory
+
+### What are the equal signs in the code coverage?
+
+The newer version of code coverage has equal signs for some lines.
+What do these mean?
+
+```
+    =====:   30:    ::pclose(out); // not tested
+    =====:   31:    throw;         // not tested
+    =====:  578:      } catch (const posix::err::EINTR_Errno &) { // not covered by tests
+    =====:  585:    ErrnoOnNegative(::closedir(dp)); // not covered by tests
+    =====:  586:    throw;                           // not covered by tests
+19 lines now tested
+```
+
+<b>Affected tests:</b> os, libernet
+
+
 # Definitions
 
 * **Hash** - SHA256 is used.
