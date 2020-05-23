@@ -81,18 +81,26 @@ Windows support is expected at some point.
 
 ## Linux issues
 
-We're using alpine linux docker image to build.
+We're using alpine linux docker image to build and test.
 The following modules need to be installed.
-* git
-* g++
-* clang
-* make
-* doxygen
-* cppcheck
-* sqlite-dev
-* openssl-dev
-* zlib-dev
-* compiler-rt-static
+Some may not be needed.
+Once we get tests passing we will thin out the requirements.
+* git - to get the source
+* g++ - to compile and profile
+* clang - for clang-format
+* make - to build
+* doxygen - to generate documentation
+* cppcheck - for static analysis
+* sqlite-dev - for Sqlite3 module
+* openssl-dev - for sha256, aes256, and rsa support
+* zlib-dev - for zlib compression
+* compiler-rt-static - for profiling
+
+### SocketServer test hangs
+
+Need to debug.
+
+<b>Affected tests:</b> os/SocketServer
 
 ### Library test unable to load zlib
 
@@ -117,6 +125,13 @@ Need to debug.
 `FAILED: Exception: OpenSSL Error (EVP_CipherFinal_ex(context, outBuffer, &bytesWritten)): error:06065064:digital envelope routines:EVP_DecryptFinal_ex:bad decrypt File: ../os/SymmetricEncrypt.h Line: 216`
 
 <b>Affected tests:</b> os/SymmetricEncrypt, libernet/Bundle, libernet/Data, libernet/OwnerIdentity
+
+### type identifier warning
+
+Maybe remove the typecast?
+Need to check both macOS and Linux and try different combinations to get rid of the warning.
+
+`../libernet/Bundle.h:262:65: warning: type qualifiers ignored on cast result type [-Wignored-qualifiers]`
 
 ### Unable to use utf8 text facet (used in lowercase)
 
