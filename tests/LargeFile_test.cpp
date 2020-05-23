@@ -25,8 +25,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         io::Path path(testFiles[testIndex]);
 
         if (i == 0) {
-          printf("Testing %lld byte file: %s\n", path.size(),
-                 testFiles[testIndex]);
+          printf("Testing %lld byte file: %s\n",
+                 static_cast<long long int>(path.size()), testFiles[testIndex]);
         }
 
         data::LargeFile::Queue queue;
@@ -38,7 +38,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 
         if (i == 0) {
           printf("%s: queue size = %d file size = %lld\n",
-                 std::string(path).c_str(), queue.size(), path.size());
+                 std::string(path).c_str(), queue.size(),
+                 static_cast<long long int>(path.size()));
         }
 
         dotest((queue.size() == 0) || (path.size() > 1024 * 1024));

@@ -23,8 +23,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         data::SmallFile fileData;
 
         if (i == 0) {
-          printf("Testing %lld byte file: %s\n", file.size(),
-                 testFiles[testIndex]);
+          printf("Testing %lld byte file: %s\n",
+                 static_cast<long long int>(file.size()), testFiles[testIndex]);
         }
         if (file.isFile()) {
           try {
