@@ -82,6 +82,9 @@ Windows support is expected at some point.
 ## Linux issues
 
 We're using alpine linux docker image to build and test.
+Currently all source files compile and run.
+Below are the issues we've found (compiler warnings and test failures).
+
 The following modules need to be installed.
 Some may not be needed.
 Once we get tests passing we will thin out the requirements.
