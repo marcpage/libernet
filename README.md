@@ -85,6 +85,8 @@ We're using alpine linux docker image to build and test.
 The following modules need to be installed.
 Some may not be needed.
 Once we get tests passing we will thin out the requirements.
+Eventually we'd like to have multiple compilers.
+The test harness supports evaluating compile-time and run-time performance of multiple compilers.
 * git - to get the source
 * g++ - to compile and profile
 * clang - for clang-format
