@@ -3,6 +3,15 @@ Table of Contents
 =================
 
 * [Summary](#summary)
+* [Platform Support](#platform-support)
+  * [Linux issues](#linux-issues)
+    * [SocketServer test hangs](#socketserver-test-hangs)
+    * [Library test unable to load zlib](#library-test-unable-to-load-zlib)
+    * [Listing directory returns an invalid argument](#listing-directory-returns-an-invalid-argument)
+    * [openssl error in aes256](#openssl-error-in-aes256)
+    * [type identifier warning](#type-identifier-warning)
+    * [Unable to use utf8 text facet (used in lowercase)](#unable-to-use-utf8-text-facet-used-in-lowercase)
+    * [What are the equal signs in the code coverage?](#what-are-the-equal-signs-in-the-code-coverage)
 * [Definitions](#definitions)
 * [Concepts](#concepts)
   * [Data Identity](#data-identity)
