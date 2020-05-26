@@ -453,12 +453,20 @@ Differences can also occur from divergent signed dictionaries.
 Signed dictionaries can be merged adding all signers of each version bundle.
 Any address histories that do not add any new head [bundles](#bundle-description) or signers may be [deleted](#deleting-data).
 
+Bundles can be password protected.
+When they are password protected, the *aes256* key is replaced with a *password* field.
+The *password* field is a mapping of the hashed (lowercase) username to the encrypted aes256 key to decrypt the bundle.
+The key to encrypt the bundle key is a hash of {username:password}, with the username being lowercase.
+It is not valid to have both an *aes256* and a *passwords* field in the same bundle.
 ```
 {
 	"heads": [
 		{
 			"sha256": identifier of bundle,
 			"aes256": key to decrypt bundle,
+			"password": {
+				{hash of username}: {aes256 encrypted key encrypted using hash of username:password}
+			}
 			"timestamp": fractional seconds since epoch,
 			"signed": {identifier of public key: base64 encoded signature of bundle identifier},
 			"blocked": {
