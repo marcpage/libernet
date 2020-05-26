@@ -16,6 +16,7 @@
 namespace data {
 
 /// @todo Document
+/// @todo update to support "password" field in heads and optional aes256
 class AddressHistory : public JSONData {
 public:
   AddressHistory() : JSONData(), _address() {
