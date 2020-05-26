@@ -458,6 +458,8 @@ When they are password protected, the *aes256* key is replaced with a *password*
 The *password* field is a mapping of the hashed (lowercase) username to the encrypted aes256 key to decrypt the bundle.
 The key to encrypt the bundle key is a hash of {username:password}, with the username being lowercase.
 It is not valid to have both an *aes256* and a *passwords* field in the same bundle.
+To obtain the username and password from the user, the web server will use [Basic Access Authentication](https://en.wikipedia.org/wiki/Basic_access_authentication).
+
 ```
 {
 	"heads": [
