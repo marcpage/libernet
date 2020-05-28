@@ -52,8 +52,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(h1.bundles(l1).size() == h2.bundles(l2).size());
         dotest(l1.size() == 0);
 
-        h1.append(d1, start);
-        h1.append(d2, start + 1.0);
+        h1.append(d1, "", "", start);
+        h1.append(d2, "", "", start + 1.0);
         dotest(h1.bundleCount() == 2);
         dotest(h1.bundles(l1).size() == 2);
         dotest(l1[0] == d1.identifier());
@@ -65,8 +65,8 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(l2[0] == d1.identifier());
         dotest(l2[1] == d2.identifier());
 
-        h1.insert(0, d3, start + 2.0);
-        h1.insert(h1.bundleCount(), d4, start + 3.0);
+        h1.insert(0, d3, "", "", start + 2.0);
+        h1.insert(h1.bundleCount(), d4, "", "", start + 3.0);
         dotest(h1.bundleCount() == 4);
         dotest(h1.bundles(l1).size() == 4);
         // printf("h1.bundles.size() == %ld\n", l1.size());
@@ -83,7 +83,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
         dotest(l2[2] == d2.identifier());
         dotest(l2[3] == d4.identifier());
 
-        h1.insert(d1.identifier(), d5, start + 4.0);
+        h1.insert(d1.identifier(), d5, "", "", start + 4.0);
         dotest(h1.bundleCount() == 5);
         dotest(h1.bundles(l1).size() == 5);
         // printf("l1[0]'%s' == d3'%s'\n", l1[0].c_str(),
