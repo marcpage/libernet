@@ -36,27 +36,20 @@ public:
   int match();
   List &bundles(List &list, ListAction action = ClearFirst);
   int bundleCount() { return JSONData::value()["heads"].count(); }
-  void append(data::Data &data,
-              const dt::DateTime &timestamp = dt::DateTime()) {
-    append(data.identifier(), data.key(), timestamp);
+  void append(data::Data &data, const std::string &username="", const std::string &password="", const dt::DateTime &timestamp = dt::DateTime()) {
+    append(data.identifier(), data.key(), username, password, timestamp);
   }
-  void append(const std::string &identifier, const std::string &key,
-              const dt::DateTime &timestamp = dt::DateTime());
-  void insert(int before, data::Data &data,
-              const dt::DateTime &timestamp = dt::DateTime()) {
-    insert(before, data.identifier(), data.key(), timestamp);
+  void append(const std::string &identifier, const std::string &key, const std::string &username="", const std::string &password="", const dt::DateTime &timestamp = dt::DateTime());
+  void insert(int before, data::Data &data, const std::string &username="", const std::string &password="", const dt::DateTime &timestamp = dt::DateTime()) {
+    insert(before, data.identifier(), data.key(), username, password, timestamp);
   }
-  void insert(int before, const std::string &identifier, const std::string &key,
-              const dt::DateTime &timestamp = dt::DateTime());
-  void insert(const std::string &beforeIdentifier, data::Data &data,
-              const dt::DateTime &timestamp = dt::DateTime()) {
-    insert(_index(beforeIdentifier), data.identifier(), data.key(), timestamp);
+  void insert(int before, const std::string &identifier, const std::string &key, const std::string &username="", const std::string &password="", const dt::DateTime &timestamp = dt::DateTime());
+  void insert(const std::string &beforeIdentifier, data::Data &data, const std::string &username="", const std::string &password="", const dt::DateTime &timestamp = dt::DateTime()) {
+    insert(_index(beforeIdentifier), data.identifier(), data.key(), username, password, timestamp);
   }
   // @todo Test
-  void insert(const std::string &beforeIdentifier,
-              const std::string &identifier, const std::string &key,
-              const dt::DateTime &timestamp = dt::DateTime()) {
-    insert(_index(beforeIdentifier), identifier, key, timestamp);
+  void insert(const std::string &beforeIdentifier, const std::string &identifier, const std::string &key, const std::string &username="", const std::string &password="", const dt::DateTime &timestamp = dt::DateTime()) {
+    insert(_index(beforeIdentifier), identifier, key, username, password, timestamp);
   }
   void remove(int index);
   void remove(const std::string &identifier) { remove(_index(identifier)); }
@@ -70,6 +63,18 @@ public:
   void block(const std::string &bundleIdentifier, const std::string &blocker,
              const std::string &signature, const std::string &reason) {
     block(_index(bundleIdentifier), blocker, signature, reason);
+  }
+  bool hasKey(int index);
+  bool hasKey(const std::string &identifier) {
+  	return hasKey(_index(identifier));
+  }
+  bool hasUsername(int index, const std::string &username);
+  bool hasUsername(const std::string &identifier, const std::string &username) {
+  	return hasUsername(_index(identifier), username);
+  }
+  std::string key(int index, const std::string &username, const std::string &password);
+  std::string key(const std::string &identifier, const std::string &username, const std::string &password) {
+  	return key(_index(identifier), username, password);
   }
   std::string key(int index);
   std::string key(const std::string &identifier) {
@@ -236,6 +241,31 @@ inline void AddressHistory::block(int index, const std::string &signer,
   blockers[signer] = entry;
 
   _changeContent(history);
+}
+
+inline bool AddressHistory::hasKey(int index) {
+  return JSONData::value()["heads"][index].has("aes256");
+}
+
+inline bool AddressHistory::hasUsername(int index, const std::string &username) {
+	const json::Value history = JSONData::value();
+	const json::Value &entry = history["heads"][index];
+
+  if (entry.has("password")) {
+  	return entry["password"].has(hash::sha256(username).base64());
+  }
+  return false;
+}
+
+inline std::string AddressHistory::key(int index, const std::string &username, const std::string &password) {
+	std::string usernameKey = hash::sha256(username).base64();
+    std::string encryptedKey = text::base64Decode(JSONData::value()["heads"][index][usernameKey].string());
+	hash::sha256 keyData(username + ":" + password);
+    crypto::AES256 key(reinterpret_cast<const char *>(keyData.buffer()), keyData.size());
+    std::string decryptedKey;
+
+    key.crypto::SymmetricKey::decryptInPlace(encryptedKey, "", decryptedKey);
+    return decryptedKey;
 }
 
 inline std::string AddressHistory::key(int index) {
