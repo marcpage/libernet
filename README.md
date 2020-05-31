@@ -1,17 +1,20 @@
 
+![https://img.shields.io/static/v1?label=status&message=implementing+spec&color=inactive&style=plastic]
+![https://img.shields.io/github/last-commit/marcpage/libernet?style=plastic]
+![https://img.shields.io/github/commit-activity/m/marcpage/libernet?style=plastic]
+![https://img.shields.io/github/languages/code-size/marcpage/libernet?style=plastic]
+![https://img.shields.io/github/issues-raw/marcpage/libernet?style=plastic]
+![https://img.shields.io/github/followers/marcpage?label=Follow&style=social]
+![https://img.shields.io/github/watchers/marcpage/libernet?label=Watch&style=social]
+
 Table of Contents
 =================
 
+* [Table of Contents](#table-of-contents)
 * [Summary](#summary)
 * [Platform Support](#platform-support)
-  * [Linux issues](#linux-issues)
-    * [SocketServer test hangs](#socketserver-test-hangs)
-    * [Library test unable to load zlib](#library-test-unable-to-load-zlib)
-    * [Listing directory returns an invalid argument](#listing-directory-returns-an-invalid-argument)
-    * [openssl error in aes256](#openssl-error-in-aes256)
-    * [type identifier warning](#type-identifier-warning)
-    * [Unable to use utf8 text facet (used in lowercase)](#unable-to-use-utf8-text-facet-used-in-lowercase)
-    * [What are the equal signs in the code coverage?](#what-are-the-equal-signs-in-the-code-coverage)
+  * [macOS support](#macos-support)
+  * [Linux support](#linux-support)
 * [Definitions](#definitions)
 * [Concepts](#concepts)
   * [Data Identity](#data-identity)
@@ -54,11 +57,11 @@ Table of Contents
 
 # Summary
 
-Libernet is a free, open, and secure platform for communicating and sharing data.
-It is designed to provide a rich internet experience while allowing you to maintain control over your data.
-All data is securely encrypted and distributed across the Libernet.
-While data loss is possible, only data that no one is requesting would be lost.
-Similar to Bittorrent, data that is more popular is distributed to more nodes, making data loss less likely and data transfer faster.
+Libernet is a free, open, and secure platform for communicating and sharing information.
+It is designed to provide a rich internet experience while allowing you to maintain control over your information.
+All information is securely encrypted and distributed across the Libernet.
+While information loss is possible, only information that no one is requesting would be lost.
+Similar to Bittorrent, information that is more popular is distributed to more nodes, making loss less likely and transfers faster.
 
 Every person and computer (node) on the Libernet has at least one unique identity.
 This identity allows them to share data, receive messages, and participate in a network of trust.
@@ -85,8 +88,18 @@ https://github.com/mjansson/mdns
 # Platform Support
 
 macOS is fully supported.
-Linux support is under progress (see issues below).
+Linux support is under progress ([see issues](https://github.com/marcpage/libernet/issues)).
 Windows support is expected at some point.
+
+## macOS support
+
+Using latest macOS version (Catalina/10.15.4) and latest Xcode version (11.5).
+You can use [Homebrew](https://brew.sh/) to install the following dependencies:
+* doxygen
+* cppcheck
+* github-markdown-toc (to generate the table of contents for this file)
+* clang-format
+* opensll
 
 ## Linux support
 
