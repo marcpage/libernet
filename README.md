@@ -88,7 +88,7 @@ https://github.com/mjansson/mdns
 # Platform Support
 
 macOS is fully supported.
-Linux support is under progress ([see issues](https://github.com/marcpage/libernet/issues)).
+Linux support is in progress ([see issues](https://github.com/marcpage/libernet/issues)).
 Windows support is expected at some point.
 
 ## macOS support
@@ -103,8 +103,8 @@ You can use [Homebrew](https://brew.sh/) to install the following dependencies:
 
 ## Linux support
 
-We're using alpine linux docker image to build and test.
-Currently all source files compile and run.
+We're using alpine [linux docker image](docker/Dockerfile) to build and test.
+Currently all source files compile and run ([see issues](https://github.com/marcpage/libernet/issues)).
 
 The following modules need to be installed.
 Some may not be needed.
@@ -121,9 +121,6 @@ The test harness supports evaluating compile-time and run-time performance of mu
 * openssl-dev - for sha256, aes256, and rsa support
 * zlib-dev - for zlib compression
 * compiler-rt-static - for profiling
-
-
-<b>Affected tests:</b> os, libernet
 
 
 # Definitions
