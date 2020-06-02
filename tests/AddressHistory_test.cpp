@@ -277,7 +277,43 @@ printf("h2[d5] timestamp = %0.3f seconds\n",
         h3.append(d1, "username", "password");
         dotest(h3.hasUsername(d1.identifier(), "username"));
         dotest(!h3.hasUsername(d1.identifier(), "john"));
-        h3.append(d1, "john", "john password");
+
+        h3.insert(d1.identifier(), d2.identifier(), d2.key(), "please",
+                  "thank you");
+        dotest(h3.hasUsername(d2.identifier(), "please"));
+        dotest(h3.key(d2.identifier(), "please", "thank you") == d2.key());
+        dotest(!h3.hasKey(d2.identifier()));
+
+        h3.setPassword(d1.identifier(), d1.key(), "john", "john password");
+        dotest(h3.hasUsername(d1.identifier(), "john"));
+        dotest(h3.key(d1.identifier(), "username", "password") == d1.key());
+        dotest(h3.key(d1.identifier(), "john", "john password") == d1.key());
+        dotest(!h3.hasKey(d1.identifier()));
+
+        h3.removePassword(d1.identifier(), d1.key(), "username");
+        dotest(!h3.hasKey(d1.identifier()));
+        dotest(!h3.hasUsername(d1.identifier(), "username"));
+        dotest(h3.hasUsername(d1.identifier(), "john"));
+        dotest(h3.key(d1.identifier(), "john", "john password") == d1.key());
+
+        h3.removePassword(d2.identifier(), d2.key(), "please");
+        dotest(h3.hasKey(d2.identifier()));
+        dotest(h3.key(d2.identifier()) == d2.key());
+        dotest(!h3.hasUsername(d2.identifier(), "please"));
+
+        try {
+          h3.key(d1.identifier());
+          dotest(false /*expected exception*/);
+        } catch (const json::WrongType &) {
+          // expected
+        }
+
+        try {
+          h3.hasKey(d3.identifier());
+          dotest(false /*expected exception*/);
+        } catch (const msg::Exception &) {
+          // expected
+        }
       }
     }
   } catch (const std::exception &e) {

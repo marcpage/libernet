@@ -16,7 +16,6 @@
 namespace data {
 
 /// @todo Document
-/// @todo update to support "password" field in heads and optional aes256
 class AddressHistory : public JSONData {
 public:
   AddressHistory() : JSONData(), _address() {
@@ -62,7 +61,6 @@ public:
     insert(_index(beforeIdentifier), data.identifier(), data.key(), username,
            password, timestamp);
   }
-  // @todo Test
   void insert(const std::string &beforeIdentifier,
               const std::string &identifier, const std::string &key,
               const std::string &username = "",
@@ -85,20 +83,17 @@ public:
     block(_index(bundleIdentifier), blocker, signature, reason);
   }
   bool hasKey(int index);
-  /// @todo Test
   bool hasKey(const std::string &identifier) {
     return hasKey(_index(identifier));
   }
   void setPassword(int index, const std::string &key,
                    const std::string &username, const std::string &password);
-  /// @todo Test
   void setPassword(const std::string &identifier, const std::string &key,
                    const std::string &username, const std::string &password) {
     return setPassword(_index(identifier), key, username, password);
   }
   void removePassword(int index, const std::string &key,
                       const std::string &username);
-  /// @todo Test
   void removePassword(const std::string &identifier, const std::string &key,
                       const std::string &username) {
     removePassword(_index(identifier), key, username);
@@ -109,7 +104,6 @@ public:
   }
   std::string key(int index, const std::string &username,
                   const std::string &password);
-  /// @todo Test
   std::string key(const std::string &identifier, const std::string &username,
                   const std::string &password) {
     return key(_index(identifier), username, password);
@@ -238,7 +232,6 @@ inline void AddressHistory::_setPassword(json::Value &entry,
   entry["password"][usernameKey] = text::base64Encode(encryptedKey);
 }
 
-/// @todo Test
 inline void AddressHistory::setPassword(int index, const std::string &key,
                                         const std::string &username,
                                         const std::string &password) {
@@ -249,18 +242,17 @@ inline void AddressHistory::setPassword(int index, const std::string &key,
   _changeContent(history);
 }
 
-/// @todo Test
 inline void AddressHistory::removePassword(int index, const std::string &key,
                                            const std::string &username) {
   json::Value history = JSONData::value();
   json::Value &entry = history["heads"][index];
-  json::Value &passwords = entry["passwords"];
+  json::Value &passwords = entry["password"];
   std::string usernameKey = hash::sha256(username).base64();
 
   passwords.erase(usernameKey);
 
   if (passwords.count() == 0) {
-    entry.erase("passwords");
+    entry.erase("password");
     entry["aes256"] = key;
   }
 
@@ -344,7 +336,6 @@ inline void AddressHistory::block(int index, const std::string &signer,
   _changeContent(history);
 }
 
-///@todo Test
 inline bool AddressHistory::hasKey(int index) {
   return JSONData::value()["heads"][index].has("aes256");
 }
@@ -357,15 +348,14 @@ inline bool AddressHistory::hasUsername(int index,
   if (entry.has("password")) {
     return entry["password"].has(hash::sha256(username).base64());
   }
-  return false; // not tested
+  return false;
 }
 
-/// @todo Test
 inline std::string AddressHistory::key(int index, const std::string &username,
                                        const std::string &password) {
   std::string usernameKey = hash::sha256(username).base64();
   std::string encryptedKey = text::base64Decode(
-      JSONData::value()["heads"][index][usernameKey].string());
+      JSONData::value()["heads"][index]["password"][usernameKey].string());
   hash::sha256 keyData(username + ":" + password);
   crypto::AES256 key(reinterpret_cast<const char *>(keyData.buffer()),
                      keyData.size());
@@ -447,8 +437,7 @@ inline int AddressHistory::_index(const std::string &identifier) {
       return int(i);
     }
   }
-  ThrowMessageException("bundle identifier not found " + // not tested
-                        identifier);
+  ThrowMessageException("bundle identifier not found " + identifier);
 }
 
 inline void AddressHistory::_validate() {
