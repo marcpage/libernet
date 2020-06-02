@@ -270,6 +270,14 @@ printf("h2[d5] timestamp = %0.3f seconds\n",
         dotest(h2.bundles(l2).size() == 2);
         dotest(l2[0] == d5.identifier());
         dotest(l2[1] == d1.identifier());
+
+        data::AddressHistory h3;
+
+        h3.setAddress(addresses[j]);
+        h3.append(d1, "username", "password");
+        dotest(h3.hasUsername(d1.identifier(), "username"));
+        dotest(!h3.hasUsername(d1.identifier(), "john"));
+        h3.append(d1, "john", "john password");
       }
     }
   } catch (const std::exception &e) {
