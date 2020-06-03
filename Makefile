@@ -26,7 +26,7 @@ check:format lint docs
 bin/logs/lint.txt: src/*/*.h
 	@echo Linting ...
 	@mkdir -p bin/logs
-	@cppcheck --enable=all --force --std=c++11 $(KNOWN_ERRORS) --language=c++ $(OPENSSL_PATH) -I.. src/*/*.h &> $@
+	@cppcheck --enable=all --force --std=c++11 $(KNOWN_ERRORS) --language=c++ $(OPENSSL_PATH) -Isrc src/*/*.h &> $@
 	@-cat $@ | grep performance: || true
 	@-cat $@ | grep portability: || true
 	@-cat $@ | grep style: || true
@@ -66,12 +66,12 @@ bin/logs/clang-format.txt:tests/*.cpp src/*/*.h
 # -fsanitize=leak
 # -fsanitize=safe-stack
 # -D_LIBCPP_DEBUG=1
-bin/test:tests/test.cpp ../os/*.h src/*/*.h
+bin/test:tests/test.cpp src/*/*.h
 	@mkdir -p bin
-	@clang++ tests/test.cpp -o $@ $(USE_OPENSSL) -I.. -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
+	@clang++ tests/test.cpp -o $@ $(USE_OPENSSL) -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 bin/%:%.cpp
-	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -I.. -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
+	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 clean:
 	@rm -Rf documentation bin/coverage bin/test bin/tests bin/logs/*.log bin/logs/*.txt
