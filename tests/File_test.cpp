@@ -97,14 +97,15 @@ int main(int argc, const char *const argv[]) {
     delete binary;
     binary = nullptr;
 
-    io::File source("File.h", io::File::Text, io::File::ReadOnly);
+    io::File source("src/os/File.h", io::File::Text, io::File::ReadOnly);
 
     do {
       contents += source.readline(line, 0, io::File::FromHere, 16);
     } while (line.size() > 0);
 
     dotest(contents ==
-           io::File("File.h", io::File::Text, io::File::ReadOnly).read(buffer));
+           io::File("src/os/File.h", io::File::Text, io::File::ReadOnly)
+               .read(buffer));
   }
   return 0;
 }
