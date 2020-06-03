@@ -60,10 +60,7 @@ bin/logs/clang-format.txt:tests/*.cpp *.h
 	@mkdir -p bin/logs/
 	@clang-format $(CLANG_FORMAT_FLAGS) -i *.h tests/*.cpp 2> bin/logs/clang-format.txt
 
-../os/tests/test.cpp:
-	@git clone http://github.com/marcpage/os ../os
-
-../os/*.h:../os/tests/test.cpp
+../os/*.h:tests/test.cpp
 
 # -fsanitize=memory
 # -fsanitize=thread
@@ -71,9 +68,9 @@ bin/logs/clang-format.txt:tests/*.cpp *.h
 # -fsanitize=leak
 # -fsanitize=safe-stack
 # -D_LIBCPP_DEBUG=1
-bin/test:../os/tests/test.cpp ../os/*.h *.h
+bin/test:tests/test.cpp ../os/*.h *.h
 	@mkdir -p bin
-	@clang++ ../os/tests/test.cpp -o $@ $(USE_OPENSSL) -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
+	@clang++ tests/test.cpp -o $@ $(USE_OPENSSL) -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 bin/%:%.cpp
 	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
