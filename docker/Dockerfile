@@ -20,14 +20,6 @@ RUN cd musl-locales-master && cmake -DLOCALE_PROFILE=OFF -D CMAKE_INSTALL_PREFIX
 RUN cd musl-locales-master && make && make install
 RUN rm -r musl-locales-master musl-locales-master.zip
 
-RUN git clone https://GitHub.com/marcpage/os.git
-
-RUN cd os && make
-
-RUN git clone https://github.com/marcpage/protocol.git
-
-RUN cd protocol && make
-
 RUN git clone https://github.com/marcpage/libernet.git
 
 RUN cd libernet && make
