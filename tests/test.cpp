@@ -37,7 +37,7 @@ const double gTestTimeAllowancePercent = 5;
 const double gTestMinimumTimeInSeconds = 1;
 const char *const gOpensllFlags = "-lcrypto";
 const char *const gCompilerFlags =
-    "-I.. -MMD -std=c++11"
+    "-I.. -Isrc -MMD -std=c++11"
     " -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings"
 #if defined(__linux__)
     " -lcrypto -DOpenSSLAvailable=1"
@@ -432,6 +432,35 @@ void getTestStats(const String &name, const String &options,
   }
 }
 
+std::vector<io::Path> allHeaders() {
+  const io::Path src("src");
+  const auto contents =
+      src.list(io::Path::PathAndName, io::Path::RecursiveListing);
+  std::vector<io::Path> headers;
+
+  for (auto pathString : contents) {
+    io::Path path(pathString);
+
+    if (path.extension() == "h") {
+      headers.push_back(path);
+    }
+  }
+  return headers;
+}
+
+std::string testHeaderPath(const String &name) {
+  const auto headers = allHeaders();
+
+  for (auto header : headers) {
+
+    if (header.basename() == name) {
+      return header;
+    }
+  }
+
+  return "";
+}
+
 void runTest(const String &name, const std::string::size_type maxNameSize,
              const String &compiler, const io::Path &openssl, Sqlite3::DB &db) {
   String results;
@@ -452,7 +481,7 @@ void runTest(const String &name, const std::string::size_type maxNameSize,
   String testHash;
   String executablePath;
   const String testSourcePath = "tests/" + name + "_test.cpp";
-  const String headerPath = name + ".h";
+  const String headerPath = testHeaderPath(name);
   const String options = openssl.isEmpty() ? "" : "openssl";
   uint32_t testedLines;
   double durationInSeconds;
@@ -765,7 +794,9 @@ void reportRun(const std::string &reason, const std::string test,
   const void *unused[] = {&unused, &reason};
   math::List filteredSourceRuns = sourceRuns;
   math::List filteredTestRunsWithOtherSource;
-  if (!io::Path(test + ".h").isFile()) {
+  const auto headerPath = testHeaderPath(test);
+
+  if (headerPath.size() == 0) {
     return;
   }
 
@@ -1127,7 +1158,6 @@ int main(int argc, const char *const argv[]) {
   }
   try {
     String results;
-    StringList headers;
     String parentDirectoryName =
         io::Path(argv[0]).canonical().parent().parent().name();
 #if defined(__APPLE__)
@@ -1195,8 +1225,7 @@ int main(int argc, const char *const argv[]) {
     }
     if (testsToRun.size() > 0) {
       printf("Examining overall coverage ...\n");
-      exec::execute("ls *.h", results);
-      split(results, '\n', headers);
+      auto headers = allHeaders();
       for (auto header : headers) {
         uint32_t coverage;
         uint32_t uncovered;
@@ -1225,7 +1254,7 @@ int main(int argc, const char *const argv[]) {
             (unexpectedCoverage || unexpectedLines)) {
           printf(WarningTextFormatStart "%s coverage changed %d/%d -> %d/%d "
                                         "(%d%% -> %d%%)" ClearTextFormat "\n",
-                 header.c_str(), expectedLinesRun,
+                 std::string(header).c_str(), expectedLinesRun,
                  expectedLinesRun + expectedLinesNotRun, coverage,
                  coverage + uncovered,
                  hasExpectations ? 100 * expectedLinesRun /
@@ -1239,8 +1268,8 @@ int main(int argc, const char *const argv[]) {
         if (coverageRate < bestCoverage) {
           printf(ErrorTextFormatStart "%s coverage is lower than best %d/%d "
                                       "(%d%%) < %d%%" ClearTextFormat "\n",
-                 header.c_str(), coverage, coverage + uncovered, coverageRate,
-                 bestCoverage);
+                 std::string(header).c_str(), coverage, coverage + uncovered,
+                 coverageRate, bestCoverage);
           for (auto i : uncoveredLines) {
             printf("%s\n", i.c_str());
           }

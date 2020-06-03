@@ -23,17 +23,17 @@ KNOWN_ERRORS:= --suppress=unusedFunction \
 
 check:format lint docs
 
-bin/logs/lint.txt: *.h
+bin/logs/lint.txt: src/*/*.h
 	@echo Linting ...
 	@mkdir -p bin/logs
-	@cppcheck --enable=all --force --std=c++11 $(KNOWN_ERRORS) --language=c++ $(OPENSSL_PATH) -I.. *.h &> $@
+	@cppcheck --enable=all --force --std=c++11 $(KNOWN_ERRORS) --language=c++ $(OPENSSL_PATH) -I.. src/*/*.h &> $@
 	@-cat $@ | grep performance: || true
 	@-cat $@ | grep portability: || true
 	@-cat $@ | grep style: || true
 	@-cat $@ | grep warning: || true
 	@-cat $@ | grep error: || true
-	@grep -rniw todo *.h
-	@echo `grep -rniw todo *.h | wc -l` TODO items
+	@grep -rniw todo src/*/*.h
+	@echo `grep -rniw todo src/*/*.h | wc -l` TODO items
 	@cat bin/coverage/*/*.gcov | grep -E '[0-9]+:' | grep -ve -: | grep -v "#####" > bin/logs/all_code_coverage.txt
 	@grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq  || true
 	@echo `grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq | wc -l` lines now tested
@@ -55,12 +55,10 @@ lint:format
 
 format:bin/logs/clang-format.txt
 
-bin/logs/clang-format.txt:tests/*.cpp *.h
+bin/logs/clang-format.txt:tests/*.cpp src/*/*.h
 	@echo Cleaning code ...
 	@mkdir -p bin/logs/
-	@clang-format $(CLANG_FORMAT_FLAGS) -i *.h tests/*.cpp 2> bin/logs/clang-format.txt
-
-../os/*.h:tests/test.cpp
+	@clang-format $(CLANG_FORMAT_FLAGS) -i src/*/*.h tests/*.cpp 2> bin/logs/clang-format.txt
 
 # -fsanitize=memory
 # -fsanitize=thread
@@ -68,12 +66,12 @@ bin/logs/clang-format.txt:tests/*.cpp *.h
 # -fsanitize=leak
 # -fsanitize=safe-stack
 # -D_LIBCPP_DEBUG=1
-bin/test:tests/test.cpp ../os/*.h *.h
+bin/test:tests/test.cpp ../os/*.h src/*/*.h
 	@mkdir -p bin
-	@clang++ tests/test.cpp -o $@ $(USE_OPENSSL) -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
+	@clang++ tests/test.cpp -o $@ $(USE_OPENSSL) -I.. -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 bin/%:%.cpp
-	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -I.. -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
+	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -I.. -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
 
 clean:
 	@rm -Rf documentation bin/coverage bin/test bin/tests bin/logs/*.log bin/logs/*.txt
