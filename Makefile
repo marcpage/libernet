@@ -2,11 +2,15 @@
 
 all:test docs lint
 
-lint:bin/logs/lint.txt
+test:runtests coverage
+lint:todo
 
 OPENSSL_PATH=$(subst openssl=,-I,$(OS_OPTIONS))/include
 
 PLATFORM = $(shell uname)
+CODE_FORMAT_TOOL = $(shell which clang-format)
+DOCUMENTATION_TOOL = $(shell which doxygen)
+LINT_TOOL = $(shell which cppcheck)
 
 ifeq ($(PLATFORM),Darwin)
   CLANG_FORMAT_FLAGS = --verbose
@@ -32,23 +36,39 @@ bin/logs/lint.txt: src/*/*.h
 	@-cat $@ | grep style: || true
 	@-cat $@ | grep warning: || true
 	@-cat $@ | grep error: || true
+
+todo:
 	@grep -rniw todo src/*/*.h
 	@echo `grep -rniw todo src/*/*.h | wc -l` TODO items
+
+coverage:runtests
 	@cat bin/coverage/*/*.gcov | grep -E '[0-9]+:' | grep -ve -: | grep -v "#####" | grep -v "=====" > bin/logs/all_code_coverage.txt
 	@grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq  || true
 	@echo `grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq | wc -l` lines now tested
 
 documentation/index.html:
 	@mkdir -p documentation
-	@doxygen libernet.dox 2> bin/logs/doxygen.txt
+	@$(DOCUMENTATION_TOOL) libernet.dox 2> bin/logs/doxygen.txt
 	@if [ `cat bin/logs/doxygen.txt | wc -l` -ne "0" ]; then echo `cat bin/logs/doxygen.txt | wc -l` documentation messages; fi
 
+ifneq (,$(strip $(DOCUMENTATION_TOOL)))
 docs:documentation/index.html
+else
+docs:
+	@$(ECHO) doxygen tool not found, no documentation will be generated
+endif
+
+ifneq (,$(strip $(LINT_TOOL)))
+lint:bin/logs/lint.txt
+else
+lint:
+	@$(ECHO) cppcheck tool not found, no linting will be performed
+endif
 
 performance:bin/test
 	@bin/test $(OS_OPTIONS) $(COMPILER) $(TEST)
 
-test:bin/test
+runtests:bin/test
 	@bin/test $(OS_OPTIONS) $(COMPILER) test $(TEST)
 
 bin/test:format
@@ -56,12 +76,17 @@ test:format
 docs:format
 lint:format
 
+ifneq (,$(strip $(CODE_FORMAT_TOOL)))
 format:bin/logs/clang-format.txt
+else
+format:
+	@$(ECHO) clang-format tool not found, no code formatting will be performed
+endif
 
 bin/logs/clang-format.txt:tests/*.cpp src/*/*.h
 	@echo Cleaning code ...
 	@mkdir -p bin/logs/
-	@clang-format $(CLANG_FORMAT_FLAGS) -i src/*/*.h tests/*.cpp 2> bin/logs/clang-format.txt
+	@$(CODE_FORMAT_TOOL) $(CLANG_FORMAT_FLAGS) -i src/*/*.h tests/*.cpp 2> bin/logs/clang-format.txt
 
 # -fsanitize=memory
 # -fsanitize=thread
