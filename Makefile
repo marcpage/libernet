@@ -8,9 +8,9 @@ lint:todo
 OPENSSL_PATH=$(subst openssl=,-I,$(OS_OPTIONS))/include
 
 PLATFORM = $(shell uname)
-CODE_FORMAT_TOOL = $(shell which clang-format)
-DOCUMENTATION_TOOL = $(shell which doxygen)
-LINT_TOOL = $(shell which cppcheck)
+CODE_FORMAT_TOOL = $(shell which clang-format | grep -vw not.found)
+DOCUMENTATION_TOOL = $(shell which doxygen | grep -vw not.found)
+LINT_TOOL = $(shell which cppcheck | grep -vw not.found)
 
 ifeq ($(PLATFORM),Darwin)
   CLANG_FORMAT_FLAGS = --verbose
@@ -53,16 +53,18 @@ documentation/index.html:
 
 ifneq (,$(strip $(DOCUMENTATION_TOOL)))
 docs:documentation/index.html
+	@echo Using "$(DOCUMENTATION_TOOL)" to generate documentation
 else
 docs:
-	@$(ECHO) doxygen tool not found, no documentation will be generated
+	@echo doxygen tool not found, no documentation will be generated
 endif
 
 ifneq (,$(strip $(LINT_TOOL)))
 lint:bin/logs/lint.txt
+	@echo Using "$(LINT_TOOL)" to lint the source
 else
 lint:
-	@$(ECHO) cppcheck tool not found, no linting will be performed
+	@echo cppcheck tool not found, no linting will be performed
 endif
 
 performance:bin/test
@@ -78,9 +80,10 @@ lint:format
 
 ifneq (,$(strip $(CODE_FORMAT_TOOL)))
 format:bin/logs/clang-format.txt
+	@echo Using "$(CODE_FORMAT_TOOL)" to format source
 else
 format:
-	@$(ECHO) clang-format tool not found, no code formatting will be performed
+	@echo clang-format tool not found, no code formatting will be performed
 endif
 
 bin/logs/clang-format.txt:tests/*.cpp src/*/*.h
