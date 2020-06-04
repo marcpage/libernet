@@ -65,6 +65,8 @@ const String gCompilerList = "g++"; //,clang++,llvm-g++";
 Dictionary gCompilerLocations;
 bool gDebugging = false;
 bool gVerbose = false;
+bool gRunPerformace = true;
+bool gRunTrace = true;
 
 /*
          foreground background
@@ -469,10 +471,14 @@ void runTest(const String &name, const std::string::size_type maxNameSize,
   String logName;
   String runLogName;
   String gcovLogName;
-  double compilePerfTime, compileCoverageTime, runPerfTime, runCoverageTime,
-      totalTime, slowTime;
-  uint32_t coverage;
-  uint32_t uncovered;
+  double compilePerfTime = 0.0;
+  double compileCoverageTime = 0.0;
+  double runPerfTime = 0.0;
+  double runCoverageTime = 0.0;
+  double totalTime = 0.0;
+  double slowTime = 0.0;
+  uint32_t coverage = 0;
+  uint32_t uncovered = 0;
   uint32_t percent_coverage;
   uint32_t warnings, errors, failures;
   bool displayNewLine = false;
@@ -529,89 +535,110 @@ void runTest(const String &name, const std::string::size_type maxNameSize,
              name.c_str(), compiler.c_str());
     }
     fflush(stdout);
-    executableName = name + '_' + compiler + "_performance";
-    logName = executableName + "_compile.log";
-    runLogName = executableName + "_run.log";
-    executablePath = "bin/tests/" + executableName;
-    command += " -o " + executablePath + " " + testSourcePath + " " +
-               (gDebugging ? gDebugFlags : "") + gCompilerFlags + otherFlags +
-               " &> bin/logs/" + logName;
-    if (gVerbose) {
-      printf("\nEXECUTING: %s\n", command.c_str());
-    }
-    compilePerfTime = runNoResultsExpected(command, "compile performance");
 
-    command = executablePath + " &> bin/logs/" + runLogName;
-    if (gVerbose) {
-      printf("EXECUTING: %s\n", command.c_str());
-    }
-    runPerfTime = runNoResultsExpected(command, "run performance");
+    if (gRunPerformace) {
+      executableName = name + '_' + compiler + "_performance";
+      logName = executableName + "_compile.log";
+      runLogName = executableName + "_run.log";
+      executablePath = "bin/tests/" + executableName;
+      command += " -o " + executablePath + " " + testSourcePath + " " +
+                 (gDebugging ? gDebugFlags : "") + gCompilerFlags + otherFlags +
+                 " &> bin/logs/" + logName;
+      if (gVerbose) {
+        printf("\nEXECUTING: %s\n", command.c_str());
+      }
+      compilePerfTime = runNoResultsExpected(command, "compile performance");
 
-    failures = runIntegerExpected("cat bin/logs/" + runLogName +
-                                  " | grep FAIL | sort | uniq | wc -l");
-    errors = runIntegerExpected("cat bin/logs/" + logName +
-                                " | grep error: | sort | uniq | wc -l");
-    errors += runIntegerExpected("cat bin/logs/" + logName +
-                                 " | grep ld: | sort | uniq | wc -l");
-    warnings = runIntegerExpected("cat bin/logs/" + logName +
-                                  " | grep warning: | sort | uniq | wc -l");
+      command = executablePath + " &> bin/logs/" + runLogName;
+      if (gVerbose) {
+        printf("EXECUTING: %s\n", command.c_str());
+      }
+      runPerfTime = runNoResultsExpected(command, "run performance");
 
-    executableName = name + '_' + compiler + "_trace";
-    logName = executableName + "_compile.log";
-    runLogName = executableName + "_run.log";
-    gcovLogName = executableName + "_gcov.log";
-    executablePath = "bin/tests/" + executableName;
-    command =
-        gCompilerLocations[compiler] + " -o " + executablePath + " tests/" +
-        name + "_test.cpp " + gDebugFlags + gCompilerFlags + otherFlags +
-        " -D__Tracer_h__ -fprofile-arcs -ftest-coverage -g -O0 &> bin/logs/" +
-        logName;
-    if (gVerbose) {
-      printf("EXECUTING: %s\n", command.c_str());
-    }
-    compileCoverageTime = runNoResultsExpected(command, "compile trace");
-    command = executablePath + " &> bin/logs/" + runLogName;
-    if (gVerbose) {
-      printf("EXECUTING: %s\n", command.c_str());
-    }
-    runCoverageTime = runNoResultsExpected(command, "run trace");
-
-    exec::execute("mkdir -p bin/coverage/" + executableName + " 2>&1", results);
-    if (results != "") {
-      printf(WarningTextFormatStart "WARNING: mkdir '%s'" ClearTextFormat "\n",
-             results.c_str());
-    }
-    command =
-        String("gcov ") + name + "_test.cpp" + " &> bin/logs/" + gcovLogName;
-    if (gVerbose) {
-      printf("EXECUTING: %s\n", command.c_str());
-    }
-    exec::execute(command, results);
-    if (results != "") {
-      printf(WarningTextFormatStart "WARNING: gcov '%s'" ClearTextFormat "\n",
-             results.c_str());
-    }
-    exec::execute("mv *.gcov *.gcno *.gcda bin/coverage/" + executableName +
-                      "/ 2>&1",
-                  results);
-    if (results != "") {
-      printf(WarningTextFormatStart "WARNING: mv '%s'" ClearTextFormat "\n",
-             results.c_str());
+      failures = runIntegerExpected("cat bin/logs/" + runLogName +
+                                    " | grep FAIL | sort | uniq | wc -l");
+      errors = runIntegerExpected("cat bin/logs/" + logName +
+                                  " | grep error: | sort | uniq | wc -l");
+      errors += runIntegerExpected("cat bin/logs/" + logName +
+                                   " | grep ld: | sort | uniq | wc -l");
+      warnings = runIntegerExpected("cat bin/logs/" + logName +
+                                    " | grep warning: | sort | uniq | wc -l");
     }
 
-    coverage = runIntegerExpected(
-        "cat bin/coverage/" + executableName + "/" + name +
-        ".h.gcov 2> /dev/null | grep -E '[0-9]+:\\s+[0-9]+:' | wc -l");
-    uncovered = runIntegerExpected(
-        "cat bin/coverage/" + executableName + "/" + name +
-        ".h.gcov 2> /dev/null | grep -E '#+:\\s+[0-9]+:' | wc -l");
-    percent_coverage = (coverage + uncovered) > 0
-                           ? 100 * coverage / (coverage + uncovered)
-                           : 0;
-    printf("\t%3d%% coverage\n", percent_coverage);
+    if (gRunTrace) {
+      executableName = name + '_' + compiler + "_trace";
+      logName = executableName + "_compile.log";
+      runLogName = executableName + "_run.log";
+      gcovLogName = executableName + "_gcov.log";
+      executablePath = "bin/tests/" + executableName;
+      command =
+          gCompilerLocations[compiler] + " -o " + executablePath + " tests/" +
+          name + "_test.cpp " + gDebugFlags + gCompilerFlags + otherFlags +
+          " -D__Tracer_h__ -fprofile-arcs -ftest-coverage -g -O0 &> bin/logs/" +
+          logName;
+      if (gVerbose) {
+        printf("EXECUTING: %s\n", command.c_str());
+      }
+      compileCoverageTime = runNoResultsExpected(command, "compile trace");
+      command = executablePath + " &> bin/logs/" + runLogName;
+      if (gVerbose) {
+        printf("EXECUTING: %s\n", command.c_str());
+      }
+      runCoverageTime = runNoResultsExpected(command, "run trace");
 
-    if (runPerfTime <
-        gTestMinimumTimeInSeconds * (1.0 + gTestTimeAllowancePercent / 100.0)) {
+      exec::execute("mkdir -p bin/coverage/" + executableName + " 2>&1",
+                    results);
+      if (results != "") {
+        printf(WarningTextFormatStart "WARNING: mkdir '%s'" ClearTextFormat
+                                      "\n",
+               results.c_str());
+      }
+      command =
+          String("gcov ") + name + "_test.cpp" + " &> bin/logs/" + gcovLogName;
+      if (gVerbose) {
+        printf("EXECUTING: %s\n", command.c_str());
+      }
+      exec::execute(command, results);
+      if (results != "") {
+        printf(WarningTextFormatStart "WARNING: gcov '%s'" ClearTextFormat "\n",
+               results.c_str());
+      }
+      exec::execute("mv *.gcov *.gcno *.gcda bin/coverage/" + executableName +
+                        "/ 2>&1",
+                    results);
+      if (results != "") {
+        printf(WarningTextFormatStart "WARNING: mv '%s'" ClearTextFormat "\n",
+               results.c_str());
+      }
+
+      coverage = runIntegerExpected(
+          "cat bin/coverage/" + executableName + "/" + name +
+          ".h.gcov 2> /dev/null | grep -E '[0-9]+:\\s+[0-9]+:' | wc -l");
+      uncovered = runIntegerExpected(
+          "cat bin/coverage/" + executableName + "/" + name +
+          ".h.gcov 2> /dev/null | grep -E '#+:\\s+[0-9]+:' | wc -l");
+      percent_coverage = (coverage + uncovered) > 0
+                             ? 100 * coverage / (coverage + uncovered)
+                             : 0;
+      printf("\t%3d%% coverage\n", percent_coverage);
+
+      if (!gRunPerformace) {
+        failures = runIntegerExpected("cat bin/logs/" + runLogName +
+                                      " | grep FAIL | sort | uniq | wc -l");
+        errors = runIntegerExpected("cat bin/logs/" + logName +
+                                    " | grep error: | sort | uniq | wc -l");
+        errors += runIntegerExpected("cat bin/logs/" + logName +
+                                     " | grep ld: | sort | uniq | wc -l");
+        warnings = runIntegerExpected("cat bin/logs/" + logName +
+                                      " | grep warning: | sort | uniq | wc -l");
+      }
+    } else {
+      printf("\n");
+    }
+
+    if (gRunPerformace &&
+        (runPerfTime < gTestMinimumTimeInSeconds *
+                           (1.0 + gTestTimeAllowancePercent / 100.0))) {
       printf("\t" WarningTextFormatStart
              "Test is too short (%0.5fs), run it %0.1f times" ClearTextFormat
              "\n",
@@ -647,14 +674,16 @@ void runTest(const String &name, const std::string::size_type maxNameSize,
                     results);
       printf("%s\n", results.c_str());
     }
-    if ((coverage != testedLines)) {
+    if (gRunTrace && (coverage != testedLines)) {
       printf("\t" WarningTextFormatStart
              "Tested Lines: %d Expected %d" ClearTextFormat "\n",
              coverage, testedLines);
       displayNewLine = true;
     }
 
-    if (runPerfTime > durationInSeconds) {
+    if (!gRunPerformace) {
+      // if we didn't do a performance run, we don't need to report performance
+    } else if (runPerfTime > durationInSeconds) {
       printf("\t" ErrorTextFormatStart "Test took %0.3fs, expected less than "
              "slowest of %0.3fs" ClearTextFormat "\n",
              runPerfTime + 0.000999, durationInSeconds);
@@ -1117,6 +1146,10 @@ int main(int argc, const char *const argv[]) {
   for (int arg = 1; arg < argc; ++arg) {
     if (String("debug") == argv[arg]) {
       gDebugging = true;
+    } else if (String("performance") == argv[arg]) {
+      gRunTrace = false;
+    } else if (String("test") == argv[arg]) {
+      gRunPerformace = false;
     } else if (String("list") == argv[arg]) {
       for (auto test : testsToRun) {
         printf("%s\n", test.c_str());

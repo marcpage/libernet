@@ -45,8 +45,11 @@ documentation/index.html:
 
 docs:documentation/index.html
 
-test:bin/test
+performance:bin/test
 	@bin/test $(OS_OPTIONS) $(COMPILER) $(TEST)
+
+test:bin/test
+	@bin/test $(OS_OPTIONS) $(COMPILER) test $(TEST)
 
 bin/test:format
 test:format
