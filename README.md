@@ -4,7 +4,7 @@
 [![activity sheild](https://img.shields.io/github/commit-activity/m/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet/commits)
 [![size sheild](https://img.shields.io/github/languages/code-size/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet)
 [![issues sheild](https://img.shields.io/github/issues-raw/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet/issues)
-![follow sheild](https://img.shields.io/github/followers/marcpage?label=Follow&style=social)
+[![follow sheild](https://img.shields.io/github/followers/marcpage?label=Follow&style=social)](https://github.com/marcpage?tab=followers)
 [![watch sheild](https://img.shields.io/github/watchers/marcpage/libernet?label=Watch&style=social)](https://github.com/marcpage/libernet/watchers)
 
 Table of Contents
