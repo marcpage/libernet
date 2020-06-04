@@ -9,7 +9,7 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
 #ifdef __Tracer_h__
   iterations = 4096;
 #endif
-  for (size_t i = 1; i < iterations; ++i) {
+  for (size_t i = 1; i < size_t(iterations); ++i) {
     exec::execute("ls /", test, i);
     if (test != result) {
       printf("FAILED on blockSize=%ld\n", i);
