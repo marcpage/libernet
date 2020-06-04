@@ -7,9 +7,7 @@
 [![follow sheild](https://img.shields.io/github/followers/marcpage?label=Follow&style=social)](https://github.com/marcpage?tab=followers)
 [![watch sheild](https://img.shields.io/github/watchers/marcpage/libernet?label=Watch&style=social)](https://github.com/marcpage/libernet/watchers)
 
-If you are interested in helping out, we could really use some Linux (specifically docker) experience ([see issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)).
-
-We also have a lot of [good first issue](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)s.
+If you are interested in helping out, we could really use some Linux (specifically docker) experience ([see help wanted issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)). We also have a lot of [good first issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 Table of Contents
 =================
