@@ -88,7 +88,7 @@ https://github.com/mjansson/mdns
 # Platform Support
 
 macOS is fully supported.
-Linux support is in progress ([see issues](https://github.com/marcpage/libernet/issues)).
+Linux support is in progress ([see issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3Alinux)).
 Windows support is expected at some point.
 
 ## macOS support
