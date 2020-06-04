@@ -1,16 +1,17 @@
 
 ![status sheild](https://img.shields.io/static/v1?label=status&message=implementing+spec&color=inactive&style=plastic)
-![commit sheild](https://img.shields.io/github/last-commit/marcpage/libernet?style=plastic)
-![activity sheild](https://img.shields.io/github/commit-activity/m/marcpage/libernet?style=plastic)
-![size sheild](https://img.shields.io/github/languages/code-size/marcpage/libernet?style=plastic)
-![issues sheild](https://img.shields.io/github/issues-raw/marcpage/libernet?style=plastic)
-![follow sheild](https://img.shields.io/github/followers/marcpage?label=Follow&style=social)
-![watch sheild](https://img.shields.io/github/watchers/marcpage/libernet?label=Watch&style=social)
+[![commit sheild](https://img.shields.io/github/last-commit/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet/commits)
+[![activity sheild](https://img.shields.io/github/commit-activity/m/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet/commits)
+[![size sheild](https://img.shields.io/github/languages/code-size/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet)
+[![issues sheild](https://img.shields.io/github/issues-raw/marcpage/libernet?style=plastic)](https://github.com/marcpage/libernet/issues)
+[![follow sheild](https://img.shields.io/github/followers/marcpage?label=Follow&style=social)](https://github.com/marcpage?tab=followers)
+[![watch sheild](https://img.shields.io/github/watchers/marcpage/libernet?label=Watch&style=social)](https://github.com/marcpage/libernet/watchers)
+
+If you are interested in helping out, we could really use some Linux (specifically docker) experience ([see help wanted issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22)). We also have a lot of [good first issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 Table of Contents
 =================
 
-* [Table of Contents](#table-of-contents)
 * [Summary](#summary)
 * [Platform Support](#platform-support)
   * [macOS support](#macos-support)
@@ -88,7 +89,7 @@ https://github.com/mjansson/mdns
 # Platform Support
 
 macOS is fully supported.
-Linux support is in progress ([see issues](https://github.com/marcpage/libernet/issues)).
+Linux support is in progress ([see issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3Alinux)).
 Windows support is expected at some point.
 
 ## macOS support
