@@ -34,7 +34,7 @@ bin/logs/lint.txt: src/*/*.h
 	@-cat $@ | grep error: || true
 	@grep -rniw todo src/*/*.h
 	@echo `grep -rniw todo src/*/*.h | wc -l` TODO items
-	@cat bin/coverage/*/*.gcov | grep -E '[0-9]+:' | grep -ve -: | grep -v "#####" > bin/logs/all_code_coverage.txt
+	@cat bin/coverage/*/*.gcov | grep -E '[0-9]+:' | grep -ve -: | grep -v "#####" | grep -v "=====" > bin/logs/all_code_coverage.txt
 	@grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq  || true
 	@echo `grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq | wc -l` lines now tested
 
