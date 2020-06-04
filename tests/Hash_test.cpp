@@ -17,7 +17,7 @@ void testConstness(const T &hash, const std::string &valueToHash) {
 }
 
 int main(int /*argc*/, char * /*argv*/[]) {
-  int iterations = 13000;
+  int iterations = 27000;
 #ifdef __Tracer_h__
   iterations = 1;
 #endif

@@ -6,7 +6,6 @@
 #include <thread>
 #include <vector>
 
-// TODO: Find out why this test hangs on linux
 void Echo(net::Socket *connection) {
   std::string buffer = connection->read(4096);
   size_t amountOut;
@@ -49,7 +48,7 @@ void Server(net::SocketServer *server) {
 }
 
 int main(const int argc, const char *const argv[]) {
-  int iterations = 5000; // 5800 caused EADDRNOTAVAIL on the 3rd version about
+  int iterations = 7500; // 5800 caused EADDRNOTAVAIL on the 3rd version about
                          // the last 3,000 connects
 #ifdef __Tracer_h__
   iterations = 3;

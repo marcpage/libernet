@@ -7,7 +7,7 @@
   }
 
 int main(const int argc, const char *const argv[]) {
-  int iterations = 4500;
+  int iterations = 28000;
 #ifdef __Tracer_h__
   iterations = 1;
 #endif
@@ -32,6 +32,3 @@ int main(const int argc, const char *const argv[]) {
   }
   return 0;
 }
-
-/*
- */

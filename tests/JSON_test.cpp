@@ -27,7 +27,7 @@ void testConstObject(const json::Value &object, const std::string &key,
 }
 
 int main(int /*argc*/, char * /*argv*/[]) {
-  int iterations = 350;
+  int iterations = 500;
 #ifdef __Tracer_h__
   iterations = 1;
 #endif
