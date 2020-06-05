@@ -2,9 +2,12 @@
 #define __Text_h__
 
 #include "os/Exception.h"
+#include "os/POSIXErrno.h"
 #include <codecvt>
 #include <locale>
+#include <stdio.h>
 #include <string>
+#include <termios.h>
 
 /**
         @todo Test lowercase on 3 and 4 byte utf8 sequences
@@ -480,6 +483,50 @@ inline std::string &trim(std::string &s, char c = ' ') {
 #undef __base_64_url_extension
 #undef __base_64_standard_trailer
 #undef __base_64_url_trailer
+
+inline std::string &requestPassword(const std::string &prompt,
+                                    std::string &password,
+                                    FILE *streamOut = stdout,
+                                    FILE *streamIn = stdin) {
+  const size_t MaximumPasswordSize = 1024;
+  class NoEcho {
+  public:
+    NoEcho(FILE *stream) : _original(), _modified(), _fileno(::fileno(stream)) {
+      ErrnoOnNegative(::tcgetattr(_fileno, &_original));
+      _modified = _original;
+      _modified.c_lflag &= ~ECHO;
+      ErrnoOnNegative(::tcsetattr(_fileno, TCSAFLUSH, &_modified));
+    }
+    ~NoEcho() { ErrnoOnNegative(::tcsetattr(_fileno, TCSAFLUSH, &_original)); }
+
+  private:
+    struct termios _original;
+    struct termios _modified;
+    int _fileno;
+    NoEcho(const NoEcho &);
+    NoEcho &operator=(const NoEcho &);
+  };
+  NoEcho turnOffEcho(streamIn);
+
+  ::fprintf(streamOut, "%s", prompt.c_str());
+  ErrnoOnNegative(::fflush(streamOut));
+  password.append(MaximumPasswordSize, '\0');
+
+  char *buffer = const_cast<char *>(password.data());
+  size_t bufferSize = password.size();
+  ssize_t lineLength = ::getline(&buffer, &bufferSize, streamIn);
+
+  password.erase(lineLength);
+  return password;
+}
+
+inline std::string requestPassword(const std::string &prompt,
+                                   FILE *streamOut = stdout,
+                                   FILE *streamIn = stdin) {
+  std::string buffer;
+
+  return requestPassword(prompt, buffer, streamOut, streamIn);
+}
 
 } // namespace text
 
