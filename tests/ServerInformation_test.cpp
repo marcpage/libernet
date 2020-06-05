@@ -5,11 +5,15 @@
     fprintf(stderr, "FAIL(%s:%d): %s\n", __FILE__, __LINE__, #condition);      \
   }
 
-#define testclose(f1, f2)                                                      \
-  if (fabs(f1 - f2) < 0.1) {                                                   \
-    fprintf(stderr, "FAIL(%s:%d): %s (%0.6f) %s (%0.6f)\n", __FILE__,          \
-            __LINE__, #f1, double(f1), #f2, double(f2));                       \
+inline void _testclose(double f1, double f2, const char *const n1,
+                       const char *const n2, const char *const file, int line) {
+  if (fabs(f1 - f2) > 0.5) { // the should be withing 500 milliseconds
+    fprintf(stderr, "FAIL(%s:%d): %s (%0.6f) %s (%0.6f) difference = %0.6f\n",
+            file, line, n1, double(f1), n2, double(f2), fabs(f1 - f2));
   }
+}
+
+#define testclose(f1, f2) _testclose(f1, f2, #f1, #f2, __FILE__, __LINE__)
 
 int main(const int /*argc*/, const char *const /*argv*/[]) {
   int iterations = 10;
@@ -20,7 +24,9 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
     std::string identifier1 = hash::sha256("test1").hex();
     std::string identifier2 = hash::sha256("test2").hex();
     std::string identifier3 = hash::sha256("test3").hex();
-    dt::DateTime start;
+    dt::DateTime start =
+        dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT);
+    printf("start = %0.6f\n", start.operator double());
 
     for (int i = 0; i < iterations; ++i) {
       data::ServerInformation i1, i2, i3;

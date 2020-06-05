@@ -15,6 +15,12 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
     dt::DateTime t1, t2;
     std::string buffer;
 
+    dotest(dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT)
+               .
+               operator double() ==
+           dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT)
+               .
+               operator double());
     fprintf(stderr, "construction time: %0.9f\n", t2 - t1);
     fprintf(stderr, "Years to Cocoa Epoch %0.1f\n",
             AddToConvertToAppleCocoaEpoch / 365.2525 / 24.0 / 60.0 / 60.0);
@@ -116,6 +122,10 @@ int main(const int /*argc*/, const char *const /*argv*/[]) {
                 (dt::DateTime() + 24.0 * 3600.0)) < 1.0);
     dotest(fabs(dt::DateTime().add(1.0, dt::DateTime::Weeks) -
                 (dt::DateTime() + 7.0 * 24.0 * 3600.0)) < 1.0);
+
+    dt::DateTime test_now;
+    dt::DateTime in5secs = test_now + 5.0;
+    dotest(fabs(in5secs - test_now - 5.0) < 0.1);
   }
   return 0;
 }

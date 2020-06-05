@@ -123,7 +123,7 @@ inline DateTime::DateTime(const timeval &time) : _time() {
 inline DateTime::DateTime(const timespec &time) : _time(time) {}
 inline void DateTime::_init(tm &time, double fractionalSeconds,
                             Location location) {
-  _time.tv_sec = location == GMT ? timegm(&time) : mktime(&time);
+  _time.tv_sec = location == GMT ? ::timegm(&time) : ::mktime(&time);
   _time.tv_nsec = static_cast<long>(fractionalSeconds * 1000000000.0);
   AssertMessageException(_time.tv_sec != static_cast<time_t>(-1));
 }
@@ -139,8 +139,9 @@ inline DateTime::DateTime(const double &time) : _time() {
 inline void DateTime::_init(int year, Month month, int day, int hour24,
                             int minutes, double secs, Location location) {
   struct tm date;
-  double wholeSeconds = floor(secs);
+  double wholeSeconds = ::floor(secs);
 
+  ::memset(&date, 0, sizeof(date));
   date.tm_year = year - 1900;
   date.tm_mon = static_cast<int>(month);
   date.tm_mday = day;

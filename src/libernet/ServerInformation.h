@@ -115,10 +115,9 @@ inline JSONData::List &ServerInformation::servers(JSONData::List &identifiers,
 
 inline dt::DateTime ServerInformation::connection(const std::string &identifier,
                                                   Connection which) {
-  int64_t timestamp =
-      _get(identifier, LastConnection == which ? "latest" : "first",
-           json::IntegerType)
-          .integer();
+  const char *const key = (LastConnection == which) ? "latest" : "first";
+  int64_t timestamp = _get(identifier, key, json::IntegerType).integer();
+
   return dt::DateTime(2001, dt::DateTime::Jan, 1, dt::DateTime::GMT) +
          double(timestamp);
 }
