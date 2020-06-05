@@ -857,7 +857,7 @@ void reportRun(const std::string &reason, const std::string test,
     math::filterInRange(filteredSourceRuns, sourceMean - 2 * sourceStdDev,
                         sourceMean + 2 * sourceStdDev);
   } else if (sourceRuns.size() == 1) {
-    sourceMean = math::mean(sourceRuns);
+    sourceMean = sourceRuns[0];
   }
 
   testRunsWithOtherSource.erase(testRunsWithOtherSource.begin() +
@@ -884,7 +884,7 @@ void reportRun(const std::string &reason, const std::string test,
     math::filterInRange(filteredTestRunsWithOtherSource,
                         testMean - 2 * testStdDev, testMean + 2 * testStdDev);
   } else if (testRunsWithOtherSource.size() == 1) {
-    testMean = math::mean(testRunsWithOtherSource);
+    testMean = testRunsWithOtherSource[0];
   }
 
   const bool good = sourceMean <= testMean;
