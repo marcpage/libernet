@@ -29,6 +29,8 @@ Table of Contents
   * [Data transfer](#data-transfer)
   * [API](#api)
     * [/api/encode](#apiencode)
+* [File Types](#file-types)
+  * [LiberArchive](#liberarchive)
 * [Data Types](#data-types)
   * [Small file](#small-file)
   * [Large file](#large-file)
@@ -320,6 +322,8 @@ This is typically for settings or private data being stored.
 
 A LiberArchive file contains multiple data blocks.
 These could be any of the [data types](#data-types) supported.
+The reasoning for the header is similar to the [PNG header reasoning](http://www.libpng.org/pub/png/spec/1.2/PNG-Rationale.html#R.PNG-file-signature).
+This header is [two-byte unique](https://en.wikipedia.org/wiki/List_of_file_signatures).
 
 * Header ```89 L B A 0D 0A 1A 0A```
 * Offset of table of contents (the offset of the length of the table of contents block)

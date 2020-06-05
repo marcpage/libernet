@@ -463,8 +463,8 @@ std::string testHeaderPath(const String &name) {
   return "";
 }
 
-void runTest(const String &name, const std::string::size_type maxNameSize,
-             const String &compiler, const io::Path &openssl, Sqlite3::DB &db) {
+int runTest(const String &name, const std::string::size_type maxNameSize,
+            const String &compiler, const io::Path &openssl, Sqlite3::DB &db) {
   String results;
   String command;
   String executableName;
@@ -480,7 +480,7 @@ void runTest(const String &name, const std::string::size_type maxNameSize,
   uint32_t coverage = 0;
   uint32_t uncovered = 0;
   uint32_t percent_coverage;
-  uint32_t warnings, errors, failures;
+  uint32_t warnings = 0, errors = 0, failures = 0;
   bool displayNewLine = false;
   String otherFlags = "";
   String headerHash;
@@ -736,14 +736,18 @@ void runTest(const String &name, const std::string::size_type maxNameSize,
                    compilePerfTime, runPerfTime, options,
                    sourceIdentifier(executablePath + ".d"));
   }
+  return errors + failures;
 }
 
-void runTest(const String &name, const StringList &compilers,
-             const std::string::size_type maxNameSize, const io::Path &openssl,
-             Sqlite3::DB &db) {
+int runTest(const String &name, const StringList &compilers,
+            const std::string::size_type maxNameSize, const io::Path &openssl,
+            Sqlite3::DB &db) {
+  int failures = 0;
+
   for (auto compiler : compilers) {
-    runTest(name, maxNameSize, compiler, openssl, db);
+    failures += runTest(name, maxNameSize, compiler, openssl, db);
   }
+  return failures;
 }
 
 // TODO: Filter out lines where the only source is a close bracket
@@ -1120,6 +1124,7 @@ int main(int argc, const char *const argv[]) {
   const String testSuffix = "_test.cpp";
   bool testsPassed = false;
   const String compilers = String(",") + gCompilerList + String(",");
+  int failures = 0;
 
   // printf(ErrorTextFormatStart "Error" ClearTextFormat"\n");
   // printf(WarningTextFormatStart "Warning" ClearTextFormat"\n");
@@ -1186,6 +1191,7 @@ int main(int argc, const char *const argv[]) {
         testsToRun.push_back(argv[arg]);
       } else {
         printf("Compiler/Test not found: %s\n", argv[arg]);
+        failures += 1;
       }
     }
   }
@@ -1250,7 +1256,7 @@ int main(int argc, const char *const argv[]) {
       split(gCompilerList, ',', compilersToRun);
     }
     for (auto test : testsToRun) {
-      runTest(test, compilersToRun, maxNameSize, openssl, db);
+      failures += runTest(test, compilersToRun, maxNameSize, openssl, db);
       testNames = testNames + testNamePrefix + test;
       if (testNamePrefix.length() == 0) {
         testNamePrefix = ",";
@@ -1317,6 +1323,7 @@ int main(int argc, const char *const argv[]) {
 
   } catch (const std::exception &exception) {
     printf("EXCEPTION: %s\n", exception.what());
+    failures += 1;
   }
-  return 0;
+  return failures;
 }
