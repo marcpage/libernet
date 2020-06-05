@@ -240,13 +240,26 @@ void updateRunStats(Sqlite3::DB &db, const String &name,
   row["compiler"] = compiler;
   row["lines_run"] = std::to_string(linesRun);
   row["code_lines"] = std::to_string(linesRun + linesNotRun);
-  row["trace_build_time"] = std::to_string(traceBuildTime);
-  row["trace_run_time"] = std::to_string(traceRunTime);
-  row["build_time"] = std::to_string(buildTime);
-  row["run_time"] = std::to_string(runTime);
   row["options"] = options;
   row["source_identifier"] = sourceIdentifier;
   row["timestamp"] = dt::DateTime().format("%Y/%m/%d %H:%M:%S", buffer);
+
+  if (traceBuildTime >= 0.0) {
+    row["trace_build_time"] = std::to_string(traceBuildTime);
+  }
+
+  if (traceRunTime >= 0.0) {
+    row["trace_run_time"] = std::to_string(traceRunTime);
+  }
+
+  if (buildTime >= 0.0) {
+    row["build_time"] = std::to_string(buildTime);
+  }
+
+  if (runTime >= 0.0) {
+    row["run_time"] = std::to_string(runTime);
+  }
+
   db.addRow("run", row);
 }
 
@@ -371,7 +384,10 @@ void getTestStats(const String &name, const String &options,
   db.exec("SELECT "
           "MAX(lines_run) AS testedLines, "
           "MAX(run_time) AS durationInSeconds, "
-          "MAX(trace_build_time + trace_run_time + build_time + run_time) AS "
+          "MAX(ifnull(trace_build_time, 0.0) "
+          "+ ifnull(trace_run_time, 0.0) "
+          "+ ifnull(build_time, 0.0) "
+          "+ ifnull(run_time, 0.0) ) AS "
           "totalTimeInSeconds, "
           "AVG(run_time) AS averageTime "
           "FROM run WHERE "
@@ -471,11 +487,11 @@ int runTest(const String &name, const std::string::size_type maxNameSize,
   String logName;
   String runLogName;
   String gcovLogName;
-  double compilePerfTime = 0.0;
-  double compileCoverageTime = 0.0;
-  double runPerfTime = 0.0;
-  double runCoverageTime = 0.0;
-  double totalTime = 0.0;
+  double compilePerfTime = -1.0;
+  double compileCoverageTime = -1.0;
+  double runPerfTime = -1.0;
+  double runCoverageTime = -1.0;
+  double totalTime = -1.0;
   double slowTime = 0.0;
   uint32_t coverage = 0;
   uint32_t uncovered = 0;
@@ -717,8 +733,10 @@ int runTest(const String &name, const std::string::size_type maxNameSize,
       displayNewLine = true;
     }
 
-    totalTime =
-        compilePerfTime + compileCoverageTime + runPerfTime + runCoverageTime;
+    totalTime = (compilePerfTime > 0.0 ? compilePerfTime : 0.0) +
+                (compileCoverageTime > 0.0 ? compileCoverageTime : 0.0) +
+                (runPerfTime > 0.0 ? runPerfTime : 0.0) +
+                (runCoverageTime > 0.0 ? runCoverageTime : 0.0);
     if ((totalTime > totalTimeInSeconds)) {
       printf("\t" ErrorTextFormatStart
              "Build/Test took %0.3fs, expected %0.3fs" ClearTextFormat "\n",
@@ -911,6 +929,11 @@ void performanceReport(Sqlite3::DB &db, const StringList &testsToRun,
 
   for (auto row : results) {
     const std::string testName = row("name", Sqlite3::TextType).text();
+    auto run_time_column = row["run_time"];
+    const bool non_null_run_time = !run_time_column.is(Sqlite3::NullType);
+    const double run_time =
+        non_null_run_time ? run_time_column.convertTo(Sqlite3::RealType).real()
+                          : 0.0;
 
     if (!fullReport && (std::find(testsToRun.begin(), testsToRun.end(),
                                   testName) == testsToRun.end())) {
@@ -929,9 +952,11 @@ void performanceReport(Sqlite3::DB &db, const StringList &testsToRun,
       startSource = row("timestamp", Sqlite3::TextType).text();
       last = row("timestamp", Sqlite3::TextType).text();
       testRuns.clear();
-      testRuns.push_back(row("run_time", Sqlite3::RealType).real());
       sourceRuns.clear();
-      sourceRuns.push_back(row("run_time", Sqlite3::RealType).real());
+      if (non_null_run_time) {
+        testRuns.push_back(run_time);
+        sourceRuns.push_back(run_time);
+      }
       reason = "Started testing";
     } else if (row("test_hash", Sqlite3::TextType).text() != test_hash) {
       if (fullReport) {
@@ -945,9 +970,11 @@ void performanceReport(Sqlite3::DB &db, const StringList &testsToRun,
       startSource = row("timestamp", Sqlite3::TextType).text();
       last = row("timestamp", Sqlite3::TextType).text();
       testRuns.clear();
-      testRuns.push_back(row("run_time", Sqlite3::RealType).real());
       sourceRuns.clear();
-      sourceRuns.push_back(row("run_time", Sqlite3::RealType).real());
+      if (non_null_run_time) {
+        testRuns.push_back(run_time);
+        sourceRuns.push_back(run_time);
+      }
       reason = "Test changed   ";
     } else if (row("source_identifier", Sqlite3::TextType).text() !=
                source_identifier) {
@@ -962,9 +989,11 @@ void performanceReport(Sqlite3::DB &db, const StringList &testsToRun,
       startSource = row("timestamp", Sqlite3::TextType).text();
       last = row("timestamp", Sqlite3::TextType).text();
       // testRuns.clear();
-      testRuns.push_back(row("run_time", Sqlite3::RealType).real());
       sourceRuns.clear();
-      sourceRuns.push_back(row("run_time", Sqlite3::RealType).real());
+      if (non_null_run_time) {
+        testRuns.push_back(run_time);
+        sourceRuns.push_back(run_time);
+      }
       reason = "Source changed ";
     } else {
       if (fullReport) {
@@ -978,9 +1007,11 @@ void performanceReport(Sqlite3::DB &db, const StringList &testsToRun,
       // startSource = row("timestamp", Sqlite3::TextType).text();
       last = row("timestamp", Sqlite3::TextType).text();
       // testRuns.clear();
-      testRuns.push_back(row("run_time", Sqlite3::RealType).real());
       // sourceRuns.clear();
-      sourceRuns.push_back(row("run_time", Sqlite3::RealType).real());
+      if (non_null_run_time) {
+        testRuns.push_back(run_time);
+        sourceRuns.push_back(run_time);
+      }
       // reason = "Test run       ";
     }
   }
@@ -1063,8 +1094,9 @@ void compilerPerformanceReport(Sqlite3::DB &db, const StringList &compilers) {
   NamedMathList builds, runs;
 
   db.exec("SELECT "
-          "source_identifier,compiler,trace_build_time,trace_run_time,build_"
-          "time,run_time "
+          "source_identifier, compiler, "
+          "trace_build_time, trace_run_time, "
+          "build_time, run_time "
           "FROM run ORDER BY cast(source_identifier as text);",
           &results);
 
@@ -1072,12 +1104,33 @@ void compilerPerformanceReport(Sqlite3::DB &db, const StringList &compilers) {
     const std::string source =
         row("source_identifier", Sqlite3::TextType).text();
     const std::string compiler = row("compiler", Sqlite3::TextType).text();
-    const double traceBuildTime =
-        row("trace_build_time", Sqlite3::RealType).real();
-    const double performanceBuildTime =
-        row("build_time", Sqlite3::RealType).real();
-    const double traceRunTime = row("trace_run_time", Sqlite3::RealType).real();
-    const double performanceRunTime = row("run_time", Sqlite3::RealType).real();
+
+    auto &trace_build_time_column = row["trace_build_time"];
+    auto &build_time_column = row["build_time"];
+    auto &trace_run_time_column = row["trace_run_time"];
+    auto &run_time_column = row["run_time"];
+
+    bool non_null_trace_build_time =
+        !trace_build_time_column.is(Sqlite3::NullType);
+    bool non_null_build_time = !build_time_column.is(Sqlite3::NullType);
+    bool non_null_trace_run_time = !trace_run_time_column.is(Sqlite3::NullType);
+    bool non_null_run_time = !run_time_column.is(Sqlite3::NullType);
+
+    double trace_build_time =
+        non_null_trace_build_time
+            ? trace_build_time_column.convertTo(Sqlite3::RealType).real()
+            : 0.0;
+    double build_time =
+        non_null_build_time
+            ? build_time_column.convertTo(Sqlite3::RealType).real()
+            : 0.0;
+    double trace_run_time =
+        non_null_trace_run_time
+            ? trace_run_time_column.convertTo(Sqlite3::RealType).real()
+            : 0.0;
+    double run_time = non_null_run_time
+                          ? run_time_column.convertTo(Sqlite3::RealType).real()
+                          : 0.0;
 
     if (source != currentSource) {
       analyze(buildTrace, runTrace, builds, runs, compilers);
@@ -1089,10 +1142,21 @@ void compilerPerformanceReport(Sqlite3::DB &db, const StringList &compilers) {
       runPerf.clear();
     }
 
-    buildTrace[compiler].push_back(traceBuildTime);
-    buildPerf[compiler].push_back(performanceBuildTime);
-    runTrace[compiler].push_back(traceRunTime);
-    runPerf[compiler].push_back(performanceRunTime);
+    if (non_null_trace_build_time) {
+      buildTrace[compiler].push_back(trace_build_time);
+    }
+
+    if (non_null_build_time) {
+      buildTrace[compiler].push_back(build_time);
+    }
+
+    if (non_null_trace_run_time) {
+      buildTrace[compiler].push_back(trace_run_time);
+    }
+
+    if (non_null_run_time) {
+      buildTrace[compiler].push_back(run_time);
+    }
   }
   analyze(buildTrace, runTrace, builds, runs, compilers);
   analyze(buildPerf, runPerf, builds, runs, compilers);
