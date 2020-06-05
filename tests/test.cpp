@@ -839,14 +839,14 @@ void reportRun(const std::string &reason, const std::string test,
                const std::string &startTest, const std::string &startSource,
                const std::string &end, const math::List &testRuns,
                const math::List &sourceRuns) {
-  double testMean, testStdDev = 0.0, sourceMean, sourceStdDev = 0.0;
+  double testMean = -1.0, testStdDev = 0.0, sourceMean = -1.0,
+         sourceStdDev = 0.0;
   double sumValue, varianceValue;
   math::List testRunsWithOtherSource = testRuns;
   const void *unused[] = {&unused, &reason};
   math::List filteredSourceRuns = sourceRuns;
   math::List filteredTestRunsWithOtherSource;
   const auto headerPath = testHeaderPath(test);
-
   if (headerPath.size() == 0) {
     return;
   }
@@ -856,14 +856,13 @@ void reportRun(const std::string &reason, const std::string test,
                      sourceStdDev);
     math::filterInRange(filteredSourceRuns, sourceMean - 2 * sourceStdDev,
                         sourceMean + 2 * sourceStdDev);
-  } else {
+  } else if (sourceRuns.size() == 1) {
     sourceMean = math::mean(sourceRuns);
   }
 
   testRunsWithOtherSource.erase(testRunsWithOtherSource.begin() +
                                     (testRuns.size() - sourceRuns.size()),
                                 testRunsWithOtherSource.end());
-
   if (testRunsWithOtherSource.size() == 0) {
     printf("%s\n"
            "\t test last changed %s source last changed %s as of %s\n"
@@ -884,7 +883,7 @@ void reportRun(const std::string &reason, const std::string test,
                      testStdDev);
     math::filterInRange(filteredTestRunsWithOtherSource,
                         testMean - 2 * testStdDev, testMean + 2 * testStdDev);
-  } else {
+  } else if (testRunsWithOtherSource.size() == 1) {
     testMean = math::mean(testRunsWithOtherSource);
   }
 
