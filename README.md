@@ -44,7 +44,6 @@ Table of Contents
     * [Carrier Dictionary](#carrier-dictionary)
   * [Trust](#trust)
     * [Direct Trust](#direct-trust)
-    * [Domain Trust](#domain-trust)
     * [Indirect Trust](#indirect-trust)
     * [Trust Document](#trust-document)
   * [Server Information](#server-information)
@@ -315,6 +314,25 @@ Local data does not leave this node.
 This is typically for settings or private data being stored.
 
 
+# File Types
+
+## LiberArchive
+
+A LiberArchive file contains multiple data blocks.
+These could be any of the [data types](#data-types) supported.
+
+* Header ```89 L B A 0D 0A 1A 0A```
+* Offset of table of contents (the offset of the length of the table of contents block)
+* Blocks
+  * length of block
+  * data
+* Table of Contents
+  * length of TOC
+  * Entries
+    * Block Identifier
+    * Block Offset
+
+
 # Data Types
 
 Type                                          | Encrypted | Contents | [Match](#data-matching)
@@ -442,7 +460,6 @@ Care should be taken to have every signer represented in the *heads* list.
 If every head cannot be represented (as it would increase the size of the history beyond 1 MiB), then older entries which show up in [bundle](#bundle-description) *previous* chains may be removed.
 Address histories are not encrypted, but may be compressed if compression improves size.
 The identifier of an address history is a hash of compressed contents (or uncompressed if uncompressed is smaller).
-Unlike a [small file](#small-file), address history is not encrypted.
 
 The *heads* list should be ordered from most recent change to oldest change.
 
@@ -463,6 +480,13 @@ If there is not one address history that contains all recent [bundles](#bundle-d
 Differences can also occur from divergent signed dictionaries.
 Signed dictionaries can be merged adding all signers of each version bundle.
 Any address histories that do not add any new head [bundles](#bundle-description) or signers may be [deleted](#deleting-data).
+
+The very last entry in heads is always the very first bundle added and the original signer.
+This may be a duplicate bundle entry as more people sign or block the bundle.
+This allows us to determine first post and the owner of the address.
+The timestamp alone does not determine the first bundle, as a bad actor could post an earlier timestamp.
+Consensus of multiple address histories can be used to determine how valid a claim on first bundle.
+If consensus is not easy to confirm, conflicting "first submitters" can be kept in the *heads* with the most likely being the last entry.
 
 Bundles can be password protected.
 When they are password protected, the *aes256* key is replaced with a *password* field.
@@ -489,6 +513,15 @@ To obtain the username and password from the user, the web server will use [Basi
 				}
 			}
 		},
+		{
+			"sha256": identifier of bundle,
+			"aes256": key to decrypt bundle,
+			"password": {
+				{hash of username}: {aes256 encrypted key encrypted using hash of username:password}
+			}
+			"timestamp": fractional seconds since epoch,
+			"signed": {identifier of public key of first poster: base64 encoded signature of bundle identifier}
+		},
 	],
 	"padding": random number to get hash to fit the right pattern,
 }
@@ -496,22 +529,39 @@ To obtain the username and password from the user, the web server will use [Basi
 
 ### Choosing which bundle to display
 
-If the path is a reverse DNS name (ie com/apple) or is a DNS name (ie apple.com) then [check the web server](#domain-trust) for a public key identifier.
-This key is to be preferred.
-This key is also to always have the latest version in *heads*.
+The first step in deciding which bundle to display is to determine the identity that signed the first bundle of every directory in the path.
+Starting at the root, if the identity that signed the first bundle is not in the trust list, it is temporarily given a trust score.
+The deepest path gets the same trust score (assuming it is not already in your trust list) as the current highest trust score.
+Each path from the deepest to the root is one more than the score of the next deepest directory that is not in the trust hierarchy.
+If the identifier is in your trust hierarchy and it has a zero or positive score, your trust score is temporarily averaged with the score it would have if it wasn't in your trust list.
+If the identifier is in your trust hierarchy and it has a negative score, it keeps its negative score.
 
-The next priority is the first signing identity of the very first bundle.
-The first signing of the first bundle shall be kept in the *heads* list with only one signer and never deleted.
-When there is a dispute as to the first owner, consensus among submitted Address Histories is used to determine the first.
-If consensus is not easy to confirm, conflicting "first submitters" can be kept in the *heads*.
 
-If the [domain owner](#domain-trust) or the first owner is distrusted, or is not trusted and [whitelist mode](#trust) is being used, then the most [trusted](#trust) bundle is used.
+For example, in the chart below, we would query the address history for each path.
+The highest score in our trust list is 80, so the identity (*6aa3d*) for the deepest path (*/location/asia/china/beijing/yiheyuan road*) inherits that score for this path.
+Each directory above that has a score of one more than the next deeper.
+The identity (*478f3*) for the path (*/location/asia/china*) is in our trust list, and it is negative, so we just keep that negative score.
+The identity (*25ef8*) for the path (*/location*) is in our trust list, and it is positive, so we average the depth score (84) with the trust score (12) to give us 48.
 
-The priority is then as such:
-1. [Domain Identity](#domain-trust) has been found, and is not distrusted, or if in whitelist mode, is trusted.
-1. First Identity to submit a bundle for this location, and is not distrusted, or if in whitelist mode, is trusted.
-1. The most trusted signing Identity.
-1. The best match with the web address.
+```
+Highest trust score: 80
+Trust hierarchy score for 25ef8: 12
+Trust hierarchy score for 478f3: -5
+No other identities can be found in the trust hierarchy
+
+Path                                       | First |Score
+-------------------------------------------|-------|-----
+/location/asia/china/beijing/yiheyuan road | 6aa3d | 80
+/location/asia/china/beijing               | 5ed83 | 81
+/location/asia/china                       | 478f3 | -5
+/location/asia                             | 3c4bd | 83
+/location                                  | 25ef8 | 48 (12 + 84) / 2
+/ (root)                                   | 18ff0 | 85
+```
+
+Bundles are then compared based on the following criteria:
+1. Highest score signer has a higher score than the highest score blocker
+1. Latest timestamp
 
 ### Resolving web addresses
 
@@ -576,7 +626,6 @@ When personal information is invalidated via *valid=false*, the preferred (oldes
 	"image": identifier for a small file or large file jpg image,
 	"first name": name,
 	"last name": name,
-	"domain": a domain name that http serves a file named libernet.trust at the root,
 	"email": email,
 	"website": address of a website,
 	"twitter": twitter handle,
@@ -710,8 +759,8 @@ When using trust lists, the most recent trust list for each trusted identity is 
 This can be done recursively (loading more and more trust lists) depending on the trust of each identity.
 
 If an identity is found in your first-order, direct trust list, that is the trust value assigned to an identity.
-If an identity is not found in your first-order, direct trust list, then the domain trust is checked.
-If the identity is not in the domain trust list, then second-order trust lists are used (then third-order, and so on).
+If an identity is not found in your first-order, then second-order trust lists are used (then third-order, and so on).
+See [Indirect Trust](#indirect-trust) for more details.
 
 Temporary trust can be given to "try out" something, to see if it is what is advertised and be able to mark as trusted.
 For websites and apps (special websites) this would allow downloading the bundle and being able to manually inspect it before trusting it.
@@ -736,26 +785,16 @@ disagree   | x -5
 malevolent | x -100
 
 
-### Domain Trust
-
-If there is no first-order, direct trust information about an identity and there is a domain context available, we check for domain trust.
-If the [address](#address-history) starts with a domain name, for example apple.com, check the domain for identities.
-An http request on the root of the domain for /libernet.trust file.
-The libernet.trust text file just contains a list of the [identity](#data-identity) of the [personal keys](#personal-key) that are trusted by the domain, with one identity per line.
-For [messages](#messages), if the [personal information](#personal-information) contains a domain, this will be used.
-
-Domain trust may be moved below second-order, indirect trust to handle websites that have objectionable content.
-
-
 ### Indirect Trust
 
-If the identity is not found in the first-order, direct trust list and not found in domain trust, we use indirect trust.
+If the identity is not found in the first-order, direct trust list we use indirect trust.
 We walk through all first level identities whose score is greater than zero and ask:
 * Is it in their trust list?
-* Add up the scores (some positive, some negative) from each second-order, trusted identity.
+* Average the scores (some positive, some negative) from each second-order, trusted identity and divide by the order of the list (2nd order divide by 2, 3rd order divide by 3, etc.).
 
 If no second-order, indirect trust can be established, we move on to third-order, then fourth-order, and so on.
 For the first level identities whose score is greater than zero but does not list the identity, walk through those looking for scores greater than zero that list the identity.
+Identities on higher-order trust levels are not searched in lower level trust searches.
 
 We go through each level until we find a level that contains the identity for which we are seeking trust information.
 If we don't find any trust information, we then look at the identity's trust list and see how much we agree with his trusted identities.
