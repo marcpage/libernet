@@ -15,6 +15,10 @@
 #include <openssl/rsa.h>
 #endif
 
+#if defined(__APPLE__)
+#include <Security/Security.h>
+#endif // defined(__APPLE__)
+
 namespace crypto {
 
 class AsymmetricPublicKey {
@@ -76,30 +80,24 @@ private:
   AutoClean<T>(const AutoClean<T> &);            ///< Prevent usage
 };
 
-template <> inline void AutoClean<RSA>::dispose() { RSA_free(data); }
-template <> inline void AutoClean<BIGNUM>::dispose() { BN_free(data); }
-template <> inline void AutoClean<BIO>::dispose() { BIO_free_all(data); }
-template <> inline void AutoClean<EVP_MD_CTX>::dispose() {
-  EVP_MD_CTX_destroy(data);
-}
-template <> inline void AutoClean<EVP_PKEY>::dispose() { EVP_PKEY_free(data); }
-
 if defined(__APPLE__)
 
 class SecurityRSAAES256PublicKey : public AsymmetricPublicKey {
 public:
 	SecurityRSAAES256PublicKey(): AsymmetricPrivateKey(), _key(nullptr) {}
-	SecurityRSAAES256PublicKey(const SecurityRSAAES256PublicKey&other);
-	SecurityRSAAES256PublicKey &operator=(const SecurityRSAAES256PublicKey&other);
-  explicit SecurityRSAAES256PublicKey(const std::string &serialized);
-  virtual ~OpenSSLRSAAES256PublicKey() {
-  	if(_key) {
-  		CFRelease(_key);
-  	}
-  }
-  bool verify(const std::string &text, const std::string &signature) override;
+	SecurityRSAAES256PublicKey(SecKeyRef key):AsymmetricPrivateKey(), _key(key) {}
+	SecurityRSAAES256PublicKey(const SecurityRSAAES256PublicKey &other):AsymmetricPublicKey(), _key(other._key) {
+		CFRetainSafe(_key);
+	}
+	SecurityRSAAES256PublicKey &operator=(const SecurityRSAAES256PublicKey &other) {
+		CFReleaseSafe(_key);
+		_key = CFRetainSafe(other._key);
+	}
+  explicit SecurityRSAAES256PublicKey(const std::string &serialized):AsymmetricPrivateKey(), _key(deserializeRSAKey(serialized, kSecItemTypePublicKey)) {}
+  virtual ~OpenSSLRSAAES256PublicKey() {CFReleaseSafe(_key);}
+  bool verify(const std::string &text, const std::string &signature) override; // TODO implement
   std::string &encrypt(const std::string &source,
-                       std::string &encrypted) override
+                       std::string &encrypted) override; // TODO implement
 private:
 	SecKeyRef _key;
 };
@@ -107,21 +105,33 @@ private:
 class SecurityRSAAES256PrivateKey : public AsymmetricPrivateKey {
 public:
 	SecurityRSAAES256PrivateKey(): AsymmetricPrivateKey(), _key(nullptr) {}
-	SecurityRSAAES256PrivateKey(const SecurityRSAAES256PrivateKey&other);
-	SecurityRSAAES256PrivateKey &operator=(const SecurityRSAAES256PrivateKey&other);
-  explicit SecurityRSAAES256PrivateKey(const std::string &serialized);
-  virtual ~OpenSSLRSAAES256PublicKey() {
-  	if(_key) {
-  		CFRelease(_key);
-  	}
-  }
-  std::string serialize() const;
-  std::string &serialize(std::string &buffer) const override;
-  std::string &sign(const std::string &text, std::string &signature) override;
+  explicit SecurityRSAAES256PrivateKey(const int keySize, const unsigned long publicExponent = 3):AsymmetricPrivateKey(), _key(nullptr) {
+  		CFErrorRef error = nullptr;
+	CFMutableDictionaryRef parameters = CFDictionaryCreateMutable(kCFAllocatorDefault, 2, &kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks);
+	CFDictionaryAddValue(parameters, kSecAttrKeyType, kSecAttrKeyTypeRSA);
+	CFDictionaryAddValue(parameters, kSecAttrKeySizeInBits, CFNumberCreate(nullptr, kCFNumberIntType, &keySize));
+
+		_key = SecKeyCreateRandomKey(parameters, &error);
+		AssertNoCFError("SecKeyCreateRandomKey", error);
+	}
+	SecurityRSAAES256PrivateKey(const SecurityRSAAES256PrivateKey &other):AsymmetricPrivateKey(), _key(other._key) {
+		CFRetainSafe(_key);
+	}
+	SecurityRSAAES256PrivateKey &operator=(const SecurityRSAAES256PrivateKey &other) {
+		CFReleaseSafe(_key);
+		_key = CFRetainSafe(other._key);
+	}
+  explicit SecurityRSAAES256PrivateKey(const std::string &serialized):AsymmetricPrivateKey(), _key(deserializeRSAKey(serialized, kSecItemTypePrivateKey)) {}
+  virtual ~OpenSSLRSAAES256PublicKey() {CFReleaseSafe(_key);}
+  std::string serialize() const {std::string buffer; return serialize(buffer);}
+  std::string &serialize(std::string &buffer) const override {return serializeRSAKey(_key, "PRIVATE", buffer);}
+  std::string &sign(const std::string &text, std::string &signature) override; // TODO implement
   std::string &decrypt(const std::string &source,
-                       std::string &decrypted) override;
-  OpenSSLRSAAES256PublicKey getPublicKey();
-  AsymmetricPublicKey *publicKey() override;
+                       std::string &decrypted) override; // TODO implement
+  OpenSSLRSAAES256PublicKey getPublicKey() {
+  	return OpenSSLRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key) : nullptr);
+  }
+  AsymmetricPublicKey *publicKey() override {return new OpenSSLRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key) : nullptr);}
 private:
 	SecKeyRef _key;
 };
@@ -132,6 +142,14 @@ typedef SecurityRSAAES256PrivateKey RSAAES256PrivateKey;
 #endif // defined(__APPLE__)
 
 #if OpenSSLAvailable
+
+template <> inline void AutoClean<RSA>::dispose() { RSA_free(data); }
+template <> inline void AutoClean<BIGNUM>::dispose() { BN_free(data); }
+template <> inline void AutoClean<BIO>::dispose() { BIO_free_all(data); }
+template <> inline void AutoClean<EVP_MD_CTX>::dispose() {
+  EVP_MD_CTX_destroy(data);
+}
+template <> inline void AutoClean<EVP_PKEY>::dispose() { EVP_PKEY_free(data); }
 
 class OpenSSLRSA {
 public:
