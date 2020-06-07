@@ -84,6 +84,53 @@ template <> inline void AutoClean<EVP_MD_CTX>::dispose() {
 }
 template <> inline void AutoClean<EVP_PKEY>::dispose() { EVP_PKEY_free(data); }
 
+if defined(__APPLE__)
+
+class SecurityRSAAES256PublicKey : public AsymmetricPublicKey {
+public:
+	SecurityRSAAES256PublicKey(): AsymmetricPrivateKey(), _key(nullptr) {}
+	SecurityRSAAES256PublicKey(const SecurityRSAAES256PublicKey&other);
+	SecurityRSAAES256PublicKey &operator=(const SecurityRSAAES256PublicKey&other);
+  explicit SecurityRSAAES256PublicKey(const std::string &serialized);
+  virtual ~OpenSSLRSAAES256PublicKey() {
+  	if(_key) {
+  		CFRelease(_key);
+  	}
+  }
+  bool verify(const std::string &text, const std::string &signature) override;
+  std::string &encrypt(const std::string &source,
+                       std::string &encrypted) override
+private:
+	SecKeyRef _key;
+};
+
+class SecurityRSAAES256PrivateKey : public AsymmetricPrivateKey {
+public:
+	SecurityRSAAES256PrivateKey(): AsymmetricPrivateKey(), _key(nullptr) {}
+	SecurityRSAAES256PrivateKey(const SecurityRSAAES256PrivateKey&other);
+	SecurityRSAAES256PrivateKey &operator=(const SecurityRSAAES256PrivateKey&other);
+  explicit SecurityRSAAES256PrivateKey(const std::string &serialized);
+  virtual ~OpenSSLRSAAES256PublicKey() {
+  	if(_key) {
+  		CFRelease(_key);
+  	}
+  }
+  std::string serialize() const;
+  std::string &serialize(std::string &buffer) const override;
+  std::string &sign(const std::string &text, std::string &signature) override;
+  std::string &decrypt(const std::string &source,
+                       std::string &decrypted) override;
+  OpenSSLRSAAES256PublicKey getPublicKey();
+  AsymmetricPublicKey *publicKey() override;
+private:
+	SecKeyRef _key;
+};
+
+typedef SecurityRSAAES256PublicKey RSAAES256PublicKey;
+typedef SecurityRSAAES256PrivateKey RSAAES256PrivateKey;
+
+#endif // defined(__APPLE__)
+
 #if OpenSSLAvailable
 
 class OpenSSLRSA {
@@ -315,8 +362,10 @@ private:
   OpenSSLRSA _rsa;
 };
 
+if !defined(__APPLE__)
 typedef OpenSSLRSAAES256PublicKey RSAAES256PublicKey;
 typedef OpenSSLRSAAES256PrivateKey RSAAES256PrivateKey;
+#endif
 
 #endif // OpenSSLAvailable
 
