@@ -37,7 +37,7 @@ const double gTestTimeAllowancePercent = 5;
 const double gTestMinimumTimeInSeconds = 1;
 const char *const gOpensllFlags = "-lcrypto";
 const char *const gCompilerFlags =
-    "-I.. -Isrc -MMD -std=c++11"
+    "-Isrc -MMD -std=c++11"
     " -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings"
 #if defined(__linux__)
     " -lcrypto -DOpenSSLAvailable=1"
