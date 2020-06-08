@@ -6,7 +6,7 @@
 namespace data {
 
 /// @todo document
-/// @todo add comments to Trust document for identities (also update readme)
+/// @todo Change counts to list of comments as per the README.md document
 class Trust : public WrapperData {
 public:
   Trust() : WrapperData() {

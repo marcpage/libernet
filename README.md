@@ -269,6 +269,24 @@ Path           | Always Public | Description
 /web           | No            | See [Address History](#address-history). Appending the address with  an empty query (?) will return information about how the bundle was chosen and other options as well as gives you opportunities to download and change trust in identity.
 /{app}         | No            | Apps installed by /app
 
+Example connection traffic may look like the following:
+
+Client                | Server
+------                | ------
+GET /server           | return information about this server and known servers
+PUT /server           | update list of servers to include client's list
+GET /data/requests    | return the current pending requests
+PUT /data/requests    | "similar to" searches are performed and searches for data not on this node are initiated
+PUT /data/like/{id}   | sends list of information for each like-id in requests
+PUT /data/sha256/{id} | sends each data block that it knows about that are in the requests
+GET /data/like/{id}   | sends any information this node has about id's similar to the request
+GET /data/sha256/{id} | sends the requested data block or returns an error code [503 Service Unavailable](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503)
+repeat                |
+GET /data/requests    | return the current pending requests
+PUT /data/requests    | "similar to" searches are performed and searches for data not on this node are initiated
+PUT /data/like/{id}   | sends list of information for each like-id in requests
+PUT /data/sha256/{id} | sends each data block that it knows about that are in the requests
+
 
 ## Data transfer
 
@@ -328,6 +346,7 @@ This header is [two-byte unique](https://en.wikipedia.org/wiki/List_of_file_sign
 * Header ```89 L B A 0D 0A 1A 0A```
 * Offset of table of contents (the offset of the length of the table of contents block)
 * Blocks
+  * data identifier
   * length of block
   * data
 * Table of Contents
@@ -812,10 +831,10 @@ The trust document is [matched](#data-matching) with "trust:trust owner's public
 	"timestamp": fractional seconds since epoch,
 	"trust": {
 		public key identifier: {
-			"trusted": count of times content has been marked as trusted,
-			"mistaken": count of times content was marked mistaken (honest mistake suspected)
-			"disagree": count of times content was marked as disagree (maybe not correct, or maybe correct, but dislike presenation or stance)
-			"malevolent": count of times contents was marked as malevolent intent
+			"trusted": [comment for each time content has been marked as trusted],
+			"mistaken": [comment for each time content was marked mistaken (honest mistake suspected)],
+			"disagree": [comment for each time content was marked as disagree (maybe not correct, or maybe correct, but dislike presenation or stance)],
+			"malevolent": [comment for each time contents was marked as malevolent intent],
 			"timestamp": optional field that if set marks that trust information is only valid until this timestamp
 		}
 	}
@@ -856,7 +875,7 @@ The *identifier* field is used for determining best nodes to [route data](#data-
 			"output": total bytes sent to this node,
 			"response": total times we received an exact match for what we needed,
 			"similar": total items returned for similar-to searchs,
-			"received": karma received from this node,
+			"paid": karma received from this node,
 		}
 	},
 }
@@ -944,7 +963,7 @@ Critical validations to perform include:
 1. The index is an unbroken series of monotonically increasing integers from the prime block (index=0).
 1. The size of the block is as close to 1 MiB without going over.
 1. The block is not padded (parsing the json, and embedded json, and then generating compact json should result in about the same size).
-1. No transaction (completed or pending) has a memo field over 4k.
+1. No transaction (completed or pending) has a memo field over 4k, memo fields to not have whitespace runs, and have whitespace trimmed from beginning and end.
 1. The next *previous* block is validated with the above criteria.
 
 The following criteria should be used to evaluate which *previous* block, among the validated blocks, should be chosen.
@@ -952,7 +971,9 @@ When ranking by quality, the first criteria is the most important.
 If there is a tie in the first criteria, move on to the second criteria, and so forth.
 1. Fully validated. (correct)
 1. The block with the best [match](#data-matching) to the hash of "karma:{block index}". (cost)
-1. The signing identity with the largest key size (up to 4096) and the best (reverse) [match](#data-matching) of the block identity. (diversity)
+1. The signing identity with the largest key size (up to 4096). (secure)
+1. The best (reverse) [match](#data-matching) of the block identity to the signer identity. (diversity)
+1. Oldest average timestamp. (timely)
 1. Closest to matching new balance changes with old balance changes and cancelations. (balance)
 1. The reach distance is smallest. (clean)
 1. Contains the most completed transactions. (breadth)
@@ -962,9 +983,9 @@ If there is a tie in the first criteria, move on to the second criteria, and so 
 
 The most important criteria is that the block is correct.
 The diversity criteria helps ensure a diverse set of identities are chosen and prevents a few from dominating.
-Note that for diversity criteria we use reverse matching to match the end of the identity with the end of the block identity to prevent matching a the known prefix from the index.
-Best [match](#data-matching) is the next criteria because it shows dedication (or luck) in getting the block completed, and weeds out a lot of candidates.
-Trust is the next criteria because it encourages correctness by punishing those found to have made mistakes.
+Note that for diversity criteria we use reverse matching to match the end of the identity with the end of the block identity to prevent matching a known prefix from the index.
+Best [match](#data-matching) shows dedication (or luck) in getting the block completed, and weeds out a lot of candidates.
+Trust encourages correctness by punishing those found to have made mistakes.
 Balance is to ensure we are not just filling the block with new transactions for the fees.
 Reach is the next highest to keep the chain efficient to validate by ensuring that reach minimization is prioritized.
 Breadth encourages adding as many transactions as possible to the block.
@@ -1005,7 +1026,7 @@ Each transaction is about 400 bytes in size for single sender, single receiver, 
 For validation, the sum of from amounts should equal sum of to amounts and sum of fees.
 Also, every sender should have sufficient funds as of this block for both from amounts and fee amounts.
 The timestamp should be validated not to be in the future as well as not be unreasonably too far in the past.
-The memo field, if it exists, should be less than 4k in size.
+The memo field, if it exists, should be less than 4k in size, should not have whitespace runs (other the \\r\\n), and should not have whitespace at the beginning or end.
 ```
 {
 	"from": {sender identity:amount},

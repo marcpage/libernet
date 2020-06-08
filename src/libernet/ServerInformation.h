@@ -182,7 +182,7 @@ inline void ServerInformation::_validate() {
       JSONData::_validateOptionalPositiveInteger(entry, "similar");
 
       auto received =
-          JSONData::_validateOptionalKey(entry, "received", json::StringType);
+          JSONData::_validateOptionalKey(entry, "paid", json::StringType);
 
       if (received != entry) {
         karma::Karma k(received.string()); // not tested
