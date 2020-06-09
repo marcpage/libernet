@@ -2,6 +2,7 @@
 #define __OpenSLLHelpers_h__
 
 #include "os/Exception.h"
+#include "os/Text.h"
 #include <string.h> // strlen
 
 #if OpenSSLAvailable
@@ -10,7 +11,9 @@
 #endif
 
 #if __APPLE_CC__ || __APPLE__
+#include "os/CFHelpers.h"
 #include <CommonCrypto/CommonCryptor.h>
+#include <Security/Security.h>
 #endif
 
 namespace crypto {
@@ -82,133 +85,86 @@ void handleCCCryptorStatus(CCCryptorStatus status, const std::string &call,
   }
 }
 
-CFStringRef CFStringCreate(const std::string &str) {
-	return CFStringCreateWithBytes(kCFAllocatorDefault, reinterpret_cast<UInt8*>(str.data()), CFIndex(str.size()), kCFStringEncodingUTF8, false);
-}
-
-std::string &CFStringGet(CFStringRef str, std::string &buffer) {
-	const CFIndex length = str ? CFStringGetLength(str) : 0;
-	const std::string::size_t maxBytesPerUTF8Char = 4;
-	CFIndex usedBufLen = 0;
-
-	buffer.assign(maxBytesPerUTF8Char * length, '\0');
-
-	CFIndex convertedCharacters = str ? CFStringGetBytes(str, CFRangeMake(0,length), kCFStringEncodingUTF8, UInt8('?'), false, reinterpret_cast<UInt8*>(const_cast<char*>(buffer.data())), buffer.size(), &usedBufLen) : 0;
-
-	buffer.erase(usedBufLen);
-	return buffer;
-}
-
-CFDataRef CFDataCreate(const std::string &data) {
-	return CFDataCreate(kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(data.data()), data.size());
-}
-
-std::string CFDataGetBytes(CFDataRef data) {
-	CFIndex size = data ? CFDataGetLength(data) : 0;
-
-	std::string value(std::string::size_type(size), '\0');
-	if (value) {
-		CFDataGetBytes(data, CFRangeMake(0,size), reinterpret_cast<UInt8*>(const_cast<char*>(value.data())));
-	}
-	return value;
-}
-
-void CFReleaseSafe(CFTypeRef &cf) {
-	if (cf) {
-		::CFRelease(cf);
-		cf = nullptr;
-	}
-}
-
-CFTypeRef CFRetainSafe(CFTypeRef &cf) {
-	if (cf) {
-		::CFRetain(cf);
-	}
-	return cf;
-}
-
 class CFError : public Exception {
 public:
-  explicit Exception(CFErrorRef err, const std::string &message, const char *file = NULL,
-                     int line = 0) throw()
-      : msg::Exception(_errorMessage(err, message), file, line) {}
-  virtual ~Exception() throw() {}
+  explicit CFError(CFErrorRef err, const std::string &message,
+                   const char *file = NULL, int line = 0) throw()
+      : Exception(_errorMessage(err, message), file, line) {}
+  virtual ~CFError() throw() {}
+
 private:
   static std::string _errorMessage(CFErrorRef err, const std::string &message) {
-  	std::string fullMessage = message;
+    std::string fullMessage = message;
 
-  	if (err) {
-  		CFErrorDomain domain = CFErrorGetDomain(err);
-  		CFStringRef description = CFErrorCopyDescription(err);
-  		CFStringRef reason = CFErrorCopyFailureReason(err);
-  		CFStringRef recovery = CFErrorCopyRecoverySuggestion(err);
+    if (err) {
+      cf::string domain(CFErrorGetDomain(err), cf::get);
+      cf::string description(CFErrorCopyDescription(err), cf::copyOrCreate);
+      cf::string reason(CFErrorCopyFailureReason(err), cf::copyOrCreate);
+      cf::string recovery(CFErrorCopyRecoverySuggestion(err), cf::copyOrCreate);
 
-  		fullMessage += CFStringGet(domain) + ":" + CFStringGet(description) + ":" + CFStringGet(reason) + ":" + recovery;
+      fullMessage += domain.get() + ":" + description.get() + ":" +
+                     reason.get() + ":" + recovery.get();
 
-  		CFReleaseSafe(domain);
-  		CFReleaseSafe(description);
-  		CFReleaseSafe(reason);
-  		CFReleaseSafe(recovery);
-  		CFReleaseSafe(err);
-  	}
+      cf::release(err);
+    }
 
-  	return fullMessage;
+    return fullMessage;
   }
 };
 
-#define AssertNoCFError(message, err) \
-  if (err) {                                                          \
-    throw crypto::CFError(err, message, __FILE__, __LINE__);	  \
+#define AssertNoCFError(message, err)                                          \
+  if (err) {                                                                   \
+    throw crypto::CFError(err, message, __FILE__, __LINE__);                   \
   } else                                                                       \
     msg::noop()
 
-std::string serializeRSAKey(const void *key, const char *type, std::string &value) {
-	OSStatus res;
-	CFDataRef exported;
+std::string serializeRSAKey(SecKeyRef key, const char *type,
+                            std::string &value) {
+  OSStatus res;
+  cf::data exported;
 
-	if (!key) {
-		printf("key is null\n");
-		return "";
-	}
-	res = ::SecItemExport(key, kSecFormatUnknown, kSecItemPemArmour, nullptr, &exported);
-	if (errSecPassphraseRequired == res) {
-		CFReleaseSafe(exported);
-		exported = ::SecKeyCopyExternalRepresentation(key, NULL);
-		std::string buffer = data ? CFDataGetBytes(data) : std::string();
+  if (!key) {
+    printf("key is null\n");
+    return "";
+  }
+  res = ::SecItemExport(key, kSecFormatUnknown, kSecItemPemArmour, nullptr,
+                        &exported.value);
+  if (errSecPassphraseRequired == res) {
+    exported.value = ::SecKeyCopyExternalRepresentation(key, NULL);
+    std::string buffer = exported.get();
 
-		value = std::string("-----BEGIN RSA ") + type + " KEY-----\n"
-				+ text::base64Encode(buffer, text::Base64, text::SplitBase64ForPEM)
-				+ "\n-----END RSA " + type + " KEY-----\n";
-	} else if (!exported) {
-		return "";
-	} else {
-		value = CFDataGetBytes(exported);
-	}
-	CFReleaseSafe(exported);
-	return value;
+    value = std::string("-----BEGIN RSA ") + type + " KEY-----\n" +
+            text::base64Encode(buffer, text::Base64, text::SplitBase64ForPEM) +
+            "\n-----END RSA " + type + " KEY-----\n";
+  } else if (!exported.value) {
+    return "";
+  } else {
+    value = exported.get();
+  }
+  return value;
 }
 
-SecKeyRef deserializeRSAKey(const std::string &serialized, SecExternalItemType itemType) {
-	CFDataRef data = CFDataCreate(serialized);
-    SecExternalFormat format = kSecFormatOpenSSL;
-    SecItemImportExportKeyParameters params;
-        CFArrayRef keyList = nullptr;
-        OSStatus res;
+SecKeyRef deserializeRSAKey(const std::string &serialized,
+                            SecExternalItemType itemType) {
+  cf::data data(serialized);
+  SecExternalFormat format = kSecFormatOpenSSL;
+  SecItemImportExportKeyParameters params;
+  cf::array keyList;
+  OSStatus res;
 
-        memset(&params, 0, sizeof(params));
-        params.flags = kSecKeyNoAccessControl;
-        params.passphrase = nullptr;
+  memset(&params, 0, sizeof(params));
+  params.flags = kSecKeyNoAccessControl;
+  params.passphrase = nullptr;
 
-	res = SecItemImport(data, nullptr, &format, &itemType, kSecItemPemArmour, &params, nullptr, &keyList);
+  res = SecItemImport(data, nullptr, &format, &itemType, kSecItemPemArmour,
+                      &params, nullptr, &keyList.value);
 
-	CFIndex count = CFArrayGetCount(keyList);
-	_key = CFRetainSafe(reinterpret_cast<SecKeyRef>(const_cast<void*>(CFArrayGetValueAtIndex(keyList, 0))));
-	if (CFGetTypeID(_key) != SecKeyGetTypeID()) {
-		throw new Exception("Wasn't a key", __FILE__, __LINE__);
-	}
-	CFReleaseSafe(data);
-	CFReleaseSafe(keyList);
-	return _key;
+  AssertMessageException(keyList.count() == 1);
+  cf::Safe<SecKeyRef> key(keyList.get<SecKeyRef>(0), cf::get);
+  if (key.type() != SecKeyGetTypeID()) {
+    throw new Exception("Wasn't a key", __FILE__, __LINE__);
+  }
+  return key.retain().value;
 }
 
 #endif // defined(__APPLE__)
@@ -221,12 +177,11 @@ SecKeyRef deserializeRSAKey(const std::string &serialized, SecExternalItemType i
 int handleOpenSSLResult(int status, const std::string &call, const char *file,
                         int line) {
   if (!status) {
-    std::string buffer(512, '\0'); // tested in libernet tests
-    ERR_error_string(ERR_get_error(),
-                     const_cast<char *>(buffer.data())); // libernet tests
-    buffer.erase(strlen(buffer.c_str()));                // libernet tests
+    std::string buffer(512, '\0');
+    ERR_error_string(ERR_get_error(), const_cast<char *>(buffer.data()));
+    buffer.erase(strlen(buffer.c_str()));
     throw Exception(std::string("OpenSSL Error (" + call + "): ") + buffer,
-                    file, line); // libernet tests
+                    file, line);
   }
   return status;
 }

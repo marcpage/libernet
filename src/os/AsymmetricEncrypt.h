@@ -80,104 +80,133 @@ private:
   AutoClean<T>(const AutoClean<T> &);            ///< Prevent usage
 };
 
-if defined(__APPLE__)
+#if defined(__APPLE__)
 
 class SecurityRSAAES256PublicKey : public AsymmetricPublicKey {
 public:
-	SecurityRSAAES256PublicKey(): AsymmetricPrivateKey(), _key(nullptr) {}
-	SecurityRSAAES256PublicKey(SecKeyRef key):AsymmetricPrivateKey(), _key(key) {}
-	SecurityRSAAES256PublicKey(const SecurityRSAAES256PublicKey &other):AsymmetricPublicKey(), _key(other._key) {
-		CFRetainSafe(_key);
-	}
-	SecurityRSAAES256PublicKey &operator=(const SecurityRSAAES256PublicKey &other) {
-		CFReleaseSafe(_key);
-		_key = CFRetainSafe(other._key);
-	}
-  explicit SecurityRSAAES256PublicKey(const std::string &serialized):AsymmetricPrivateKey(), _key(deserializeRSAKey(serialized, kSecItemTypePublicKey)) {}
-  virtual ~OpenSSLRSAAES256PublicKey() {CFReleaseSafe(_key);}
+  SecurityRSAAES256PublicKey() : AsymmetricPublicKey(), _key(nullptr) {}
+  SecurityRSAAES256PublicKey(SecKeyRef key)
+      : AsymmetricPublicKey(), _key(key) {}
+  SecurityRSAAES256PublicKey(const SecurityRSAAES256PublicKey &other)
+      : AsymmetricPublicKey(), _key(other._key) {
+    cf::retain(_key);
+  }
+  SecurityRSAAES256PublicKey &
+  operator=(const SecurityRSAAES256PublicKey &other) {
+    cf::release(_key);
+    _key = cf::retain(other._key);
+    return *this;
+  }
+  explicit SecurityRSAAES256PublicKey(const std::string &serialized)
+      : AsymmetricPublicKey(),
+        _key(deserializeRSAKey(serialized, kSecItemTypePublicKey)) {}
+  virtual ~SecurityRSAAES256PublicKey() { cf::release(_key); }
+  std::string &serialize(std::string &buffer) const override {
+    return buffer = serializeRSAKey(_key, "PUBLIC", buffer);
+  }
   bool verify(const std::string &text, const std::string &signature) override {
-  	// https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/signing_and_verifying?language=objc
-  	SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256;
-  	CFDataRef data = CFDataCreate(text);
-  	CFDataRef signData = CFDataCreate(signature);
-  	CFErrorRef error = nullptr;
-  	Boolean verifies = SecKeyVerifySignature(_key, algorithm, data, &error);
+    // https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/signing_and_verifying?language=objc
+    SecKeyAlgorithm algorithm =
+        kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256;
+    cf::data data(text);
+    cf::data signData(signature);
+    CFErrorRef error = nullptr;
+    Boolean verifies =
+        SecKeyVerifySignature(_key, algorithm, data, signData, &error);
 
-	SecKeyVerifySignature("SecKeyCreateRandomKey", error);
-	CFReleaseSafe(data); // leaked on error
-	CFReleaseSafe(signData); // leaked on error
-	return verifies;
+    AssertNoCFError("SecKeyCreateRandomKey", error);
+    return verifies;
   }
-  std::string &encrypt(const std::string &source, std::string &encrypted) override {
-  SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSAEncryptionPKCS1;
-  CFDataRef plaintext = CFDataCreate(source);
-  	CFErrorRef error = nullptr;
-  CFDataRef encryptedData = SecKeyCreateEncryptedData(_key, algorithm, plaintext, &error);
+  std::string &encrypt(const std::string &source,
+                       std::string &encrypted) override {
+    SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSAEncryptionPKCS1;
+    cf::data plaintext(source);
+    CFErrorRef error = nullptr;
+    cf::data encryptedData(
+        SecKeyCreateEncryptedData(_key, algorithm, plaintext, &error),
+        cf::copyOrCreate);
 
-	SecKeyVerifySignature("SecKeyCreateRandomKey", error);
-	encrypted = CFDataGetBytes(encryptedData);
-	CFReleaseSafe(plaintext); // leaked on error
-	CFReleaseSafe(encryptedData); // leaked on error
-	return encrypted;
+    AssertNoCFError("SecKeyCreateRandomKey", error);
+    encrypted = encryptedData.get();
+    return encrypted;
   }
+
 private:
-	SecKeyRef _key;
+  SecKeyRef _key;
 };
 
 class SecurityRSAAES256PrivateKey : public AsymmetricPrivateKey {
 public:
-	SecurityRSAAES256PrivateKey(): AsymmetricPrivateKey(), _key(nullptr) {}
-  explicit SecurityRSAAES256PrivateKey(const int keySize, const unsigned long publicExponent = 3):AsymmetricPrivateKey(), _key(nullptr) {
-  		CFErrorRef error = nullptr;
-	CFMutableDictionaryRef parameters = CFDictionaryCreateMutable(kCFAllocatorDefault, 2, &kCFTypeDictionaryKeyCallBacks, kCFTypeDictionaryValueCallBacks);
-	CFDictionaryAddValue(parameters, kSecAttrKeyType, kSecAttrKeyTypeRSA);
-	CFDictionaryAddValue(parameters, kSecAttrKeySizeInBits, CFNumberCreate(nullptr, kCFNumberIntType, &keySize));
+  SecurityRSAAES256PrivateKey() : AsymmetricPrivateKey(), _key(nullptr) {}
+  explicit SecurityRSAAES256PrivateKey(
+      const int keySize, const unsigned long /*publicExponent*/ = 3)
+      : AsymmetricPrivateKey(), _key(nullptr) {
+    CFErrorRef error = nullptr;
+    cf::mutableDictionary parameters(2);
 
-		_key = SecKeyCreateRandomKey(parameters, &error);
-		AssertNoCFError("SecKeyCreateRandomKey", error);
-		CFReleaseSafe(parameters); // leaked on error
-	}
-	SecurityRSAAES256PrivateKey(const SecurityRSAAES256PrivateKey &other):AsymmetricPrivateKey(), _key(other._key) {
-		CFRetainSafe(_key);
-	}
-	SecurityRSAAES256PrivateKey &operator=(const SecurityRSAAES256PrivateKey &other) {
-		CFReleaseSafe(_key);
-		_key = CFRetainSafe(other._key);
-	}
-  explicit SecurityRSAAES256PrivateKey(const std::string &serialized):AsymmetricPrivateKey(), _key(deserializeRSAKey(serialized, kSecItemTypePrivateKey)) {}
-  virtual ~OpenSSLRSAAES256PublicKey() {CFReleaseSafe(_key);}
-  std::string serialize() const {std::string buffer; return serialize(buffer);}
-  std::string &serialize(std::string &buffer) const override {return serializeRSAKey(_key, "PRIVATE", buffer);}
+    parameters.put(kSecAttrKeyType, kSecAttrKeyTypeRSA);
+    parameters.put(kSecAttrKeySizeInBits, keySize);
+
+    _key = SecKeyCreateRandomKey(parameters, &error);
+    AssertNoCFError("SecKeyCreateRandomKey", error);
+  }
+  SecurityRSAAES256PrivateKey(const SecurityRSAAES256PrivateKey &other)
+      : AsymmetricPrivateKey(), _key(other._key) {
+    cf::retain(_key);
+  }
+  SecurityRSAAES256PrivateKey &
+  operator=(const SecurityRSAAES256PrivateKey &other) {
+    cf::release(_key);
+    _key = cf::retain(other._key);
+    return *this;
+  }
+  explicit SecurityRSAAES256PrivateKey(const std::string &serialized)
+      : AsymmetricPrivateKey(),
+        _key(deserializeRSAKey(serialized, kSecItemTypePrivateKey)) {}
+  virtual ~SecurityRSAAES256PrivateKey() { cf::release(_key); }
+  std::string serialize() const {
+    std::string buffer;
+    return serialize(buffer);
+  }
+  std::string &serialize(std::string &buffer) const override {
+    return buffer = serializeRSAKey(_key, "PRIVATE", buffer);
+  }
   std::string &sign(const std::string &text, std::string &signature) override {
-  	// https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/signing_and_verifying?language=objc
-  	SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256;
-  	CFDataRef data = CFDataCreate(text);
-  	CFErrorRef error = nullptr;
-  	CFDataRef signData = SecKeyCreateSignature(_key, algorithm, data, &error);
+    // https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/signing_and_verifying?language=objc
+    SecKeyAlgorithm algorithm =
+        kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256;
+    cf::data data(text);
+    CFErrorRef error = nullptr;
+    cf::data signData(SecKeyCreateSignature(_key, algorithm, data, &error),
+                      cf::copyOrCreate);
 
-	AssertNoCFError("SecKeyCreateSignature", error);
-	signature = CFDataGetBytes(signData);
-	CFReleaseSafe(data); // leaked on error
-	CFReleaseSafe(signData); // leaked on error
-	return signature;
+    AssertNoCFError("SecKeyCreateSignature", error);
+    signature = signData.get();
+    return signature;
   }
-  std::string &decrypt(const std::string &source, std::string &decrypted) override {
-  SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSAEncryptionPKCS1;
-  CFDataRef ciphertext = CFDataCreate(source);
-  	CFErrorRef error = nullptr;
-  CFDataRef decryptedData = SecKeyCreateDecryptedData(_key, algorithm, ciphertext, &error);
+  std::string &decrypt(const std::string &source,
+                       std::string &decrypted) override {
+    SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSAEncryptionPKCS1;
+    cf::data ciphertext(source);
+    CFErrorRef error = nullptr;
+    cf::data decryptedData(
+        SecKeyCreateDecryptedData(_key, algorithm, ciphertext, &error),
+        cf::copyOrCreate);
 
-	decrypted = CFDataGetBytes(decryptedData);
-	CFReleaseSafe(ciphertext); // leaked on error
-	CFReleaseSafe(decryptedData); // leaked on error
-	return decrypted;
-	}
-  OpenSSLRSAAES256PublicKey getPublicKey() {
-  	return OpenSSLRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key) : nullptr);
+    decrypted = decryptedData.get();
+    return decrypted;
   }
-  AsymmetricPublicKey *publicKey() override {return new OpenSSLRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key) : nullptr);}
+  SecurityRSAAES256PublicKey getPublicKey() {
+    return SecurityRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key)
+                                           : nullptr);
+  }
+  AsymmetricPublicKey *publicKey() override {
+    return new SecurityRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key)
+                                               : nullptr);
+  }
+
 private:
-	SecKeyRef _key;
+  SecKeyRef _key;
 };
 
 typedef SecurityRSAAES256PublicKey RSAAES256PublicKey;
@@ -424,7 +453,7 @@ private:
   OpenSSLRSA _rsa;
 };
 
-if !defined(__APPLE__)
+#if !defined(__APPLE__)
 typedef OpenSSLRSAAES256PublicKey RSAAES256PublicKey;
 typedef OpenSSLRSAAES256PrivateKey RSAAES256PrivateKey;
 #endif
@@ -434,127 +463,3 @@ typedef OpenSSLRSAAES256PrivateKey RSAAES256PrivateKey;
 } // namespace crypto
 
 #endif // __AsymmetricEncrypt_h__
-
-/*
-// clang++ 2clean/AsymetricEncrypt.cpp -framework Security -framework
-CoreFoundation -DOpenSSLAvailable=1 -I.. -I2Clean
--I/usr/local/Cellar/openssl@1.1/1.1.1d/include
--L/usr/local/Cellar/openssl@1.1/1.1.1d/lib -lcrypto -o /tmp/test
-
-#include <stdio.h>
-#include <string>
-
-
-/*
-        Asymmetric Encrypt Behaviors
-                Public Key
-                        1. Verify Signature
-                        2. Serialize
-                        3. Deserialize
-                Private Key
-                        1. Sign
-                        2. Serialize
-                        3. Deserialize
-                        4. Get public key
-                        5. Generate
-•/
-
-
-// Recommended public exponents: 3, 5, 17, 257 or 65537
-
-#define AppleAPI 1
-
-#if AppleAPI
-
-#if __APPLE_CC__ || __APPLE__
-        #include <CommonCrypto/CommonCryptor.h>
-        #include <Security/Security.h>
-#endif
-
-std::string dumpKey(const void *key) {
-        OSStatus res;
-        CFDataRef exported;
-
-        if (!key) {
-                printf("key is null\n");
-                return "";
-        }
-        res = SecItemExport(key, kSecFormatUnknown, kSecItemPemArmour, nullptr,
-&exported); if (errSecPassphraseRequired == res) { printf("Passphrase
-Required\n"); return ""; } else if (!exported) { printf("Unable to export key
-data\n"); return "";
-        }
-        CFIndex size = CFDataGetLength(exported);
-
-        std::string value(std::string::size_type(size), '\0');
-        CFDataGetBytes(exported, CFRangeMake(0,size),
-reinterpret_cast<UInt8*>(const_cast<char*>(value.data()))); printf("value =
-'%s'\n", value.c_str()); return value;
-}
-
-int main(int argc, char* argv[]) {
-        SecKeyRef publicKey, privateKey;
-        OSStatus res;
-        int keySize = (argc == 2) ? atoi(argv[1]) : 1024; // 1024 - 4096
-increment 8
-
-        /* Time to generate key
-                1024 = 0.25 seconds
-                2048 - 2 seconds
-                3072 - 8 seconds
-                4096 - 30 seconds
-        •/
-
-    SecItemImportExportKeyParameters params;
-    SecExternalItemType itemType = kSecItemTypePublicKey;
-    SecExternalFormat format = kSecFormatOpenSSL;
-
-        memset(&params, 0, sizeof(params));
-        params.flags = kSecKeyNoAccessControl;
-        params.passphrase = nullptr;
-
-        CFMutableDictionaryRef attrDict = CFDictionaryCreateMutable(nullptr, 3,
-&kCFTypeDictionaryKeyCallBacks, nullptr); CFDictionaryAddValue(attrDict,
-kSecAttrKeyType, kSecAttrKeyTypeRSA); CFDictionaryAddValue(attrDict,
-kSecAttrKeySizeInBits, CFNumberCreate(nullptr, kCFNumberIntType, &keySize));
-
-        res = SecKeyGeneratePair(attrDict, &publicKey, &privateKey);
-
-        const void *elements[] = {publicKey, privateKey};
-        CFArrayRef keys = CFArrayCreate(nullptr, elements, 2,
-&kCFTypeArrayCallBacks); std::string keyText = dumpKey(keys); std::string pub =
-dumpKey(publicKey); std::string priv = dumpKey(privateKey);
-
-        CFArrayRef keyList = nullptr;
-        CFDataRef data;
-
-        data = CFDataCreate(nullptr, reinterpret_cast<const UInt8
-*>(pub.data()), pub.size()); itemType = kSecItemTypePublicKey; res =
-SecItemImport(data, nullptr, &format, &itemType, 0, &params, nullptr, &keyList);
-// crash printf("res=%d\n", res); printf("length=%ld\n",
-(long)CFArrayGetCount(keyList));
-
-        SecKeyRef pubCopy =
-reinterpret_cast<SecKeyRef>(const_cast<void*>(CFArrayGetValueAtIndex(keyList,
-0))); printf("pubCopy = %p\n", pubCopy); dumpKey(pubCopy);
-
-        data = CFDataCreate(nullptr, reinterpret_cast<const UInt8
-*>(priv.data()), priv.size()); itemType = kSecItemTypePrivateKey; res =
-SecItemImport(data, nullptr, &format, &itemType, 0, &params, nullptr, &keyList);
-        printf("res=%d\n", res);
-        printf("length=%ld\n", (long)CFArrayGetCount(keyList));
-        printf("Keysize = %d\n", keySize);
-        // SecKeyCreateEncryptedData
-https://developer.apple.com/documentation/security/1643957-seckeycreateencrypteddata?language=objc
-
-        SecKeyRef privCopy =
-reinterpret_cast<SecKeyRef>(const_cast<void*>(CFArrayGetValueAtIndex(keyList,
-0))); if (CFGetTypeID(privCopy) != SecKeyGetTypeID()) { printf("Not a
-SecKey\n");
-        }
-        printf("privCopy = %p\n", privCopy);
-        dumpKey(privCopy);
-
-        return 0;
-}
-*/

@@ -16,9 +16,9 @@
 // --- System Headers ---
 
 #if defined(__APPLE__)
+#include "os/CryptoHelpers.h" // CFReleaseSafe
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
-#include "os/CryptoHelpers.h" // CFReleaseSafe
 #define __use_bundles__ 1 ///< CFBundle API supported
 #define __use_something__ ///< We've figured out a library API
 #define __std_lib_suffix__                                                     \
@@ -236,7 +236,7 @@ inline Library::~Library() {
   }
 #endif
 #if __use_bundles__
-	CFReleaseSafe(_bundle);
+  CFReleaseSafe(_bundle);
 #endif
 #if __use_dlopen__
   if (NULL != _dl) {
