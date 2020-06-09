@@ -85,39 +85,6 @@ void handleCCCryptorStatus(CCCryptorStatus status, const std::string &call,
   }
 }
 
-class CFError : public Exception {
-public:
-  explicit CFError(CFErrorRef err, const std::string &message,
-                   const char *file = NULL, int line = 0) throw()
-      : Exception(_errorMessage(err, message), file, line) {}
-  virtual ~CFError() throw() {}
-
-private:
-  static std::string _errorMessage(CFErrorRef err, const std::string &message) {
-    std::string fullMessage = message;
-
-    if (err) {
-      cf::string domain(CFErrorGetDomain(err), cf::get);
-      cf::string description(CFErrorCopyDescription(err), cf::copyOrCreate);
-      cf::string reason(CFErrorCopyFailureReason(err), cf::copyOrCreate);
-      cf::string recovery(CFErrorCopyRecoverySuggestion(err), cf::copyOrCreate);
-
-      fullMessage += domain.get() + ":" + description.get() + ":" +
-                     reason.get() + ":" + recovery.get();
-
-      cf::release(err);
-    }
-
-    return fullMessage;
-  }
-};
-
-#define AssertNoCFError(message, err)                                          \
-  if (err) {                                                                   \
-    throw crypto::CFError(err, message, __FILE__, __LINE__);                   \
-  } else                                                                       \
-    msg::noop()
-
 std::string serializeRSAKey(SecKeyRef key, const char *type,
                             std::string &value) {
   OSStatus res;

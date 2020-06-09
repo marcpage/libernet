@@ -114,7 +114,7 @@ public:
     Boolean verifies =
         SecKeyVerifySignature(_key, algorithm, data, signData, &error);
 
-    AssertNoCFError("SecKeyCreateRandomKey", error);
+    AssertNoCFError("SecKeyVerifySignature", error);
     return verifies;
   }
   std::string &encrypt(const std::string &source,
@@ -126,7 +126,7 @@ public:
         SecKeyCreateEncryptedData(_key, algorithm, plaintext, &error),
         cf::copyOrCreate);
 
-    AssertNoCFError("SecKeyCreateRandomKey", error);
+    AssertNoCFError("SecKeyCreateEncryptedData", error);
     encrypted = encryptedData.get();
     return encrypted;
   }

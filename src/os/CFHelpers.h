@@ -159,6 +159,39 @@ public:
   }
 };
 
+class Error : public msg::Exception {
+public:
+  explicit Error(CFErrorRef err, const std::string &message,
+                 const char *file = NULL, int line = 0) throw()
+      : msg::Exception(_errorMessage(err, message), file, line) {}
+  virtual ~Error() throw() {}
+
+private:
+  static std::string _errorMessage(CFErrorRef err, const std::string &message) {
+    std::string fullMessage = message;
+
+    if (err) {
+      cf::string domain(CFErrorGetDomain(err), cf::get);
+      cf::string description(CFErrorCopyDescription(err), cf::copyOrCreate);
+      cf::string reason(CFErrorCopyFailureReason(err), cf::copyOrCreate);
+      cf::string recovery(CFErrorCopyRecoverySuggestion(err), cf::copyOrCreate);
+
+      fullMessage += domain.get() + ":" + description.get() + ":" +
+                     reason.get() + ":" + recovery.get();
+
+      cf::release(err);
+    }
+
+    return fullMessage;
+  }
+};
+
+#define AssertNoCFError(message, err)                                          \
+  if (err) {                                                                   \
+    throw cf::Error(err, message, __FILE__, __LINE__);                         \
+  } else                                                                       \
+    msg::noop()
+
 } // namespace cf
 
 #endif // defined(__APPLE__)
