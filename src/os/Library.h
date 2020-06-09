@@ -288,15 +288,12 @@ template <class Function> inline Function Library::function(const char *name) {
 */
 #if __use_bundles__
 inline bool Library::_load(CFURLRef base, CFStringRef name) {
-  CFURLRef itemPath = ((NULL != base) && (NULL != name))
-                          ? CFURLCreateCopyAppendingPathComponent(
-                                kCFAllocatorDefault, base, name, true)
-                          : NULL;
+  cf::url itemPath(base, name, cf::isDirectory);
 
   // CFShow((itemPath) ? (CFTypeRef)itemPath : (CFTypeRef)CFSTR("NULL"));
-  _bundle = itemPath ? CFBundleCreate(kCFAllocatorDefault, itemPath) : NULL;
+  _bundle =
+      itemPath.value ? CFBundleCreate(kCFAllocatorDefault, itemPath) : NULL;
   cf::release(base);
-  cf::release(itemPath);
   return NULL != _bundle;
 }
 #endif // __use_bundles__
@@ -346,11 +343,10 @@ inline bool Library::_attempt_core(const char *path, PathModified modified) {
 #endif
 #if __use_bundles__
   if (Unmodified == modified) {
-    const size_t len = strlen(path);
-    CFURLRef url = CFURLCreateFromFileSystemRepresentation(
-        kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(path), len, false);
+    cf::url url(path, cf::isFile);
 
-    _bundle = (NULL != url) ? CFBundleCreate(kCFAllocatorDefault, url) : NULL;
+    _bundle =
+        (NULL != url.value) ? CFBundleCreate(kCFAllocatorDefault, url) : NULL;
 
     // if not a path, try it as a bundle identifier
     if (!_bundle) {

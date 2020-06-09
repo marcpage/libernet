@@ -128,6 +128,25 @@ public:
   operator std::string() const { return get(); }
 };
 
+enum PathType { isDirectory, isFile };
+class url : public Safe<CFURLRef> {
+public:
+  url() : Safe<CFURLRef>() {}
+  url(CFURLRef u, How how) : Safe<CFURLRef>(u, how) {}
+  url(CFURLRef base, CFStringRef name, PathType type)
+      : Safe<CFURLRef>((!base || !name) ? nullptr
+                                        : CFURLCreateCopyAppendingPathComponent(
+                                              kCFAllocatorDefault, base, name,
+                                              isDirectory == type),
+                       copyOrCreate) {}
+  url(const std::string &path, PathType type)
+      : Safe<CFURLRef>(CFURLCreateFromFileSystemRepresentation(
+                           kCFAllocatorDefault,
+                           reinterpret_cast<const UInt8 *>(path.data()),
+                           path.size(), isDirectory == type),
+                       copyOrCreate) {}
+};
+
 class array : public Safe<CFArrayRef> {
 public:
   array() : Safe<CFArrayRef>() {}
