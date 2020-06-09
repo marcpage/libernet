@@ -101,6 +101,11 @@ public:
       : AsymmetricPublicKey(),
         _key(deserializeRSAKey(serialized, kSecItemTypePublicKey)) {}
   virtual ~SecurityRSAAES256PublicKey() { cf::release(_key); }
+  std::string serialize() const {
+    std::string buffer;
+
+    return serialize(buffer);
+  }
   std::string &serialize(std::string &buffer) const override {
     return buffer = serializeRSAKey(_key, "PUBLIC", buffer);
   }
