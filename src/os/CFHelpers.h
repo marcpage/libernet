@@ -20,10 +20,10 @@ template <typename T> inline T retain(T v) {
   return v;
 }
 
-CFStringRef stringCreate(const std::string &str) {
-  return CFStringCreateWithBytes(
-      kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(str.data()),
-      CFIndex(str.size()), kCFStringEncodingUTF8, false);
+CFStringRef stringCreate(const std::string &str, CFStringEncoding encoding) {
+  return CFStringCreateWithBytes(kCFAllocatorDefault,
+                                 reinterpret_cast<const UInt8 *>(str.data()),
+                                 CFIndex(str.size()), encoding, false);
 }
 
 std::string &stringGet(CFStringRef str, std::string &buffer) {
@@ -93,8 +93,9 @@ class string : public Safe<CFStringRef> {
 public:
   string() : Safe<CFStringRef>() {}
   string(CFStringRef s, How how) : Safe<CFStringRef>(s, how) {}
-  string(const std::string &s)
-      : Safe<CFStringRef>(stringCreate(s), copyOrCreate) {}
+  string(const std::string &s,
+         CFStringEncoding encoding = kCFStringEncodingUTF8)
+      : Safe<CFStringRef>(stringCreate(s, encoding), copyOrCreate) {}
   std::string &get(std::string &buffer) const {
     if (value) {
       stringGet(this->value, buffer);
