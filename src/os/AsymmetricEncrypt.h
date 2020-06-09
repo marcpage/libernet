@@ -95,9 +95,31 @@ public:
 	}
   explicit SecurityRSAAES256PublicKey(const std::string &serialized):AsymmetricPrivateKey(), _key(deserializeRSAKey(serialized, kSecItemTypePublicKey)) {}
   virtual ~OpenSSLRSAAES256PublicKey() {CFReleaseSafe(_key);}
-  bool verify(const std::string &text, const std::string &signature) override; // TODO implement
-  std::string &encrypt(const std::string &source,
-                       std::string &encrypted) override; // TODO implement
+  bool verify(const std::string &text, const std::string &signature) override {
+  	// https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/signing_and_verifying?language=objc
+  	SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256;
+  	CFDataRef data = CFDataCreate(text);
+  	CFDataRef signData = CFDataCreate(signature);
+  	CFErrorRef error = nullptr;
+  	Boolean verifies = SecKeyVerifySignature(_key, algorithm, data, &error);
+
+	SecKeyVerifySignature("SecKeyCreateRandomKey", error);
+	CFReleaseSafe(data); // leaked on error
+	CFReleaseSafe(signData); // leaked on error
+	return verifies;
+  }
+  std::string &encrypt(const std::string &source, std::string &encrypted) override {
+  SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSAEncryptionPKCS1;
+  CFDataRef plaintext = CFDataCreate(source);
+  	CFErrorRef error = nullptr;
+  CFDataRef encryptedData = SecKeyCreateEncryptedData(_key, algorithm, plaintext, &error);
+
+	SecKeyVerifySignature("SecKeyCreateRandomKey", error);
+	encrypted = CFDataGetBytes(encryptedData);
+	CFReleaseSafe(plaintext); // leaked on error
+	CFReleaseSafe(encryptedData); // leaked on error
+	return encrypted;
+  }
 private:
 	SecKeyRef _key;
 };
@@ -113,6 +135,7 @@ public:
 
 		_key = SecKeyCreateRandomKey(parameters, &error);
 		AssertNoCFError("SecKeyCreateRandomKey", error);
+		CFReleaseSafe(parameters); // leaked on error
 	}
 	SecurityRSAAES256PrivateKey(const SecurityRSAAES256PrivateKey &other):AsymmetricPrivateKey(), _key(other._key) {
 		CFRetainSafe(_key);
@@ -125,9 +148,30 @@ public:
   virtual ~OpenSSLRSAAES256PublicKey() {CFReleaseSafe(_key);}
   std::string serialize() const {std::string buffer; return serialize(buffer);}
   std::string &serialize(std::string &buffer) const override {return serializeRSAKey(_key, "PRIVATE", buffer);}
-  std::string &sign(const std::string &text, std::string &signature) override; // TODO implement
-  std::string &decrypt(const std::string &source,
-                       std::string &decrypted) override; // TODO implement
+  std::string &sign(const std::string &text, std::string &signature) override {
+  	// https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/signing_and_verifying?language=objc
+  	SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSASignatureMessagePKCS1v15SHA256;
+  	CFDataRef data = CFDataCreate(text);
+  	CFErrorRef error = nullptr;
+  	CFDataRef signData = SecKeyCreateSignature(_key, algorithm, data, &error);
+
+	AssertNoCFError("SecKeyCreateSignature", error);
+	signature = CFDataGetBytes(signData);
+	CFReleaseSafe(data); // leaked on error
+	CFReleaseSafe(signData); // leaked on error
+	return signature;
+  }
+  std::string &decrypt(const std::string &source, std::string &decrypted) override {
+  SecKeyAlgorithm algorithm = kSecKeyAlgorithmRSAEncryptionPKCS1;
+  CFDataRef ciphertext = CFDataCreate(source);
+  	CFErrorRef error = nullptr;
+  CFDataRef decryptedData = SecKeyCreateDecryptedData(_key, algorithm, ciphertext, &error);
+
+	decrypted = CFDataGetBytes(decryptedData);
+	CFReleaseSafe(ciphertext); // leaked on error
+	CFReleaseSafe(decryptedData); // leaked on error
+	return decrypted;
+	}
   OpenSSLRSAAES256PublicKey getPublicKey() {
   	return OpenSSLRSAAES256PublicKey(_key ? SecKeyCopyPublicKey(_key) : nullptr);
   }
@@ -348,7 +392,7 @@ public:
     _rsa.init(other._rsa.serializePrivate(buffer), PEM_read_bio_RSAPrivateKey);
     return *this;
   }
-  virtual ~OpenSSLRSAAES256PrivateKey() {} // tested on Darwin and libernet
+  virtual ~OpenSSLRSAAES256PrivateKey() {}
   std::string serialize() const {
     std::string buffer;
 
