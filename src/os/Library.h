@@ -16,7 +16,7 @@
 // --- System Headers ---
 
 #if defined(__APPLE__)
-#include "os/CryptoHelpers.h" // cf::release
+#include "os/CFHelpers.h"
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 #define __use_bundles__ 1 ///< CFBundle API supported
@@ -266,12 +266,9 @@ template <class Function> inline Function Library::function(const char *name) {
 #endif
 #if __use_bundles__
   if (NULL != _bundle) {
-    CFStringRef str = CFStringCreateWithBytes(
-        kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(name),
-        strlen(name), CFStringGetSystemEncoding(), false);
+    cf::string str(name, CFStringGetSystemEncoding());
 
-    ptr = str ? CFBundleGetFunctionPointerForName(_bundle, str) : NULL;
-    cf::release(str);
+    ptr = str.value ? CFBundleGetFunctionPointerForName(_bundle, str) : NULL;
   }
 #endif
 #if __use_dlopen__
@@ -316,13 +313,11 @@ inline bool Library::_search_bundle(const std::string &name) {
   static const char *const absolutePaths[] = {
       "/Library/Frameworks", "/System/Library/Frameworks",
       "/System//Library/PrivateFrameworks"};
-  CFStringRef str = CFStringCreateWithBytes(
-      kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(name.data()),
-      name.length(), CFStringGetSystemEncoding(), false);
+  cf::string str(name, CFStringGetSystemEncoding());
 
   // Search in some hard coded, last ditch locations
-  for (size_t path = 0;
-       ((str) && (path < sizeof(absolutePaths) / sizeof(absolutePaths[0])));
+  for (size_t path = 0; ((str.value) && (path < sizeof(absolutePaths) /
+                                                    sizeof(absolutePaths[0])));
        ++path) {
     if (_load(CFURLCreateFromFileSystemRepresentation(
                   kCFAllocatorDefault,
@@ -332,7 +327,6 @@ inline bool Library::_search_bundle(const std::string &name) {
       return true;
     }
   }
-  cf::release(str);
 #else
   const void *__unused__[] = {&__unused__, &name};
 #endif
@@ -360,14 +354,11 @@ inline bool Library::_attempt_core(const char *path, PathModified modified) {
 
     // if not a path, try it as a bundle identifier
     if (!_bundle) {
-      CFStringRef str =
-          (NULL != _bundle)
-              ? NULL
-              : CFStringCreateWithBytes(
-                    kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(path),
-                    len, CFStringGetSystemEncoding(), false);
-      _bundle = (NULL != str) ? CFBundleGetBundleWithIdentifier(str) : _bundle;
-      cf::release(str);
+      cf::string str(path, CFStringGetSystemEncoding());
+
+      if (str.value) {
+        _bundle = CFBundleGetBundleWithIdentifier(str);
+      }
     }
 
     if (_bundle) {
