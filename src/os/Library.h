@@ -16,7 +16,7 @@
 // --- System Headers ---
 
 #if defined(__APPLE__)
-#include "os/CryptoHelpers.h" // CFReleaseSafe
+#include "os/CryptoHelpers.h" // cf::release
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 #define __use_bundles__ 1 ///< CFBundle API supported
@@ -236,7 +236,7 @@ inline Library::~Library() {
   }
 #endif
 #if __use_bundles__
-  CFReleaseSafe(_bundle);
+  cf::release(_bundle);
 #endif
 #if __use_dlopen__
   if (NULL != _dl) {
@@ -271,7 +271,7 @@ template <class Function> inline Function Library::function(const char *name) {
         strlen(name), CFStringGetSystemEncoding(), false);
 
     ptr = str ? CFBundleGetFunctionPointerForName(_bundle, str) : NULL;
-    CFReleaseSafe(str);
+    cf::release(str);
   }
 #endif
 #if __use_dlopen__
@@ -298,8 +298,8 @@ inline bool Library::_load(CFURLRef base, CFStringRef name) {
 
   // CFShow((itemPath) ? (CFTypeRef)itemPath : (CFTypeRef)CFSTR("NULL"));
   _bundle = itemPath ? CFBundleCreate(kCFAllocatorDefault, itemPath) : NULL;
-  CFReleaseSafe(base);
-  CFReleaseSafe(itemPath);
+  cf::release(base);
+  cf::release(itemPath);
   return NULL != _bundle;
 }
 #endif // __use_bundles__
@@ -332,7 +332,7 @@ inline bool Library::_search_bundle(const std::string &name) {
       return true;
     }
   }
-  CFReleaseSafe(str);
+  cf::release(str);
 #else
   const void *__unused__[] = {&__unused__, &name};
 #endif
@@ -353,21 +353,26 @@ inline bool Library::_attempt_core(const char *path, PathModified modified) {
 #if __use_bundles__
   if (Unmodified == modified) {
     const size_t len = strlen(path);
-    CFStringRef str;
     CFURLRef url = CFURLCreateFromFileSystemRepresentation(
         kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(path), len, false);
 
     _bundle = (NULL != url) ? CFBundleCreate(kCFAllocatorDefault, url) : NULL;
 
     // if not a path, try it as a bundle identifier
-    str = (NULL != _bundle)
+    if (!_bundle) {
+      CFStringRef str =
+          (NULL != _bundle)
               ? NULL
               : CFStringCreateWithBytes(
                     kCFAllocatorDefault, reinterpret_cast<const UInt8 *>(path),
                     len, CFStringGetSystemEncoding(), false);
-    _bundle = (NULL != str) ? CFBundleGetBundleWithIdentifier(str) : _bundle;
-    CFReleaseSafe(str);
-    CFReleaseSafe(_bundle);
+      _bundle = (NULL != str) ? CFBundleGetBundleWithIdentifier(str) : _bundle;
+      cf::release(str);
+    }
+
+    if (_bundle) {
+      return true;
+    }
   }
 #else
   const void *__unused__[] = {&__unused__, &modified};

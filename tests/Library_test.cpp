@@ -56,29 +56,38 @@ int main(const int argc, const char *const argv[]) {
               exception.what());
     }
 #if defined(__APPLE__)
-    typedef int (*tick_count)();
+    typedef double (*absolute_time)();
     try {
-      printf("Carbon:TickCount=%d\n",
-             sys::Library("Carbon").function<tick_count>("TickCount")());
+      printf("CoreFoundation:CFAbsoluteTimeGetCurrent=%0.3f\n",
+             sys::Library("CoreFoundation")
+                 .function<absolute_time>("CFAbsoluteTimeGetCurrent")());
     } catch (const std::exception &exception) {
-      fprintf(stderr, "FAILED: EXCEPTION(Carbon:TickCount): %s\n",
-              exception.what());
+      fprintf(
+          stderr,
+          "FAILED: EXCEPTION(CoreFoundation:CFAbsoluteTimeGetCurrent): %s\n",
+          exception.what());
     }
     try {
-      printf(
-          "Carbon.framework:TickCount=%d\n",
-          sys::Library("Carbon.framework").function<tick_count>("TickCount")());
+      printf("CoreFoundation.framework:CFAbsoluteTimeGetCurrent=%0.3f\n",
+             sys::Library("CoreFoundation.framework")
+                 .function<absolute_time>("CFAbsoluteTimeGetCurrent")());
     } catch (const std::exception &exception) {
-      fprintf(stderr, "FAILED: EXCEPTION(Carbon.framework:TickCount): %s\n",
-              exception.what());
+      fprintf(
+          stderr,
+          "FAILED: "
+          "EXCEPTION(CoreFoundation.framework:CFAbsoluteTimeGetCurrent): %s\n",
+          exception.what());
     }
     try {
-      printf("Carbon.framework:TickCount=%d\n",
-             sys::Library("/System/Library/Frameworks/Carbon.framework")
-                 .function<tick_count>("TickCount")());
+      printf("CoreFoundation.framework:CFAbsoluteTimeGetCurrent=%0.3f\n",
+             sys::Library("/System/Library/Frameworks/CoreFoundation.framework")
+                 .function<absolute_time>("CFAbsoluteTimeGetCurrent")());
     } catch (const std::exception &exception) {
-      fprintf(stderr, "FAILED: EXCEPTION(Carbon.framework:TickCount): %s\n",
-              exception.what());
+      fprintf(
+          stderr,
+          "FAILED: "
+          "EXCEPTION(CoreFoundation.framework:CFAbsoluteTimeGetCurrent): %s\n",
+          exception.what());
     }
 #endif
     try {
