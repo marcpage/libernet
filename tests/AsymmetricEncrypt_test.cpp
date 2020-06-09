@@ -64,8 +64,8 @@ int main(int /*argc*/, char * /*argv*/[]) {
              exponentIndex < sizeof(exponents) / sizeof(exponents[0]);
              ++exponentIndex) {
           try {
-            crypto::OpenSSLRSAAES256PrivateKey rsa(keySizes[keySizeIndex],
-                                                   exponents[exponentIndex]);
+            crypto::RSAAES256PrivateKey rsa(keySizes[keySizeIndex],
+                                            exponents[exponentIndex]);
             crypto::AutoClean<crypto::AsymmetricPublicKey> publicRsa(
                 rsa.publicKey());
 
@@ -75,7 +75,7 @@ int main(int /*argc*/, char * /*argv*/[]) {
             dotest(rsa.decrypt(publicRsa->encrypt(dummyHash, buffer),
                                signature) == dummyHash);
 
-            crypto::OpenSSLRSAAES256PrivateKey rsa2(rsa.serialize(buffer));
+            crypto::RSAAES256PrivateKey rsa2(rsa.serialize(buffer));
             crypto::AutoClean<crypto::AsymmetricPublicKey> publicRsa2(
                 rsa.publicKey());
 
