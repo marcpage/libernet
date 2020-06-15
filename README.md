@@ -788,14 +788,14 @@ See [Indirect Trust](#indirect-trust) for more details.
 Temporary trust can be given to "try out" something, to see if it is what is advertised and be able to mark as trusted.
 For websites and apps (special websites) this would allow downloading the bundle and being able to manually inspect it before trusting it.
 
-For web display, a node can specify whitelist or blacklist mode.
-Whitelist mode only allows trusted (positive score) identities.
-Blacklist mode only disallows untrusted (negative score) identities.
+For web display, a node can specify allowlist or blocklist mode.
+Allowlist mode only allows trusted (positive score) identities.
+Blocklist mode only disallows untrusted (negative score) identities.
 
 For [messages](#messages), senders are evaluated via this trust method.
 Trusted senders go to the inbox.
 Graylist senders (unable to determine a trust score) to to the spam folder.
-Blacklist senders go to the trash.
+Blocklist senders go to the trash.
 
 ### Direct Trust
 Is it in the top level trust (we trusted or distrusted the person explicitly):
