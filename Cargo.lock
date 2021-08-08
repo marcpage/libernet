@@ -532,6 +532,7 @@ dependencies = [
  "data-encoding",
  "error-chain",
  "json",
+ "miniz_oxide",
  "reqwest",
  "ring",
  "tokio",
