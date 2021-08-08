@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
     let port = matches.value_of("port").unwrap_or("80");
     println!("Listening on port {}", port);
-    let path = "file.txt";
+    let path = "/tmp/file.txt";
 
     let mut output = File::create(path)?;
     write!(output, "We will generate a digest of this text")?;
