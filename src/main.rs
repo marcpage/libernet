@@ -1,6 +1,6 @@
 use clap::{Arg, App};
 use error_chain::error_chain;
-use data_encoding::HEXUPPER;
+use data_encoding::HEXLOWER;
 use ring::digest::{Context, Digest, SHA256};
 use std::fs::File;
 use std::io::{BufReader, Read, Write};
@@ -40,6 +40,7 @@ fn main() -> Result<()> {
 
     let port = matches.value_of("port").unwrap_or("80");
     println!("Listening on port {}", port);
+
     let path = "/tmp/file.txt";
 
     let mut output = File::create(path)?;
@@ -49,7 +50,7 @@ fn main() -> Result<()> {
     let reader = BufReader::new(input);
     let digest = sha256_digest(reader)?;
 
-    println!("SHA-256 digest is {}", HEXUPPER.encode(digest.as_ref()));
+    println!("SHA-256 digest is {}", HEXLOWER.encode(digest.as_ref()));
 
     Ok(())
 }
