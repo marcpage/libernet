@@ -1,0 +1,19 @@
+[package]
+name = "libernet"
+version = "0.0.1"
+edition = "2018"
+readme = "README.md"
+license = "Creative Commons Public Domain Dedication and Certification"
+authors = ["Marc Page <MarcAllenPage@gmail.com"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = "1.9.0"
+reqwest = "0.11.4"
+warp = "0.3.1"
+ring = "0.16.20"
+clap = "2.33.3"
+data-encoding = "2.3.2"
+error-chain = "0.12.4"
+
