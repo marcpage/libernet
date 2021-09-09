@@ -1,14 +1,13 @@
-use clap::{Arg, App};
 use warp::Filter;
 
 #[tokio::main]
 async fn main() {
     // GET /hello/warp => 200 OK with body "Hello, warp!"
-    let matches = App::new("libernet")
+    let matches = clap::App::new("libernet")
                     .version("0.0.1")
                     .author("Marc Page <MarcAllenPage@gmail.com")
                     .about("Wiki for the world")
-                    .arg(Arg::with_name("port")
+                    .arg(clap::Arg::with_name("port")
                         .short("p")
                         .long("port")
                         .value_name("PORT")
@@ -78,6 +77,25 @@ async fn main() {
         .run(([127, 0, 0, 1], port))
         .await;
 }
+
+pub mod identity {
+
+    pub fn sha256_digest<R: std::io::Read>(mut reader: R) -> Result<ring::digest::Digest, std::io::Error> {
+        let mut context = ring::digest::Context::new(&ring::digest::SHA256);
+        let mut buffer = [0; 1024];
+
+        loop {
+            let count = reader.read(&mut buffer)?;
+            if count == 0 {
+                break;
+            }
+            context.update(&buffer[..count]);
+        }
+
+        Ok(context.finish())
+    }
+
+}
 /*
 error_chain::error_chain! {
     foreign_links {
@@ -107,11 +125,11 @@ error_chain::error_chain! {
 use std::io::Write;
 
 fn main() -> Result<()> {
-    let matches = App::new("libernet")
+    let matches = clap::App::new("libernet")
                     .version("0.0.1")
                     .author("Marc Page <MarcAllenPage@gmail.com")
                     .about("Wiki for the world")
-                    .arg(Arg::with_name("port")
+                    .arg(clap::Arg::with_name("port")
                         .short("p")
                         .long("port")
                         .value_name("PORT")
