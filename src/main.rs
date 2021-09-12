@@ -87,9 +87,12 @@ async fn main() {
 
         // Public PUT /server
         })).or(warp::put()
+            .and(warp::body::content_length_limit(1024 * 1024))
+            .and(warp::filters::body::bytes())
             .and(warp::path("server"))
             .and(warp::path::end())
-            .map(|| {
+            .map(|full_body: bytes::Bytes| {
+        println!("bytes = {:?}", full_body);
         warp::http::Response::builder()
             .header("Content-Type", "text/html")
             .body(format!("<html><body><b>server info</b></body></html>"))
@@ -100,6 +103,19 @@ async fn main() {
             .and(warp::path("requests"))
             .and(warp::path::end())
             .map(|| {
+        warp::http::Response::builder()
+            .header("Content-Type", "text/html")
+            .body(format!("<html><body><b>data requests</b></body></html>"))
+
+        // Public PUT /data/requests
+        })).or(warp::put()
+            .and(warp::body::content_length_limit(1024 * 1024))
+            .and(warp::filters::body::bytes())
+            .and(warp::path("data"))
+            .and(warp::path("requests"))
+            .and(warp::path::end())
+            .map(|full_body: bytes::Bytes| {
+        println!("bytes = {:?}", full_body);
         warp::http::Response::builder()
             .header("Content-Type", "text/html")
             .body(format!("<html><body><b>data requests</b></body></html>"))
@@ -117,11 +133,14 @@ async fn main() {
 
         // Public PUT /data/sha256/<hash>
         })).or(warp::put()
+            .and(warp::body::content_length_limit(1024 * 1024))
+            .and(warp::filters::body::bytes())
             .and(warp::path("data"))
             .and(warp::path("sha256"))
             .and(warp::path::param())
             .and(warp::path::end())
-            .map(|hash: String| {
+            .map(|full_body: bytes::Bytes, hash: String| {
+        println!("bytes = {:?}", full_body);
         warp::http::Response::builder()
             .header("Content-Type", "text/html")
             .body(format!("<html><body><b>data: hash={}</b></body></html>", hash))
