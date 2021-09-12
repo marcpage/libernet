@@ -9,15 +9,16 @@ authors = ["Marc Page <MarcAllenPage@gmail.com"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tokio = { version = "1", features = ["full"] }
-reqwest = "0.11.4"
-warp = "0.3.1"
-ring = "0.16.20"
-rsa = "0.5.0"
-clap = "2.33.3"
-data-encoding = "2.3.2"
+tokio = { version = "1", features = ["full"] } # io
+reqwest = "0.11.4" # get URL
+warp = "0.3.1" # web server
+ring = "0.16.20" # SHA256
+rsa = "0.5.0" # RSA public key encrypt
+clap = "2.33.3" # command line parameters
+data-encoding = "2.3.2" # base64
 error-chain = "0.12.4"
-json = "0.12.4"
-miniz_oxide = "0.4.4"
-crossbeam-channel = "0.5"
-memmap = "0.7.0"
+json = "0.12.4" # JSON
+miniz_oxide = "0.4.4" # zlib
+crossbeam-channel = "0.5" # message passing
+memmap = "0.7.0" # memory mapped files
+pnet = "0.28.0" # pnet::datalink::interfaces()
