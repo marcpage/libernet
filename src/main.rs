@@ -16,13 +16,28 @@ async fn main() {
                         .help("The port to listen on")).get_matches();
 
     let port:u16 = matches.value_of("port").unwrap_or("8000").parse::<u16>().unwrap_or(8000);
+    let bytes = bytes::Bytes::from("012345678");
+    let hash = identity::sha256_digest_of_bytes(&bytes);
 
+    println!("hash = {}", hash);
     rest::api::start(port).await;
 }
 
 pub mod identity {
 
-    pub fn sha256_digest<R: std::io::Read>(mut reader: R) -> Result<ring::digest::Digest, std::io::Error> {
+    fn digest_to_string(digest: ring::digest::Digest) -> String {
+        let hash_strings = digest.as_ref().iter().map(|b| format!("{:02x?}", b));
+
+        hash_strings.collect::<Vec<String>>().join("")
+    }
+
+    pub fn sha256_digest_of_bytes(contents: &bytes::Bytes) -> String {
+        let mut context = ring::digest::Context::new(&ring::digest::SHA256);
+        context.update(contents.as_ref());
+        digest_to_string(context.finish())
+    }
+
+    pub fn read_sha256_digest<R: std::io::Read>(mut reader: R) -> Result<String, std::io::Error> {
         let mut context = ring::digest::Context::new(&ring::digest::SHA256);
         let mut buffer = [0; 1024];
 
@@ -34,7 +49,7 @@ pub mod identity {
             context.update(&buffer[..count]);
         }
 
-        Ok(context.finish())
+        Ok(digest_to_string(context.finish()))
     }
 
 }
