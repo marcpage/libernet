@@ -11,7 +11,7 @@ async fn main() {
     let hash = identity::sha256_digest_of_bytes(&bytes);
 
     println!("hash = {}", hash);
-    rest::api::start(config.port).await;
+    rest::api::start(([0, 0, 0, 0], config.port)).await;
 }
 
 impl Configuration {

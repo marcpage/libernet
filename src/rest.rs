@@ -14,7 +14,7 @@ pub mod api {
         is_local
     }
 
-    pub async fn start(port: u16) {
+    pub async fn start(addr: impl Into<std::net::SocketAddr>) {
 
         // Private GET /api/<action>
         let api = warp::get()
@@ -195,7 +195,7 @@ pub mod api {
         }));
 
         warp::serve(api)
-            .run(([0, 0, 0, 0], port))
+            .run(addr)
             .await;
     }
 }
