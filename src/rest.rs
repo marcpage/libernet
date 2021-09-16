@@ -15,7 +15,9 @@ pub mod api {
     }
 
     fn get_content(storage_path: &String, identifier: &String) -> String {
-        let content_path = std::path::Path::new(storage_path).join(identifier.chars().into_iter().take(2).collect::<String>()).join(identifier);
+        let content_path = std::path::Path::new(storage_path)
+            .join(identifier.chars().into_iter().take(2).collect::<String>())
+            .join(identifier);
         format!("Path = {}", content_path.to_str().unwrap_or("???"))
     }
 
@@ -200,8 +202,6 @@ pub mod api {
 
         }));
 
-        warp::serve(api)
-            .run(addr)
-            .await;
+        warp::serve(api).run(addr).await;
     }
 }

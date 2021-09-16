@@ -2,7 +2,7 @@ mod rest;
 
 struct Configuration {
     port: u16,
-    storage: String
+    storage: String,
 }
 
 #[tokio::main]
@@ -18,26 +18,33 @@ async fn main() {
 impl Configuration {
     fn new() -> Configuration {
         let matches = clap::App::new("libernet")
-                        .version("0.0.1")
-                        .author("Marc Page <MarcAllenPage@gmail.com>")
-                        .about("Wiki for the world")
-                        .arg(clap::Arg::with_name("port")
-                            .short("p")
-                            .long("port")
-                            .value_name("PORT")
-                            .help("The port to listen on")
-                        )
-                        .arg(clap::Arg::with_name("storage")
-                            .short("s")
-                            .long("storage")
-                            .value_name("STORAGE_PATH")
-                            .help("The path to store objects")
-                        ).get_matches();
+            .version("0.0.1")
+            .author("Marc Page <MarcAllenPage@gmail.com>")
+            .about("Wiki for the world")
+            .arg(
+                clap::Arg::with_name("port")
+                    .short("p")
+                    .long("port")
+                    .value_name("PORT")
+                    .help("The port to listen on"),
+            )
+            .arg(
+                clap::Arg::with_name("storage")
+                    .short("s")
+                    .long("storage")
+                    .value_name("STORAGE_PATH")
+                    .help("The path to store objects"),
+            )
+            .get_matches();
 
-        let port :u16 = matches.value_of("port").unwrap_or("8000").parse::<u16>().unwrap_or(8000);
+        let port: u16 = matches
+            .value_of("port")
+            .unwrap_or("8000")
+            .parse::<u16>()
+            .unwrap_or(8000);
         let storage = matches.value_of("storage").unwrap_or("/tmp").to_string();
 
-        Configuration{port, storage}
+        Configuration { port, storage }
     }
 }
 
@@ -69,6 +76,4 @@ pub mod identity {
 
         Ok(digest_to_string(context.finish()))
     }
-
 }
-
