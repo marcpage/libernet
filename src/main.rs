@@ -1,7 +1,8 @@
 mod rest;
 
 struct Configuration {
-    port: u16
+    port: u16,
+    storage: String
 }
 
 #[tokio::main]
@@ -11,7 +12,7 @@ async fn main() {
     let hash = identity::sha256_digest_of_bytes(&bytes);
 
     println!("hash = {}", hash);
-    rest::api::start(([0, 0, 0, 0], config.port), std::path::Path::new("/tmp")).await;
+    rest::api::start(([0, 0, 0, 0], config.port), &config.storage).await;
 }
 
 impl Configuration {
@@ -24,11 +25,19 @@ impl Configuration {
                             .short("p")
                             .long("port")
                             .value_name("PORT")
-                            .help("The port to listen on")).get_matches();
+                            .help("The port to listen on")
+                        )
+                        .arg(clap::Arg::with_name("storage")
+                            .short("s")
+                            .long("storage")
+                            .value_name("STORAGE_PATH")
+                            .help("The path to store objects")
+                        ).get_matches();
 
-        let port:u16 = matches.value_of("port").unwrap_or("8000").parse::<u16>().unwrap_or(8000);
+        let port :u16 = matches.value_of("port").unwrap_or("8000").parse::<u16>().unwrap_or(8000);
+        let storage = matches.value_of("storage").unwrap_or("/tmp").to_string();
 
-        Configuration{port}
+        Configuration{port, storage}
     }
 }
 
