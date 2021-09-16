@@ -2,25 +2,37 @@ mod rest;
 
 pub use crate::rest::api;
 
+struct Configuration {
+    port: u16
+}
+
 #[tokio::main]
 async fn main() {
     // GET /hello/warp => 200 OK with body "Hello, warp!"
-    let matches = clap::App::new("libernet")
-                    .version("0.0.1")
-                    .author("Marc Page <MarcAllenPage@gmail.com")
-                    .about("Wiki for the world")
-                    .arg(clap::Arg::with_name("port")
-                        .short("p")
-                        .long("port")
-                        .value_name("PORT")
-                        .help("The port to listen on")).get_matches();
-
-    let port:u16 = matches.value_of("port").unwrap_or("8000").parse::<u16>().unwrap_or(8000);
+    let config = Configuration::new();
     let bytes = bytes::Bytes::from("012345678");
     let hash = identity::sha256_digest_of_bytes(&bytes);
 
     println!("hash = {}", hash);
-    rest::api::start(port).await;
+    rest::api::start(config.port).await;
+}
+
+impl Configuration {
+    fn new() -> Configuration {
+        let matches = clap::App::new("libernet")
+                        .version("0.0.1")
+                        .author("Marc Page <MarcAllenPage@gmail.com")
+                        .about("Wiki for the world")
+                        .arg(clap::Arg::with_name("port")
+                            .short("p")
+                            .long("port")
+                            .value_name("PORT")
+                            .help("The port to listen on")).get_matches();
+
+        let port:u16 = matches.value_of("port").unwrap_or("8000").parse::<u16>().unwrap_or(8000);
+
+        Configuration{port}
+    }
 }
 
 pub mod identity {
