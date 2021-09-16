@@ -14,7 +14,13 @@ pub mod api {
         is_local
     }
 
-    pub async fn start(addr: impl Into<std::net::SocketAddr>) {
+    fn get_content(storage_path: &std::path::Path, identifier: &String) -> String {
+        let content_path = storage_path.join(identifier.chars().into_iter().take(2).collect::<String>()).join(identifier);
+        format!("Path = {}", content_path.to_str().unwrap_or("???"))
+    }
+
+    pub async fn start(addr: impl Into<std::net::SocketAddr>, storage_path: &std::path::Path) {
+        println!("Path = {}", get_content(storage_path, &"hello".to_string()));
 
         // Private GET /api/<action>
         let api = warp::get()
