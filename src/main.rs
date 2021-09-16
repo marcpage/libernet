@@ -18,7 +18,7 @@ impl Configuration {
     fn new() -> Configuration {
         let matches = clap::App::new("libernet")
                         .version("0.0.1")
-                        .author("Marc Page <MarcAllenPage@gmail.com")
+                        .author("Marc Page <MarcAllenPage@gmail.com>")
                         .about("Wiki for the world")
                         .arg(clap::Arg::with_name("port")
                             .short("p")
