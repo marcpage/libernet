@@ -1,14 +1,11 @@
 mod rest;
 
-pub use crate::rest::api;
-
 struct Configuration {
     port: u16
 }
 
 #[tokio::main]
 async fn main() {
-    // GET /hello/warp => 200 OK with body "Hello, warp!"
     let config = Configuration::new();
     let bytes = bytes::Bytes::from("012345678");
     let hash = identity::sha256_digest_of_bytes(&bytes);
