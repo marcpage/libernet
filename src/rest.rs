@@ -14,15 +14,23 @@ pub mod api {
         is_local
     }
 
-    fn get_content(storage_path: &String, identifier: &String) -> String {
+    use std::io::Read;
+
+    fn get_content(storage_path: &String, identifier: &String) -> Result<Vec<u8>, std::io::Error> {
         let content_path = std::path::Path::new(storage_path)
             .join(identifier.chars().into_iter().take(2).collect::<String>())
             .join(identifier);
-        format!("Path = {}", content_path.to_str().unwrap_or("???"))
+        let mut content_file = std::fs::File::open(&content_path)?;
+        let metadata = std::fs::metadata(&content_path)?;
+        let mut buffer = vec![0; metadata.len() as usize];
+
+        content_file.read(&mut buffer)?;
+
+        Ok(buffer)
     }
 
     pub async fn start(addr: impl Into<std::net::SocketAddr>, storage_path: &String) {
-        println!("Path = {}", get_content(storage_path, &"hello".to_string()));
+        println!("Path = {:?}", get_content(storage_path, &"hello".to_string()));
 
         // Private GET /api/<action>
         let api = warp::get()
