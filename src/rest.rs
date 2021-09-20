@@ -32,7 +32,7 @@ pub mod api {
     pub async fn start(addr: impl Into<std::net::SocketAddr>, storage_path: &String) {
         println!("Path = {:?}", get_content(storage_path, &"hello".to_string()));
 
-        // Private GET /api/<action>
+        // Private GET /
         let api = warp::get()
             .and(warp::addr::remote())
             .and(warp::path::end()).map(|addr: Option<std::net::SocketAddr>| {
@@ -45,7 +45,19 @@ pub mod api {
             warp::http::Response::builder()
                 .header("Content-Type", "text/html")
                 .status(401)
-                .body(format!("<html><body><b>Index App</b><br/>From: {:?}</body></html>",addr))
+                .body(format!("<html><body>
+                             <b>Index App</b><br/>
+                             From: {:?}<br/>
+                             <a href='/api/test?parameters=none'>api</a><br/>
+                             <a href='/app'>app</a><br/>
+                             <a href='/server'>server</a><br/>
+                             <a href='/data/requests'>data requests</a><br/>
+                             <a href='/data/sha256/aaa'>data sha256 aaa</a><br/>
+                             <a href='/data/like/sha256/aaa'>data like sha256 aaa</a><br/>
+                             <a href='/data/sha256/aaa/aes256/bbb'>data sha256 aaa aes256 bbb</a><br/>
+                             <a href='/web/location'>web location</a><br/>
+                             <a href='/mail/read'>mail app read</a><br/>
+                             </body></html>",addr))
         }
 
         // Private GET /api/<action>
