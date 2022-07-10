@@ -2,6 +2,7 @@
 
 import argparse
 import libernet.plat.dirs
+import os
 
 from flask import Flask, render_template, request, redirect, make_response
 
@@ -20,6 +21,24 @@ def create_app(storage_path):
     def home():
         return "<html><body>Welcome</body></html>"
 
+    @app.route("/sha256/<identifier>")
+    def sha256(identifier):
+        return f"<html><body>Identifier {identifier}</body></html>"
+
+    # Mark: v1 API
+
+    @app.route("/api/v1/backup/add")
+    def add_backup():
+        return "{}"
+
+    @app.route("/api/v1/backup/remove")
+    def remove_backup():
+        return "{}"
+
+    @app.route("/api/v1/backup/list")
+    def list_backups():
+        return "[]"
+
     return app
 
 
@@ -37,9 +56,11 @@ def parse_args():
     parser.add_argument(
         "-s", "--storage", default=libernet.plat.dirs.pref_dir('libernet'), help="Directory to store data"
     )
-    parser.add_argument("-d", "--debug", default=False, help="Run debug server.")
+    parser.add_argument("-d", "--debug", default=False, action="store_true", help="Run debug server.")
     args = parser.parse_args()
 
+    libernet.plat.dirs.make_dirs(os.path.join(args.storage, 'web'))
+    libernet.plat.dirs.make_dirs(os.path.join(args.storage, 'upload'))
     return args
 
 
