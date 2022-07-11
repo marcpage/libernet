@@ -4,8 +4,12 @@ import Crypto.Hash.SHA256
 import base64
 
 
+def sha256_hasher(data):
+    return Crypto.Hash.SHA256.new(data)
+
+
 def sha256_data_identifier(data):
-    hashed = Crypto.Hash.SHA256.new(data).digest()
+    hashed = sha256_hasher(data).digest()
     return base64.urlsafe_b64encode(hashed).decode('ascii')
 
 
