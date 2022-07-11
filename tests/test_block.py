@@ -3,7 +3,7 @@
 import tempfile
 import os
 
-import libernet.tools.blocks
+import libernet.tools.block
 import libernet.plat
 
 CONTENTS = [

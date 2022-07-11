@@ -16,7 +16,9 @@ BLOCK_SIZE = 1024 * 1024
 
 def store_block(contents, storage):
     """Stores a block of data (no more than 1 MiB in size)"""
-    assert len(contents) <= BLOCK_SIZE, f"Block too big {len(contents)}"
+    assert (
+        len(contents) <= BLOCK_SIZE
+    ), f"Block too big {len(contents)} vs {BLOCK_SIZE} ({len(contents) - BLOCK_SIZE} bytes too big)"
     compressed = zlib.compress(contents, 9)
     contents_identifier = libernet.tools.hash.sha256_data_identifier(contents)
 
@@ -127,7 +129,6 @@ def retrieve_block(url, storage):
         for d in os.listdir(upload_dir)
         if os.path.isdir(os.path.join(upload_dir, d))
     ]
-    print(f"initial {search_dirs}")
     search_dirs.insert(0, os.path.join(storage, "web"))
 
     if upload_local_dir in search_dirs:
@@ -140,5 +141,4 @@ def retrieve_block(url, storage):
         if found is not None:
             return found
 
-    print(f"final {search_dirs}")
     return None

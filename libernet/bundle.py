@@ -5,7 +5,7 @@
 
 import argparse
 
-import libernet.tools.blocks
+import libernet.tools.bundle
 
 
 def parse_args():
@@ -25,6 +25,7 @@ def parse_args():
     parser.add_argument(
         "-d", "--dir", required=True, type=str, help="Directory to create a bundle for"
     )
+    parser.add_argument("-p", "--previous", type=str, help="URL for previous version")
     args = parser.parse_args()
     return args
 
@@ -32,7 +33,8 @@ def parse_args():
 def main():
     """Entry point. Loop forever unless we are told not to."""
     args = parse_args()
-    print(args)
+    results = libernet.tools.bundle.create(args.dir, args.storage, args.previous)
+    print(f"url: {results[0]}")
 
 
 if __name__ == "__main__":
