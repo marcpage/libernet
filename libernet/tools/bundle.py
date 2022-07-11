@@ -10,11 +10,12 @@ import libernet.tools.block
 import libernet.plat.dirs
 
 
-def process_file(source_path, storage, relative_path, previous, urls):
+def process_file(source_path, storage, relative_path, previous):
     """process a single file"""
     full_path = os.path.join(source_path, relative_path)
     current_file_size = os.path.getsize(full_path)
     current_modified = os.path.getmtime(full_path)
+    urls = []
 
     if relative_path in previous["files"]:
         size_match = current_file_size == previous["files"][relative_path]["size"]
@@ -27,7 +28,8 @@ def process_file(source_path, storage, relative_path, previous, urls):
         modified_match = False
 
     if modified_match and size_match:
-        return previous["files"][relative_path]
+        # TODO should we return the urls if we didn't update them?
+        return (previous["files"][relative_path], urls)
 
     description = {
         "size": os.path.getsize(full_path),
@@ -51,7 +53,7 @@ def process_file(source_path, storage, relative_path, previous, urls):
                 }
             )
 
-    return description
+    return (description, urls)
 
 
 def create(source_path, storage, url=None):
@@ -77,9 +79,10 @@ def create(source_path, storage, url=None):
         ]
 
         for relative_path in relative_paths:
-            file_description = process_file(
-                source_path, storage, relative_path, previous, urls
+            file_description, add_urls = process_file(
+                source_path, storage, relative_path, previous
             )
+            urls.extend(add_urls)
             description["files"][relative_path] = file_description
 
     contents = json.dumps(description, sort_keys=True, separators=(",", ":"))
