@@ -1,4 +1,4 @@
-.PHONY:venv test coverage debug lint run
+.PHONY:venv test coverage debug lint run format
 
 all:venv test coverage lint
 
@@ -20,6 +20,9 @@ debug: venv
 run: venv
 	@python3 -m libernet.server
 
+format: venv
+	@python3 -m black libernet
+
 lint: venv
-	@python3 -m black libernet --check
 	@python3 -m pylint libernet
+	@python3 -m black libernet --check
