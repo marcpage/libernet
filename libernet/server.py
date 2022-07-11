@@ -3,6 +3,7 @@
 import argparse
 import libernet.plat.dirs
 import os
+import logging
 
 from flask import Flask, render_template, request, redirect, make_response
 
@@ -68,6 +69,7 @@ def main():
     """Entry point. Loop forever unless we are told not to."""
 
     args = parse_args()
+    logging.basicConfig(filename=os.path.join(args.storage, 'log.txt'))
     app = create_app(args.storage)
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
