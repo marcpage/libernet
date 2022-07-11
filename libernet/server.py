@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
+""" Libernet server
+"""
+
 import argparse
-import libernet.plat.dirs
 import os
 import logging
 
-from flask import Flask, render_template, request, redirect, make_response
+import flask
+
+import libernet.plat.dirs
 
 
 def create_app(storage_path):
     """create the flask app"""
-    app = Flask(
+    app = flask.Flask(
         __name__,
         static_url_path="",
         static_folder=storage_path,
@@ -55,13 +59,18 @@ def parse_args():
         help="The port to listen on (default 8000)",
     )
     parser.add_argument(
-        "-s", "--storage", default=libernet.plat.dirs.pref_dir('libernet'), help="Directory to store data"
+        "-s",
+        "--storage",
+        default=libernet.plat.dirs.pref_dir("libernet"),
+        help="Directory to store data",
     )
-    parser.add_argument("-d", "--debug", default=False, action="store_true", help="Run debug server.")
+    parser.add_argument(
+        "-d", "--debug", default=False, action="store_true", help="Run debug server."
+    )
     args = parser.parse_args()
 
-    libernet.plat.dirs.make_dirs(os.path.join(args.storage, 'web'))
-    libernet.plat.dirs.make_dirs(os.path.join(args.storage, 'upload'))
+    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "web"))
+    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "upload"))
     return args
 
 
@@ -69,7 +78,7 @@ def main():
     """Entry point. Loop forever unless we are told not to."""
 
     args = parse_args()
-    logging.basicConfig(filename=os.path.join(args.storage, 'log.txt'))
+    logging.basicConfig(filename=os.path.join(args.storage, "log.txt"))
     app = create_app(args.storage)
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
