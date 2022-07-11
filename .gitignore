@@ -66,6 +66,7 @@ Desktop.ini
 
 # Python
 *.pyc
+.coverage
 
 # Java
 *.class

@@ -9,10 +9,10 @@ venv:
 	@pip3 install -q -r requirements.txt
 
 test: venv
-	@coverage run --branch -m pytest
+	@python3 -m coverage run --source libernet -m pytest
 
 coverage: test
-	@coverage report
+	@python3 -m coverage report -m
 
 debug: venv
 	@python3 -m libernet.server --debug
