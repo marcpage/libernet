@@ -1,6 +1,6 @@
-.PHONY:venv test coverage
+.PHONY:venv test coverage debug run
 
-all:venv test coverage
+all:venv test coverage debug run
 
 venv:
 	@python3 -m venv /tmp/libernet
@@ -13,3 +13,9 @@ test: venv
 
 coverage: test
 	@coverage report
+
+debug: venv
+	@python3 -m libernet.server --debug
+
+run: venv
+	@python3 -m libernet.server
