@@ -39,7 +39,7 @@ def path_relative_to(path, base):
     returns relative path from base to path
     """
     parts = []
-    base = base.rstrip('/')
+    base = base.rstrip("/")
     while path != base:
         (path, name) = os.path.split(path)
         parts.append(name)
