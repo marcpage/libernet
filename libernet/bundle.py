@@ -5,6 +5,7 @@
 
 import argparse
 import multiprocessing
+import sys
 
 import libernet.tools.bundle
 
@@ -27,6 +28,7 @@ def parse_args():
         "-d", "--dir", required=True, type=str, help="Directory to create a bundle for"
     )
     parser.add_argument("-p", "--previous", type=str, help="URL for previous version")
+    parser.add_argument("-u", "--url", type=str, help="URL to restore")
     args = parser.parse_args()
     return args
 
@@ -34,10 +36,29 @@ def parse_args():
 def main():
     """Entry point. Loop forever unless we are told not to."""
     args = parse_args()
-    results = libernet.tools.bundle.create(
-        args.dir, args.storage, args.previous, max_threads=multiprocessing.cpu_count()
-    )
-    print(f"url: {results[0]}")
+
+    if args.action == "store":
+        results = libernet.tools.bundle.create(
+            args.dir,
+            args.storage,
+            args.previous,
+            max_threads=multiprocessing.cpu_count(),
+        )
+        print(f"url: {results[0]}")
+
+    elif args.action == "restore":
+        if not args.url:
+            print("For restore you must specify a --url/-u")
+            sys.exit(1)
+
+        missing_blocks = libernet.tools.bundle.missing_blocks(args.url, args.storage)
+
+        if missing_blocks:
+            print("The following blocks are missing and need to be loaded first")
+            print("\t" + "\n\t".join(missing_blocks))
+
+        else:
+            libernet.tools.bundle.restore(args.url, args.dir, args.storage)
 
 
 if __name__ == "__main__":

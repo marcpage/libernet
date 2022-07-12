@@ -61,48 +61,59 @@ def validate_url(url):
     return (url_parts[2], url_parts[4] if decrypt_url else None)
 
 
-def find_block(search_dir, block_identifier, block_key):
+def decrypt_block(encrypted_path, block_key):
+    """decrypt a block"""
+    full_path = os.path.join(encrypted_path, "aes256", block_key)
+
+    if os.path.isfile(full_path + ".raw"):
+
+        with open(full_path + ".raw", "rb") as data_file:
+            return data_file.read()
+
+    else:
+        with open(encrypted_path + ".raw", "rb") as encrypted_file:
+            encrypted = encrypted_file.read()
+
+        key = libernet.tools.hash.binary_from_identifier(block_key)
+        compressed = libernet.tools.encrypt.aes_decrypt(key, encrypted)
+        compressed_identifier = libernet.tools.hash.sha256_data_identifier(compressed)
+        contents = None
+
+        if compressed_identifier == block_key:
+            contents = compressed
+        else:
+            contents = zlib.decompress(compressed)
+            contents_identifier = libernet.tools.hash.sha256_data_identifier(contents)
+
+            if contents_identifier != block_key:
+                contents = None
+
+        if contents is not None:
+            with open(full_path + ".raw", "wb") as data_file:
+                data_file.write(contents)
+
+            return contents
+
+    return None
+
+
+def find_block(search_dir, block_identifier, block_key, load=True):
     """Find a block in a directory"""
     encrypted_path = os.path.join(
         search_dir, "sha256", block_identifier[:2], block_identifier
     )
+
     if not os.path.isfile(encrypted_path + ".raw"):
         return None
 
+    if not load:
+        return True
+
     if block_key is not None:
-        full_path = os.path.join(encrypted_path, "aes256", block_key)
+        contents = decrypt_block(encrypted_path, block_key)
 
-        if os.path.isfile(full_path + ".raw"):
-            with open(full_path + ".raw", "rb") as data_file:
-                return data_file.read()
-
-        else:
-            with open(encrypted_path + ".raw", "rb") as encrypted_file:
-                encrypted = encrypted_file.read()
-
-            key = libernet.tools.hash.binary_from_identifier(block_key)
-            compressed = libernet.tools.encrypt.aes_decrypt(key, encrypted)
-            compressed_identifier = libernet.tools.hash.sha256_data_identifier(
-                compressed
-            )
-            contents = None
-
-            if compressed_identifier == block_key:
-                contents = compressed
-            else:
-                contents = zlib.decompress(compressed)
-                contents_identifier = libernet.tools.hash.sha256_data_identifier(
-                    contents
-                )
-
-                if contents_identifier != block_key:
-                    contents = None
-
-            if contents is not None:
-                with open(full_path + ".raw", "wb") as data_file:
-                    data_file.write(contents)
-
-                return contents
+        if contents is not None:
+            return contents
 
     else:
         with open(encrypted_path + ".raw", "rb") as encrypted_file:
@@ -118,7 +129,7 @@ def find_block(search_dir, block_identifier, block_key):
     return None
 
 
-def retrieve_block(url, storage):
+def retrieve_block(url, storage, load=True):
     """retrieve a block of data (optionally decrypting it)"""
     block_identifier, block_key = validate_url(url)
     upload_dir = os.path.join(storage, "upload")
@@ -136,7 +147,7 @@ def retrieve_block(url, storage):
         search_dirs.insert(0, upload_local_dir)
 
     for search_dir in search_dirs:
-        found = find_block(search_dir, block_identifier, block_key)
+        found = find_block(search_dir, block_identifier, block_key, load)
 
         if found is not None:
             return found

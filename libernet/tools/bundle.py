@@ -125,9 +125,13 @@ def finalize_bundle(description, storage):
     return [top_level, *urls]
 
 
-def get_previous_files(url, storage):
+def get_files(url, storage, enforce=False):
     """get all the files from the previous version if all the (sub)bundles are available"""
     previous_text = libernet.tools.block.retrieve_block(url, storage)
+
+    if previous_text is None and enforce:
+        return None
+
     previous = (
         {"files": {}}
         if previous_text is None
@@ -135,10 +139,14 @@ def get_previous_files(url, storage):
     )
 
     for bundle_url in previous.get("bundles", []):
-        sub_bundle = get_previous_files(bundle_url, storage)
+        sub_bundle = get_files(bundle_url, storage, enforce)
 
         if sub_bundle is not None:
+            # pylint: disable=E1136
             previous["files"].update(sub_bundle["files"])
+
+        elif enforce:
+            return None
 
     return previous
 
@@ -177,7 +185,7 @@ def create(source_path, storage, url=None, max_threads=2):
         previous = {"files": {}}
         description = {"files": {}}
     else:
-        previous = get_previous_files(url, storage)
+        previous = get_files(url, storage)
         description = {"files": {}, "previous": url}
 
     urls = []
@@ -206,3 +214,63 @@ def create(source_path, storage, url=None, max_threads=2):
 
     sub_urls = finalize_bundle(description, storage)
     return [*sub_urls, *urls]
+
+
+def missing_blocks(url, storage):
+    """determine the blocks needed to fully restore this bundle"""
+    previous_text = libernet.tools.block.retrieve_block(url, storage)
+
+    if previous_text is None:
+        return [url]
+
+    bundle = json.loads(previous_text.decode("utf-8"))
+
+    missing = []
+
+    for file in bundle["files"]:
+        for part in bundle["files"][file]["parts"]:
+            exists = libernet.tools.block.retrieve_block(
+                part["url"], storage, load=False
+            )
+
+            if not exists:
+                missing.append(part["url"])
+
+    for subbundle in bundle.get("bundles", []):
+        missing.extend(missing_blocks(subbundle, storage))
+
+    return missing
+
+
+def restore_file(destination_path, file_description, storage):
+    """restore a single file to a given path"""
+    libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
+
+    with open(destination_path, "wb") as destination_file:
+        for block in file_description["parts"]:
+            block_contents = libernet.tools.block.retrieve_block(block["url"], storage)
+
+            if block_contents is None:
+                raise FileNotFoundError(f"Block not found: {block['url']}")
+
+            if len(block_contents) != block["size"]:
+                raise ValueError(
+                    f"Block is not the correct size {len(block_contents)} != {block['size']}"
+                )
+
+            destination_file.write(block_contents)
+
+
+def restore(url, destination, storage):
+    """restore an entire bundle into a directory"""
+    bundle = get_files(url, storage, enforce=True)
+
+    if bundle is None:
+        raise FileNotFoundError("Bundle or sub-bundle url not found")
+
+    # pylint: disable=E1136
+    for file in bundle["files"]:
+        # pylint: disable=E1136
+        restore_file(os.path.join(destination, file), bundle["files"][file], storage)
+
+    return True
