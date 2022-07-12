@@ -3,8 +3,6 @@
 """ Libernet hashing tools
 """
 
-import base64
-
 import Crypto.Hash.SHA256
 
 
@@ -15,13 +13,12 @@ def sha256_hasher(data):
 
 def sha256_data_identifier(data):
     """get sha256 identifier of data"""
-    hashed = sha256_hasher(data).digest()
-    return base64.urlsafe_b64encode(hashed).decode("ascii")
+    return sha256_hasher(data).hexdigest().lower()
 
 
 def binary_from_identifier(identifier):
     """get the binary form of an identifier"""
-    return base64.urlsafe_b64decode(identifier)
+    return bytes.fromhex(identifier)
 
 
 def identifier_to_bits(identifier):

@@ -4,6 +4,7 @@
 """
 
 import argparse
+import multiprocessing
 
 import libernet.tools.bundle
 
@@ -33,7 +34,9 @@ def parse_args():
 def main():
     """Entry point. Loop forever unless we are told not to."""
     args = parse_args()
-    results = libernet.tools.bundle.create(args.dir, args.storage, args.previous)
+    results = libernet.tools.bundle.create(
+        args.dir, args.storage, args.previous, max_threads=multiprocessing.cpu_count()
+    )
     print(f"url: {results[0]}")
 
 

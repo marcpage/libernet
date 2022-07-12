@@ -17,9 +17,9 @@ CONTENTS = [
 def test_store_retrieve_block():
     with tempfile.TemporaryDirectory() as storage:
         libernet.plat.dirs.make_dirs(os.path.join(storage, "upload", "local"))
-        urls = [libernet.tools.blocks.store_block(c, storage) for c in CONTENTS]
+        urls = [libernet.tools.block.store_block(c, storage) for c in CONTENTS]
         block_urls = [u.rsplit('/', 2)[0] for u in urls]
-        contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in urls]
+        contents = [libernet.tools.block.retrieve_block(u, storage) for u in urls]
 
         for content, CONTENT in zip(contents,CONTENTS):
             assert content == CONTENT, f"'{content}' != '{CONTENT}'"
@@ -30,8 +30,8 @@ def test_store_retrieve_block():
                     if os.path.splitext(file)[1] == '.raw':
                         os.remove(os.path.join(root, file))
 
-        contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in urls]
-        block_contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in block_urls]
+        contents = [libernet.tools.block.retrieve_block(u, storage) for u in urls]
+        block_contents = [libernet.tools.block.retrieve_block(u, storage) for u in block_urls]
 
         for content, CONTENT in zip(contents,CONTENTS):
             assert content == CONTENT, f"'{content}' != '{CONTENT}'"
@@ -42,8 +42,8 @@ def test_store_retrieve_block():
                     if os.path.splitext(file)[1] == '.raw':
                         os.remove(os.path.join(root, file))
 
-        contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in urls]
-        block_contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in block_urls]
+        contents = [libernet.tools.block.retrieve_block(u, storage) for u in urls]
+        block_contents = [libernet.tools.block.retrieve_block(u, storage) for u in block_urls]
         assert all([c is None for c in contents])
         assert all([c is None for c in block_contents])
 
@@ -55,8 +55,8 @@ def test_store_retrieve_block():
                             data_file.seek(0)
                             data_file.write(b'00000')
 
-        contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in urls]
-        block_contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in block_urls]
+        contents = [libernet.tools.block.retrieve_block(u, storage) for u in urls]
+        block_contents = [libernet.tools.block.retrieve_block(u, storage) for u in block_urls]
         assert all([c is None for c in contents])
         assert all([c is None for c in block_contents])
 
@@ -68,8 +68,8 @@ def test_store_retrieve_block():
                             data_file.seek(0)
                             data_file.write(b'00000')
 
-        contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in urls]
-        block_contents = [libernet.tools.blocks.retrieve_block(u, storage) for u in block_urls]
+        contents = [libernet.tools.block.retrieve_block(u, storage) for u in urls]
+        block_contents = [libernet.tools.block.retrieve_block(u, storage) for u in block_urls]
         assert all([c is None for c in contents])
         assert all([c is None for c in block_contents])
 
