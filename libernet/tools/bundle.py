@@ -127,15 +127,15 @@ def finalize_bundle(description, storage):
 
 def get_files(url, storage, enforce=False):
     """get all the files from the previous version if all the (sub)bundles are available"""
-    previous_text = libernet.tools.block.retrieve_block(url, storage)
+    bundle_text = libernet.tools.block.retrieve_block(url, storage)
 
-    if previous_text is None and enforce:
+    if bundle_text is None and enforce:
         return None
 
     previous = (
         {"files": {}}
-        if previous_text is None
-        else json.loads(previous_text.decode("utf-8"))
+        if bundle_text is None
+        else json.loads(bundle_text.decode("utf-8"))
     )
 
     for bundle_url in previous.get("bundles", []):
@@ -218,12 +218,12 @@ def create(source_path, storage, url=None, max_threads=2):
 
 def missing_blocks(url, storage):
     """determine the blocks needed to fully restore this bundle"""
-    previous_text = libernet.tools.block.retrieve_block(url, storage)
+    bundle_text = libernet.tools.block.retrieve_block(url, storage)
 
-    if previous_text is None:
+    if bundle_text is None:
         return [url]
 
-    bundle = json.loads(previous_text.decode("utf-8"))
+    bundle = json.loads(bundle_text.decode("utf-8"))
 
     missing = []
 
@@ -272,5 +272,3 @@ def restore(url, destination, storage):
     for file in bundle["files"]:
         # pylint: disable=E1136
         restore_file(os.path.join(destination, file), bundle["files"][file], storage)
-
-    return True

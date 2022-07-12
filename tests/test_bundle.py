@@ -46,3 +46,7 @@ def test_create_large_files():
             more_urls = libernet.tools.bundle.create(to_store, storage, urls[0], max_threads=multiprocessing.cpu_count())
             done = time.time()
             assert (done - mid) < (mid - start) / 2
+            assert not libernet.tools.bundle.missing_blocks(urls[0], storage)
+
+            with tempfile.TemporaryDirectory() as to_restore:
+                libernet.tools.bundle.restore(urls[0], to_restore, storage)
