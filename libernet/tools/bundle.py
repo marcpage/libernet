@@ -5,10 +5,18 @@
 
 import os
 import json
-import multiprocessing
+import threading
+import queue
 
 import libernet.tools.block
 import libernet.plat.dirs
+
+
+def start_thread(target, *args, **kwargs):
+    """Create a thread running a function with the given parameters."""
+    thread = threading.Thread(target=target, args=args, kwargs=kwargs, daemon=True)
+    thread.start()
+    return thread
 
 
 def process_file(source_path, storage, relative_path, previous):
@@ -120,15 +128,17 @@ def finalize_bundle(description, storage):
 def get_previous_files(url, storage):
     """get all the files from the previous version if all the (sub)bundles are available"""
     previous_text = libernet.tools.block.retrieve_block(url, storage)
+    previous = (
+        {"files": {}}
+        if previous_text is None
+        else json.loads(previous_text.decode("utf-8"))
+    )
 
-    if previous_text is None:
-        return {"files": {}}
-
-    previous = json.loads(previous_text.decode("utf-8"))
-
-    for bundle_url in previous.get("bundle", []):
+    for bundle_url in previous.get("bundles", []):
         sub_bundle = get_previous_files(bundle_url, storage)
-        previous["files"].update(sub_bundle["files"])
+
+        if sub_bundle is not None:
+            previous["files"].update(sub_bundle["files"])
 
     return previous
 
@@ -148,6 +158,19 @@ def find_all_relative_paths(source_path):
     return all_relative_paths
 
 
+def process_files(in_queue, out_queue, source_path, storage, previous):
+    """thread to process files"""
+    while True:
+        relative_path = in_queue.get()
+
+        if relative_path is None:
+            in_queue.put(None)
+            break
+
+        results = process_file(source_path, storage, relative_path, previous)
+        out_queue.put(results)
+
+
 def create(source_path, storage, url=None, max_threads=2):
     """Create or update a bundle from the contents of a directory"""
     if url is None:
@@ -158,15 +181,26 @@ def create(source_path, storage, url=None, max_threads=2):
         description = {"files": {}, "previous": url}
 
     urls = []
-    all_relative_paths = [
-        (source_path, storage, p, previous)
-        for p in find_all_relative_paths(source_path)
+    file_queue = queue.Queue()
+    results_queue = queue.Queue()
+
+    threads = [
+        start_thread(
+            process_files, file_queue, results_queue, source_path, storage, previous
+        )
+        for _ in range(0, max_threads)
     ]
 
-    with multiprocessing.Pool(max_threads) as pool:
-        results = pool.starmap(process_file, all_relative_paths)
+    for relative_path in find_all_relative_paths(source_path):
+        file_queue.put(relative_path)
 
-    for relative_path, file_description, add_urls in results:
+    file_queue.put(None)
+
+    for thread in threads:
+        thread.join()
+
+    while results_queue.qsize() > 0:
+        relative_path, file_description, add_urls = results_queue.get()
         urls.extend(add_urls)
         description["files"][relative_path] = file_description
 
