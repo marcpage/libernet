@@ -28,7 +28,7 @@ def pref_dir(filename=None):
     if not os.path.isdir(directory):
         make_dirs(directory)
 
-    if not directory or platform.system() == "Linux" and filename:
+    if (not directory or platform.system() == "Linux") and filename:
         filename = "." + filename
 
     return os.path.join(directory, filename) if filename else directory
@@ -39,8 +39,7 @@ def path_relative_to(path, base):
     returns relative path from base to path
     """
     parts = []
-    while len(base) > 0 and base[-1] == "/":
-        base = base[:-1]
+    base = base.rstrip('/')
     while path != base:
         (path, name) = os.path.split(path)
         parts.append(name)

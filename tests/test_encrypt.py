@@ -8,7 +8,7 @@ import libernet.tools.hash
 
 def test_RSA_Identity():
     identity = libernet.tools.encrypt.RSA_Identity.create(1024)
-    assert len(identity.identifier()) == 44
+    assert len(identity.identifier()) == 64
     serialized_private = json.dumps(identity.private_description())
     restored_identity = libernet.tools.encrypt.RSA_Identity(
         json.loads(serialized_private)
