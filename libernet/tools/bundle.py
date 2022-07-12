@@ -96,7 +96,8 @@ def reduce_description(description, extracted_files, remove_one_more=False):
         extracted_files[next_file] = description["files"][next_file]
         del description["files"][next_file]
 
-    if remove_one_more and extracted_files:  # we need room for adding sub bundle(s)
+    if files and remove_one_more and extracted_files:
+        # we need room for adding sub bundle(s)
         next_file = files.pop(0)
         extracted_files[next_file] = description["files"][next_file]
         del description["files"][next_file]
@@ -115,6 +116,7 @@ def finalize_bundle(description, storage):
         sub_description = {"files": extracted_files}
         extracted_files = {}
         reduce_description(sub_description, extracted_files)
+        assert len(sub_description["files"]) > 0
         contents = serialize_bundle(sub_description)
         url = libernet.tools.block.store_block(contents.encode("utf-8"), storage)
         description["bundles"].append(url)
@@ -125,30 +127,33 @@ def finalize_bundle(description, storage):
     return [top_level, *urls]
 
 
+def load_raw(url, storage):
+    """Get the raw contents of the top-level bundle"""
+    bundle_text = libernet.tools.block.retrieve_block(url, storage)
+    return None if bundle_text is None else json.loads(bundle_text.decode("utf-8"))
+
+
 def get_files(url, storage, enforce=False):
     """get all the files from the previous version if all the (sub)bundles are available"""
-    bundle_text = libernet.tools.block.retrieve_block(url, storage)
+    bundle = load_raw(url, storage)
 
-    if bundle_text is None and enforce:
-        return None
+    if bundle is None:
+        if enforce:
+            return None
 
-    previous = (
-        {"files": {}}
-        if bundle_text is None
-        else json.loads(bundle_text.decode("utf-8"))
-    )
+        bundle = {"files": {}}
 
-    for bundle_url in previous.get("bundles", []):
+    for bundle_url in bundle.get("bundles", []):
         sub_bundle = get_files(bundle_url, storage, enforce)
 
         if sub_bundle is not None:
             # pylint: disable=E1136
-            previous["files"].update(sub_bundle["files"])
+            bundle["files"].update(sub_bundle["files"])
 
         elif enforce:
             return None
 
-    return previous
+    return bundle
 
 
 def find_all_relative_paths(source_path):
@@ -218,12 +223,10 @@ def create(source_path, storage, url=None, max_threads=2):
 
 def missing_blocks(url, storage):
     """determine the blocks needed to fully restore this bundle"""
-    bundle_text = libernet.tools.block.retrieve_block(url, storage)
+    bundle = load_raw(url, storage)
 
-    if bundle_text is None:
+    if bundle is None:
         return [url]
-
-    bundle = json.loads(bundle_text.decode("utf-8"))
 
     missing = []
 

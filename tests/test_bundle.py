@@ -6,6 +6,7 @@ import multiprocessing
 import time
 
 import libernet.tools.bundle
+import libernet.tools.block
 
 def test_create():
     with tempfile.TemporaryDirectory() as storage:
@@ -13,32 +14,14 @@ def test_create():
         more_urls = libernet.tools.bundle.create("libernet", storage, urls[0])
 
 def test_create_large_files():
-    file_size = 2 * 1024 * 1024 * 1024
+    libernet.tools.block.BLOCK_SIZE = 128 * 1024  # hack the block size to speed up the tests
+    file_size = 16 * 1024 * 1024
+    file_count = 32
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as to_store:
-            with open(os.path.join(to_store, "a.txt"), "w") as text_file:
-                text_file.write('a'*file_size)
-
-            with open(os.path.join(to_store, "b.txt"), "w") as text_file:
-                text_file.write('b'*file_size)
-
-            with open(os.path.join(to_store, "c.txt"), "w") as text_file:
-                text_file.write('c'*file_size)
-
-            with open(os.path.join(to_store, "d.txt"), "w") as text_file:
-                text_file.write('d'*file_size)
-
-            with open(os.path.join(to_store, "e.txt"), "w") as text_file:
-                text_file.write('e'*file_size)
-
-            with open(os.path.join(to_store, "f.txt"), "w") as text_file:
-                text_file.write('f'*file_size)
-
-            with open(os.path.join(to_store, "g.txt"), "w") as text_file:
-                text_file.write('g'*file_size)
-
-            with open(os.path.join(to_store, "h.txt"), "w") as text_file:
-                text_file.write('h'*file_size)
+            for file_index in range(0, file_count):
+                with open(os.path.join(to_store, f"{file_index:x}.txt"), "w") as text_file:
+                    text_file.write('0'*file_size)
 
             start = time.time()
             urls = libernet.tools.bundle.create(to_store, storage, max_threads=multiprocessing.cpu_count())
@@ -47,6 +30,7 @@ def test_create_large_files():
             done = time.time()
             assert (done - mid) < (mid - start) / 2
             assert not libernet.tools.bundle.missing_blocks(urls[0], storage)
+            assert len(libernet.tools.bundle.load_raw(urls[0], storage).get('bundles', [])) > 0
 
             with tempfile.TemporaryDirectory() as to_restore:
                 libernet.tools.bundle.restore(urls[0], to_restore, storage)
