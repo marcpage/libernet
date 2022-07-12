@@ -8,80 +8,13 @@
 [![watch sheild](https://img.shields.io/github/watchers/marcpage/libernet?label=Watch&style=social)](https://github.com/marcpage/libernet/watchers)
 
 
-Table of Contents
-=================
-
-* [Summary](#summary)
-* [Platform Support](#platform-support)
-  * [macOS support](#macos-support)
-  * [Linux support](#linux-support)
-* [Definitions](#definitions)
-* [Concepts](#concepts)
-  * [Data Identity](#data-identity)
-  * [Data Routing](#data-routing)
-  * [Deleting Data](#deleting-data)
-  * [Data Matching](#data-matching)
-    * [Similar to results](#similar-to-results)
-    * [Cost to match digits](#cost-to-match-digits)
-* [Server](#server)
-  * [HTTP server](#http-server)
-  * [Data transfer](#data-transfer)
-  * [API](#api)
-    * [/api/encode](#apiencode)
-* [File Types](#file-types)
-  * [LiberArchive](#liberarchive)
-* [Data Types](#data-types)
-  * [Small file](#small-file)
-  * [Large file](#large-file)
-  * [Bundle Description](#bundle-description)
-  * [Address History](#address-history)
-    * [Choosing which bundle to display](#choosing-which-bundle-to-display)
-    * [Resolving web addresses](#resolving-web-addresses)
-  * [Personal Key](#personal-key)
-    * [Personal Information](#personal-information)
-  * [Private Key](#private-key)
-  * [Messages](#messages)
-    * [Message Dictionary](#message-dictionary)
-    * [Carrier Dictionary](#carrier-dictionary)
-  * [Trust](#trust)
-    * [Direct Trust](#direct-trust)
-    * [Indirect Trust](#indirect-trust)
-    * [Trust Document](#trust-document)
-  * [Server Information](#server-information)
-  * [Requests](#requests)
-  * [Karma](#karma)
-    * [Reach](#reach)
-    * [Choosing a transaction block to add your transaction](#choosing-a-transaction-block-to-add-your-transaction)
-    * [Transaction Block](#transaction-block)
-
-
-
 # Summary
 
-Libernet is a free, open, and secure platform for communicating and sharing information.
-It is designed to provide a rich internet experience while allowing you to maintain control over your information.
+Libernet is a free, open, and secure platform for having distributed backups.
+It is designed to provide a robust backup solution using a community sharing disk space.
 All information is securely encrypted and distributed across the Libernet.
 While information loss is possible, only information that no one is requesting would be lost.
 Similar to Bittorrent, information that is more popular is distributed to more nodes, making loss less likely and transfers faster.
-
-Every person and computer (node) on the Libernet has at least one unique identity.
-This identity allows them to share data, receive messages, and participate in a network of trust.
-
-The web, or traditional internet, experience acts like a giant wiki where anyone can contribute, add, remove, or modify anything.
-However, all revisions are kept and only revisions that are validated by trusted people will be shown by default.
-Websites can be full HTML5 apps, allowing powerful applications to be developed.
-
-Messages are similar to email with three major differences.
-The first difference being that the only thing that is publicly visible is the recipient and date sent.
-The second difference is that senders can be verified as being a specific identity and, using the trust network, determine how likely an identity is valued.
-The third difference is that there is a cost to each message sent.
-
-Senders can spend CPU time as "postage" on messages to send a message first class, or spend less CPU time and send it bulk rate.
-This makes it more costly to send bulk messages and makes it easier to identify bulk messages.
-If it takes 30 seconds to prep a message for three people, that is not a big deal.
-But for a company to send out a message to 3,000 people, it would take 8 hours of intense compute power.
-Companies would screen their mailing lists to only those who would truly be interested in their message.
-Sending bulk messages is no longer free.
 
 Note: We could use ZeroConf DNS-SD to advertise ourselves on the local network.
 https://github.com/mjansson/mdns
@@ -89,53 +22,19 @@ https://github.com/mjansson/mdns
 # Platform Support
 
 macOS is fully supported.
-Linux support is in progress ([see issues](https://github.com/marcpage/libernet/issues?q=is%3Aissue+is%3Aopen+label%3Alinux)).
-Windows support is expected at some point.
-
-## macOS support
-
-Using latest macOS version (Catalina/10.15.4) and latest Xcode version (11.5).
-You can use [Homebrew](https://brew.sh/) to install the following dependencies:
-* doxygen
-* cppcheck
-* github-markdown-toc (to generate the table of contents for this file)
-* clang-format
-* opensll
-
-## Linux support
-
-We're using alpine [linux docker image](docker/Dockerfile) to build and test.
-Currently all source files compile and run ([see issues](https://github.com/marcpage/libernet/issues)).
-
-The following modules need to be installed.
-Some may not be needed.
-Once we get tests passing we will thin out the requirements.
-Eventually we'd like to have multiple compilers.
-The test harness supports evaluating compile-time and run-time performance of multiple compilers.
-* git - to get the source
-* g++ - to compile and profile
-* clang - for clang-format
-* make - to build
-* doxygen - to generate documentation
-* cppcheck - for static analysis
-* sqlite-dev - for Sqlite3 module
-* openssl-dev - for sha256, aes256, and rsa support
-* zlib-dev - for zlib compression
-* compiler-rt-static - for profiling
+Linux support is expected but untested.
+Windows support is expected but untested.
 
 
 # Definitions
 
-* **Hash** - SHA256 is used.
-* **Encrypt** - Typically refers to AES256 encryption using the contents Hash (SHA256) as the key.
-* **Public/Private Key** - An RSA public/private key pair
+* **Hash** - SHA256
+* **Encrypt** - Typically refers to AES256 encryption, typically using the contents Hash (SHA256) as the key.
+* **Public/Private Key** - An RSA public/private key pair.
 * **Public-key encrypted** - RSA public key used to encrypt data so only the paired RSA private key can decrypt.
 * **Signing** - RSA private encryption of SHA256 hashing of the data, stored as base64.
 * **Compression** - zlib compression, level 9
-* **Dates** - All dates and times are in GMT, even YYYY/MM/DD
 * **timestamp** - all time stamps are seconds from midnight, January 1, 2001 GMT
-* **signature** - All signatures are base64 encoded
-* **Karma** - the currency used to track value, recorded as a string of the format "000000000000000.00000000000000" or "{Karma}.{Kismet 0 padded to 14 digits}"
 
 
 # Concepts
