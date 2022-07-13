@@ -6,10 +6,10 @@
 import argparse
 import os
 import logging
-
 import flask
 
 import libernet.plat.dirs
+import libernet.plat.network
 
 
 def create_app(storage_path):
@@ -24,7 +24,20 @@ def create_app(storage_path):
 
     @app.route("/")
     def home():
-        return "<html><body>Welcome</body></html>"
+        if libernet.plat.network.is_on_machine(flask.request.remote_addr):
+            return f"""
+<html>
+    <body>
+        <h1>Welcome</h1>
+        {flask.request.remote_addr}
+    </body>
+</html>"""
+        return """
+<html>
+    <body>
+        <h1>Welcome</h1>
+    </body>
+</html>"""
 
     @app.route("/sha256/<identifier>")
     def sha256(identifier):
