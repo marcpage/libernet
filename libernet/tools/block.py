@@ -50,15 +50,15 @@ def validate_url(url):
     url_parts = url.split("/")
     # ['', 'sha256', '[identifier]']
     # ['', 'sha256', '[identifier]', 'aes256', '[key]']
-    decrypt_url = len(url_parts) == 5
+    decrypt_url = len(url_parts) >= 5
+    bundle_path = len(url_parts) > 5
     assert len(url_parts) >= 3, f"URL too short {url}"
     assert decrypt_url or len(url_parts) == 3, f"incorrect url format: {url}"
     assert url_parts[0] == "", f"URL not absolutet {url}"
     assert url_parts[1] == "sha256", f"URL not sha256 {url}"
-    assert (
-        len(url_parts) <= 3 or url_parts[3] == "aes256" and decrypt_url
-    ), f"URL not aes256 {url}"
-    return (url_parts[2], url_parts[4] if decrypt_url else None)
+    assert not decrypt_url or url_parts[3] == "aes256", f"URL not aes256 {url}"
+    path = "/".join(url_parts[5:]) if bundle_path else None
+    return (url_parts[2], url_parts[4] if decrypt_url else None, path)
 
 
 def decrypt_block(encrypted_path, block_key):
@@ -156,5 +156,5 @@ def get_contents(storage, block_identifier, block_key=None, load=True):
 
 def retrieve(url, storage, load=True):
     """retrieve a block of data (optionally decrypting it)"""
-    block_identifier, block_key = validate_url(url)
+    block_identifier, block_key, _ = validate_url(url)
     return get_contents(storage, block_identifier, block_key, load)

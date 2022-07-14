@@ -73,3 +73,12 @@ def test_store_retrieve():
         assert all([c is None for c in contents])
         assert all([c is None for c in block_contents])
 
+
+def test_validate_url():
+    identifier = '0d94f058c890f5cf76aa6384a6f8ddea30fa69a21c8ea9a978298303d4c4ca01'
+    key = 'd7551a83e211fe7b094efdf371a34772fecc1ca7e3c6143eaac6971d9824b9c2'
+    base_url = f"/sha256/{identifier}/aes256/{key}"
+    assert libernet.tools.block.validate_url(base_url) == (identifier, key, None)
+    assert libernet.tools.block.validate_url(base_url+'/') == (identifier, key, '')
+    assert libernet.tools.block.validate_url(base_url+'/test') == (identifier, key, 'test')
+    assert libernet.tools.block.validate_url(base_url+'/test/me') == (identifier, key, 'test/me')
