@@ -7,7 +7,9 @@ import argparse
 import os
 import logging
 import flask
+import io
 
+import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.network
 
@@ -32,16 +34,52 @@ def create_app(storage_path):
         {flask.request.remote_addr}
     </body>
 </html>"""
-        return """
+        return (
+            """
 <html>
     <body>
-        <h1>Welcome</h1>
+        <h1>Forbidden</h1>
+        You do not have access to this page
     </body>
-</html>"""
+</html>""",
+            403,
+        )  # Forbidden
 
     @app.route("/sha256/<identifier>")
     def sha256(identifier):
-        return f"<html><body>Identifier {identifier}</body></html>"
+        print(f"identifier = {identifier}")
+        contents = libernet.tools.block.get_contents(app.static_folder, identifier)
+
+        if contents is None:
+            # temporarily not available
+            # start requesting this block
+            return "<html><body>not available yet</body></html>", 409  # Conflict
+
+        content_file = io.BytesIO(contents)
+        # last_modified = datetime.datetime, int, float
+        return flask.send_file(
+            content_file,
+            mimetype="application/octet-stream",
+            as_attachment=True,
+            max_age=365 * 24 * 60 * 60,
+            download_name=identifier,
+            etag=identifier,
+        )
+
+    """
+    @app.route("/sha256/<identifier>/aes256/<key>")
+    def sha256(identifier, key):
+        contents = libernet.tools.block.get_contents(static_folder, identifier, key)
+
+        if contents is None:
+            # temporarily not available
+            # start requesting this block
+            return "<html><body>not available yet</body></html>", 409  # Conflict
+
+        content_file = io.BytesIO(contents)
+        # last_modified = datetime.datetime, int, float
+        return flask.send_file(content_file, mimetype='application/octet-stream', as_attachment=True, max_age=365*24*60*60, download_name=identifier, etag=identifier)
+    """
 
     # Mark: v1 API
 

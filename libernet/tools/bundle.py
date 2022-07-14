@@ -129,7 +129,7 @@ def finalize_bundle(description, storage):
 
 def load_raw(url, storage):
     """Get the raw contents of the top-level bundle"""
-    bundle_text = libernet.tools.block.retrieve_block(url, storage)
+    bundle_text = libernet.tools.block.retrieve(url, storage)
     return None if bundle_text is None else json.loads(bundle_text.decode("utf-8"))
 
 
@@ -232,9 +232,7 @@ def missing_blocks(url, storage):
 
     for file in bundle["files"]:
         for part in bundle["files"][file]["parts"]:
-            exists = libernet.tools.block.retrieve_block(
-                part["url"], storage, load=False
-            )
+            exists = libernet.tools.block.retrieve(part["url"], storage, load=False)
 
             if not exists:
                 missing.append(part["url"])
@@ -251,7 +249,7 @@ def restore_file(destination_path, file_description, storage):
 
     with open(destination_path, "wb") as destination_file:
         for block in file_description["parts"]:
-            block_contents = libernet.tools.block.retrieve_block(block["url"], storage)
+            block_contents = libernet.tools.block.retrieve(block["url"], storage)
 
             if block_contents is None:
                 raise FileNotFoundError(f"Block not found: {block['url']}")

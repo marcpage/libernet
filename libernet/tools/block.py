@@ -129,9 +129,8 @@ def find_block(search_dir, block_identifier, block_key, load=True):
     return None
 
 
-def retrieve_block(url, storage, load=True):
-    """retrieve a block of data (optionally decrypting it)"""
-    block_identifier, block_key = validate_url(url)
+def get_contents(storage, block_identifier, block_key=None, load=True):
+    """given identifiers, load a block (or check that the block exists) or return None"""
     upload_dir = os.path.join(storage, "upload")
     upload_local_dir = os.path.join(upload_dir, "local")
     search_dirs = [os.path.join(storage, "web")]
@@ -153,3 +152,9 @@ def retrieve_block(url, storage, load=True):
             return found
 
     return None
+
+
+def retrieve(url, storage, load=True):
+    """retrieve a block of data (optionally decrypting it)"""
+    block_identifier, block_key = validate_url(url)
+    return get_contents(storage, block_identifier, block_key, load)
