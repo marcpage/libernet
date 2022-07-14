@@ -7,6 +7,7 @@ import argparse
 import os
 import logging
 import io
+import zlib
 
 import flask
 
@@ -56,17 +57,21 @@ def create_app(storage_path):
         print(f"query_string = {flask.request.query_string}")
         print(f"full_path = {flask.request.full_path}")
         print(f"args = {flask.request.args}")
-        block_identifier, block_key = libernet.tools.block.validate_url(
-            f"/sha256/{path}"
-        )
-        contents = libernet.tools.block.get_contents(
-            app.static_folder, block_identifier, block_key
-        )
+        full_url =  f"/sha256/{path}"
+        block_identifier, block_key = libernet.tools.block.validate_url(full_url)
+        try:
+            contents = libernet.tools.block.get_contents(
+                app.static_folder, block_identifier, block_key
+            )
+
+        except zlib.error:
+            # the key field is probably incorrect
+            return f"<html><body>{full_url} unable to decrypt</body></html>", 400  # Bad request
 
         if contents is None:
             # temporarily not available
             # start requesting this block
-            return "<html><body>not available yet</body></html>", 409  # Conflict
+            return f"<html><body>{full_url} not available yet</body></html>", 409  # Conflict
 
         content_file = io.BytesIO(contents)
         # last_modified = datetime.datetime, int, float
