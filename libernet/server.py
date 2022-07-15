@@ -61,18 +61,22 @@ def create_app(storage_path):
         block_identifier, block_key, bundle_path = libernet.tools.block.validate_url(
             full_url
         )
-        print(bundle_path)
-        try:
-            contents = libernet.tools.block.get_contents(
-                app.static_folder, block_identifier, block_key
-            )
 
-        except zlib.error:
-            # the key field is probably incorrect
-            return (
-                f"<html><body>{full_url} unable to decrypt</body></html>",
-                400,
-            )  # Bad request
+        if bundle_url is not None:
+            contents = None
+
+        else:
+            try:
+                contents = libernet.tools.block.get_contents(
+                    app.static_folder, block_identifier, block_key
+                )
+
+            except zlib.error:
+                # the key field is probably incorrect
+                return (
+                    f"<html><body>{full_url} unable to decrypt</body></html>",
+                    400,
+                )  # Bad request
 
         if contents is None:
             # temporarily not available
