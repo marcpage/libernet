@@ -128,7 +128,7 @@ def finalize_bundle(description, storage):
 
 
 def load_raw_from_id(identifier, key, storage):
-    """ load the raw contents of the top-level bundle description from the identifier """
+    """load the raw contents of the top-level bundle description from the identifier"""
     bundle_text = libernet.tools.block.get_contents(storage, identifier, key)
     return None if bundle_text is None else json.loads(bundle_text.decode("utf-8"))
 
@@ -268,21 +268,13 @@ def restore_file(destination_path, file_description, storage):
             destination_file.write(block_contents)
 
 
-def restore(url, destination, storage):
-    """restore an entire bundle into a directory"""
-    bundle = get_files(url, storage, enforce=True)
-
-    if bundle is None:
-        raise FileNotFoundError("Bundle or sub-bundle url not found")
-
-    # pylint: disable=E1136
-    for file in bundle["files"]:
-        # pylint: disable=E1136
-        restore_file(os.path.join(destination, file), bundle["files"][file], storage)
-
-
 class Path:
+    """Bundle path
+    can be either all files in the bundle or just a single file
+    """
+
     def __init__(self, url, storage):
+        """create a new bundle path"""
         self.__storage = storage
         identifier, key, path = libernet.tools.block.validate_url(url)
         self.__identifier = identifier
@@ -291,66 +283,134 @@ class Path:
         self.__description = None
 
     def __ensure_description(self, path=None):
-        pass
-
-    def missing_blocks(self, path=None):
+        """ensure we have a loaded description
+        returns None if the bundle was not found
+        returns False if the path was not found in the bundle
+            (check missing_blocks() to see if we got all the bundles)
+        returns True if the file was found
+        If path and self.__path are none then all sub bundles are loaded
+        otherwise enough sub bundles are loaded to
+            find path (or self.__path if path is None)
+        """
         path = path if path is not None else self.__path
 
         if self.__description is None:
-            self.__description = libernet.tools.block.get_contents(self.__storage, self.__identifier, self.__key)
+            contents = libernet.tools.block.get_contents(
+                self.__storage, self.__identifier, self.__key
+            )
+            self.__description = json.loads(contents) if contents else None
 
         if self.__description is None:
-            return [f'/sha256/{self.__identifier}/aes256/{self.__key}']
+            return None
 
-        # TODO if path is None, get all files
+        # pylint: disable=E1136
+        if path in self.__description["files"]:
+            return True
 
-        if path not in self.__description['files']:
-            bundles = list(self.__description.get('bundles', []))
-            missing_bundles = []
+        # pylint: disable=E1136
+        bundles = list(self.__description.get("bundles", []))
 
-            for bundle in bundles:
-                sub_description = libernet.tools.block.get_contents(self.__storage, self.__identifier, self.__key)
+        for bundle in bundles:
+            sub_description = libernet.tools.block.get_contents(
+                self.__storage, self.__identifier, self.__key
+            )
 
-                if sub_description is not None:
-                    self.__description['files'].update(sub_description['files'])
-                    self.__description['bundles'].remove(bundle)
+            if sub_description is not None:
+                # pylint: disable=E1136
+                self.__description["files"].update(sub_description["files"])
+                # pylint: disable=E1136
+                self.__description["bundles"].remove(bundle)
+                # pylint: disable=E1136
+                self.__description["bundles"].extend(sub_description.get("bundles", []))
 
-                    if path in self.__description['files']:
-                        break
+                # pylint: disable=E1136
+                if path in self.__description["files"]:
+                    return True
 
-                else:
-                    missing_bundles.append(bundle)
+        return False
 
-        if path not in self.__description['files']:
-            # if there are bundles missing, we need those, else file not found
-            return missing_bundles if missing_bundles else None
+    def __restore_file(self, path, destination_root):
+        """restore a single file to a given path"""
+        destination_path = os.path.join(destination_root, path)
+        # pylint: disable=E1136
+        file_description = self.__description["files"][path]
+        libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
 
-        files = self.__description['files'] if path is None else [path]
+        with open(destination_path, "wb") as destination_file:
+            for block in file_description["parts"]:
+                block_contents = libernet.tools.block.retrieve(
+                    block["url"], self.__storage
+                )
+
+                if block_contents is None:
+                    raise FileNotFoundError(f"Block not found: {block['url']}")
+
+                if len(block_contents) != block["size"]:
+                    raise ValueError(
+                        f"Block is not the correct size {len(block_contents)} != {block['size']}"
+                    )
+
+                destination_file.write(block_contents)
+
+    def missing_blocks(self, path=None):
+        """Gets list of all known blocks needed to restore the file
+        if self.__path and path is None then missing blocks for all files is returned
+        otherwise missing blocks needed to restore path (or if None, self.__path)
+        The missing blocks may not be the complete set needed
+        """
+        path_found = self.__ensure_description(path)
+
+        if path_found is None:  # we don't even have the block
+            return [f"/sha256/{self.__identifier}"]
+
+        if not path_found:  # we have a bundle but haven't found the file in it
+            # pylint: disable=E1136
+            missing = self.__description.get("bundles", None)
+
+            if missing is None:  # there are no more bundles to search
+                return None  # file not found
+
+            return list(missing)  # we need other sub-bundles to search
+
+        # pylint: disable=E1136
+        files = self.__description["files"] if path is None else [path]
         missing = []
 
         for file in files:
-            urls = [p['url'] for p in self.__description['files'][file]['parts']]
-            missing.extend([u for u in urls if libernet.tools.block.retrieve(u, self.__storage, load=False)])
+            # pylint: disable=E1136
+            urls = [p["url"] for p in self.__description["files"][file]["parts"]]
+            missing.extend(
+                [
+                    u
+                    for u in urls
+                    if libernet.tools.block.retrieve(u, self.__storage, load=False)
+                ]
+            )
 
         return missing
 
-
-    def missing_blocks(self, path=None):
+    def restore_file(self, destination_root, path=None):
+        """restore file(s) to a destination directory
+        file(s) restored are the full relative path under destination_root
+        if self.__path and path are None, all files are restored
+        otherwise path (or if None, self.__path) is restored
+        """
+        self.__ensure_description()
         path = path if path is not None else self.__path
+        # pylint: disable=E1136
+        files = self.__description["files"] if path is None else [path]
 
-        if self.__description is None:
-            self.__description = libernet.tools.block.get_contents(self.__storage, self.__identifier, self.__key)
-
-            if self.__description is None:
-                return [f'/sha256/{self.__identifier}/aes256/{self.__key}']
-
-            # TODO if path is None, get all files
-
-            if not path in self.__description['files']:
-                bundles = list(self.__description.get('files', []))
-
-                for bundle in bundles:
-                    sub_description = libernet.tools.block.get_contents(self.__storage, self.__identifier, self.__key)
+        for file in files:
+            self.__restore_file(file, destination_root)
 
 
+def restore(url, destination, storage):
+    """restore an entire bundle into a directory"""
+    bundle = Path(url, storage)
+    missing = bundle.missing_blocks()
 
+    if missing:
+        print("Missing blocks:")
+        print("\t" "\n\t".join(missing))
+    else:
+        bundle.restore_file(destination)

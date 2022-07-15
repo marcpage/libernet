@@ -62,8 +62,8 @@ def create_app(storage_path):
             full_url
         )
 
-        if bundle_url is not None:
-            contents = None
+        if bundle_path is not None:
+            contents = None  # get full contents of file then send file
 
         else:
             try:
