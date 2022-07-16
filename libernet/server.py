@@ -50,14 +50,6 @@ def create_app(storage_path):
 
     @app.route("/sha256/<path:path>")
     def sha256(path):
-        print(f"path = {path}")
-        print(f"url = {flask.request.url}")
-        print(f"path = {flask.request.path}")
-        print(f"base_url = {flask.request.base_url}")
-        print(f"form = {flask.request.form}")
-        print(f"query_string = {flask.request.query_string}")
-        print(f"full_path = {flask.request.full_path}")
-        print(f"args = {flask.request.args}")
         full_url = f"/sha256/{path}"
         block_identifier, block_key, bundle_path = libernet.tools.block.validate_url(
             full_url

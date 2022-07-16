@@ -33,4 +33,8 @@ def test_create_large_files():
             assert len(libernet.tools.bundle.load_raw(urls[0], storage).get('bundles', [])) >= 2
 
             with tempfile.TemporaryDirectory() as to_restore:
-                libernet.tools.bundle.restore(urls[0], to_restore, storage)
+                bundle = libernet.tools.bundle.Path(urls[0], storage)
+                assert not bundle.missing_blocks()
+                bundle.restore_file(to_restore)
+
+test_create_large_files()

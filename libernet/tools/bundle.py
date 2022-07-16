@@ -127,12 +127,6 @@ def finalize_bundle(description, storage):
     return [top_level, *urls]
 
 
-def load_raw_from_id(identifier, key, storage):
-    """load the raw contents of the top-level bundle description from the identifier"""
-    bundle_text = libernet.tools.block.get_contents(storage, identifier, key)
-    return None if bundle_text is None else json.loads(bundle_text.decode("utf-8"))
-
-
 def load_raw(url, storage):
     """Get the raw contents of the top-level bundle"""
     bundle_text = libernet.tools.block.retrieve(url, storage)
@@ -249,25 +243,6 @@ def missing_blocks(url, storage):
     return missing
 
 
-def restore_file(destination_path, file_description, storage):
-    """restore a single file to a given path"""
-    libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
-
-    with open(destination_path, "wb") as destination_file:
-        for block in file_description["parts"]:
-            block_contents = libernet.tools.block.retrieve(block["url"], storage)
-
-            if block_contents is None:
-                raise FileNotFoundError(f"Block not found: {block['url']}")
-
-            if len(block_contents) != block["size"]:
-                raise ValueError(
-                    f"Block is not the correct size {len(block_contents)} != {block['size']}"
-                )
-
-            destination_file.write(block_contents)
-
-
 class Path:
     """Bundle path
     can be either all files in the bundle or just a single file
@@ -311,23 +286,25 @@ class Path:
         bundles = list(self.__description.get("bundles", []))
 
         for bundle in bundles:
+            sub_identifier, sub_key, _ = libernet.tools.block.validate_url(bundle)
             sub_description = libernet.tools.block.get_contents(
-                self.__storage, self.__identifier, self.__key
+                self.__storage, sub_identifier, sub_key
             )
 
             if sub_description is not None:
+                sub_bundle = json.loads(sub_description)
                 # pylint: disable=E1136
-                self.__description["files"].update(sub_description["files"])
+                self.__description["files"].update(sub_bundle["files"])
                 # pylint: disable=E1136
                 self.__description["bundles"].remove(bundle)
                 # pylint: disable=E1136
-                self.__description["bundles"].extend(sub_description.get("bundles", []))
+                self.__description["bundles"].extend(sub_bundle.get("bundles", []))
 
                 # pylint: disable=E1136
                 if path in self.__description["files"]:
                     return True
 
-        return False
+        return path is None
 
     def __restore_file(self, path, destination_root):
         """restore a single file to a given path"""
@@ -403,15 +380,3 @@ class Path:
 
         for file in files:
             self.__restore_file(file, destination_root)
-
-
-def restore(url, destination, storage):
-    """restore an entire bundle into a directory"""
-    bundle = Path(url, storage)
-    missing = bundle.missing_blocks()
-
-    if missing:
-        print("Missing blocks:")
-        print("\t" "\n\t".join(missing))
-    else:
-        bundle.restore_file(destination)

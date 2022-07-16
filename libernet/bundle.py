@@ -58,7 +58,14 @@ def main():
             print("\t" + "\n\t".join(missing_blocks))
 
         else:
-            libernet.tools.bundle.restore(args.url, args.dir, args.storage)
+            bundle = libernet.tools.bundle.Path(args.url, args.storage)
+            missing = bundle.missing_blocks()
+
+            if missing:
+                print("Missing blocks:")
+                print("\t" + "\n\t".join(missing))
+            else:
+                bundle.restore_file(args.dir)
 
 
 if __name__ == "__main__":
