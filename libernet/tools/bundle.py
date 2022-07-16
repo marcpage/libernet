@@ -7,6 +7,7 @@ import os
 import json
 import threading
 import queue
+import time
 
 import libernet.tools.block
 import libernet.plat.dirs
@@ -217,6 +218,7 @@ def create(source_path, storage, url=None, max_threads=2):
         urls.extend(add_urls)
         description["files"][relative_path] = file_description
 
+    description["timestamp"] = time.time()
     sub_urls = finalize_bundle(description, storage)
     return [*sub_urls, *urls]
 
