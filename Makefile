@@ -3,8 +3,8 @@
 all:venv test coverage lint
 
 venv:
-	@python3 -m venv /tmp/libernet
-	@. /tmp/libernet/bin/activate
+	@python3 -m venv .venv
+	@. .venv/bin/activate
 	@pip3 install -q --upgrade pip
 	@pip3 install -q -r requirements.txt
 
