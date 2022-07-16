@@ -14,6 +14,7 @@ import flask
 import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.network
+import libernet.tools.bundle
 
 
 def create_app(storage_path):
@@ -63,6 +64,13 @@ def create_app(storage_path):
         )
 
         if bundle_path is not None:
+            bundle = libernet.tools.bundle.Path(full_url, app.static_folder)
+            missing = bundle.missing_blocks()
+
+            if not missing:
+                bundle.restore_file(app.static_folder)
+                return flask.send_file(os.path.join(app.static_folder, bundle_path))
+
             contents = None  # get full contents of file then send file
 
         else:

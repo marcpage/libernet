@@ -358,6 +358,7 @@ class Path:
         otherwise missing blocks needed to restore path (or if None, self.__path)
         The missing blocks may not be the complete set needed
         """
+        path = self.__path if path is None else path
         path_found = self.__ensure_description(path)
 
         if path_found is None:  # we don't even have the block
@@ -383,7 +384,7 @@ class Path:
                 [
                     u
                     for u in urls
-                    if libernet.tools.block.retrieve(u, self.__storage, load=False)
+                    if not libernet.tools.block.retrieve(u, self.__storage, load=False)
                 ]
             )
 
