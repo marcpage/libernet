@@ -54,11 +54,9 @@ class RSA_Identity:
             self.__description = description
             self.__public = Crypto.PublicKey.RSA.import_key(description["public"])
             private = description.get("private", None)
-
-            if private:
-                self.__private = Crypto.PublicKey.RSA.import_key(private)
-            else:
-                self.__private = None
+            self.__private = (
+                Crypto.PublicKey.RSA.import_key(private) if private else None
+            )
 
     def identifier(self):
         """Get the identifier for the identity"""

@@ -32,13 +32,12 @@ Windows support is expected but untested.
 1. Decrypted blocks can be loaded via URL
 1. Bundle contents can be loaded via URL
 1. Validated self-contained, relative-path websites can be contained in bundles
-2. Can find identifiers "like" other identifiers (first 4 nibbles or 16 bit matches)
+1. Can find identifiers "like" other identifiers (first 4 nibbles or 16 bit matches)
 
 
 # TODO
 
 1. url stats (first, last, and count of requested, downloaded, purged with deleted and local flags)
-1. Create a node identifier if ones does not exist in storage
 1. Server should send node identifier and signature of response to every request
    - Send timestamp and signature of timestamp and path
 1. Implement notification center (request blocks - wait with timeout, notify of blocks)

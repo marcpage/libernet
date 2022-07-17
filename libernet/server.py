@@ -15,15 +15,13 @@ import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.network
 import libernet.tools.bundle
+import libernet.tools.settings
 
 
 def create_app(storage_path):
     """create the flask app"""
-    app = flask.Flask(
-        __name__,
-        static_url_path="",
-        static_folder=storage_path,
-    )
+    app = flask.Flask(__name__)
+    settings = libernet.tools.settings.App(storage_path)
 
     # Mark: Root
 
@@ -56,9 +54,9 @@ def create_app(storage_path):
         )
 
         if path_in_bundle is not None:
-            bundle = libernet.tools.bundle.Path(full_url, app.static_folder)
+            bundle = libernet.tools.bundle.Path(full_url, settings.storage())
             bundle_path = os.path.join(
-                app.static_folder, "web", bundle.relative_path(just_bundle=True)
+                settings.storage(), "web", bundle.relative_path(just_bundle=True)
             )
             item_path = os.path.join(bundle_path, path_in_bundle)
             already_exists = os.path.isfile(item_path)
@@ -75,7 +73,7 @@ def create_app(storage_path):
         else:
             try:
                 contents = libernet.tools.block.get_contents(
-                    app.static_folder, block_identifier, block_key
+                    settings.storage(), block_identifier, block_key
                 )
 
             except zlib.error:
