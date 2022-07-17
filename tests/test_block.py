@@ -2,6 +2,7 @@
 
 import tempfile
 import os
+import struct
 
 import libernet.tools.block
 import libernet.plat
@@ -82,3 +83,23 @@ def test_validate_url():
     assert libernet.tools.block.validate_url(base_url+'/') == (identifier, key, '')
     assert libernet.tools.block.validate_url(base_url+'/test') == (identifier, key, 'test')
     assert libernet.tools.block.validate_url(base_url+'/test/me') == (identifier, key, 'test/me')
+
+
+def test_like():
+    with tempfile.TemporaryDirectory() as storage:
+        url = libernet.tools.block.store_block(b"test data", storage)
+        identifier, _, _ = libernet.tools.block.validate_url(url)
+        expected_matches = {f"/sha256/{identifier}"}
+        data_to_store = [i for i in range(0, 2000)]
+        data_to_store.extend((28349, 106512))  # matches
+
+        for i in data_to_store:
+            random_data = struct.pack("q", i)
+            random_url = libernet.tools.block.store_block(random_data, storage)
+            data_identifier, _, _ = libernet.tools.block.validate_url(random_url)
+            
+            if identifier.startswith(data_identifier[:libernet.tools.block.MINIMUM_MATCH_FOR_LIKE]):
+                expected_matches.add(f"/sha256/{data_identifier}")
+        
+        assert set(libernet.tools.block.like(f"/sha256/{identifier}", storage)) == expected_matches
+        assert len(expected_matches) == 3

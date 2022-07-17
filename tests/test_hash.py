@@ -6,6 +6,11 @@ import libernet.tools.hash
 
 
 def test_identifier_match_score():
+    """ Median time to get match score:
+        16 - 1 second
+        20 - 10 seconds
+        24 - 5 minutes
+    """
     id1 = libernet.tools.hash.sha256_data_identifier(b"test")
 
     for i in range(200000, 300000):

@@ -13,6 +13,7 @@ import libernet.tools.encrypt
 
 BLOCK_SIZE = 1024 * 1024
 BLOCK_TOP_DIR_SIZE = 3
+MINIMUM_MATCH_FOR_LIKE = 4  # 4 is about 1 seconds, 5 is about 10 seconds to generate
 
 
 def store_block(contents, storage):
@@ -130,8 +131,8 @@ def find_block(search_dir, block_identifier, block_key, load=True):
     return None
 
 
-def get_contents(storage, block_identifier, block_key=None, load=True):
-    """given identifiers, load a block (or check that the block exists) or return None"""
+def get_search_dirs(storage):
+    """get a list of directories to search for blocks in the storage"""
     upload_dir = os.path.join(storage, "upload")
     upload_local_dir = os.path.join(upload_dir, "local")
     search_dirs = [os.path.join(storage, "web")]
@@ -146,6 +147,13 @@ def get_contents(storage, block_identifier, block_key=None, load=True):
         search_dirs.remove(upload_local_dir)
         search_dirs.insert(0, upload_local_dir)
 
+    return search_dirs
+
+
+def get_contents(storage, block_identifier, block_key=None, load=True):
+    """given identifiers, load a block (or check that the block exists) or return None"""
+    search_dirs = get_search_dirs(storage)
+
     for search_dir in search_dirs:
         found = find_block(search_dir, block_identifier, block_key, load)
 
@@ -159,3 +167,26 @@ def retrieve(url, storage, load=True):
     """retrieve a block of data (optionally decrypting it)"""
     block_identifier, block_key, _ = validate_url(url)
     return get_contents(storage, block_identifier, block_key, load)
+
+
+def like(url, storage):
+    """Find identifiers 'like' the given one"""
+    identifier, _, _ = validate_url(url)
+    search_dirs = [
+        os.path.join(d, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
+        for d in get_search_dirs(storage)
+    ]
+    found = []
+    prefix = identifier[:MINIMUM_MATCH_FOR_LIKE]
+
+    for search_dir in search_dirs:
+        if os.path.isdir(search_dir):
+            found.extend(
+                [
+                    os.path.splitext(i)[0]
+                    for i in os.listdir(search_dir)
+                    if i.endswith(".raw") and i.startswith(prefix)
+                ]
+            )
+
+    return [f"/sha256/{i}" for i in found]
