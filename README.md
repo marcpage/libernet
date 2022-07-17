@@ -16,8 +16,7 @@ All information is securely encrypted and distributed across the Libernet.
 While information loss is possible, only information that no one is requesting would be lost.
 Similar to Bittorrent, information that is more popular is distributed to more nodes, making loss less likely and transfers faster.
 
-Note: We could use ZeroConf DNS-SD to advertise ourselves on the local network.
-https://github.com/mjansson/mdns
+Note: We could use ZeroConf
 
 # Platform Support
 
@@ -36,6 +35,7 @@ Windows support is expected but untested.
 # TODO
 
 1. Implement /sha256/like/\{identifier\}
+2. url stats (first, last, and count of requested, downloaded, purged with deleted and local flags)
 
 
 
