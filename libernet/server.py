@@ -51,17 +51,24 @@ def create_app(storage_path):
     @app.route("/sha256/<path:path>")
     def sha256(path):
         full_url = f"/sha256/{path}"
-        block_identifier, block_key, bundle_path = libernet.tools.block.validate_url(
+        block_identifier, block_key, path_in_bundle = libernet.tools.block.validate_url(
             full_url
         )
 
-        if bundle_path is not None:
+        if path_in_bundle is not None:
             bundle = libernet.tools.bundle.Path(full_url, app.static_folder)
-            missing = bundle.missing_blocks()
+            bundle_path = os.path.join(
+                app.static_folder, "web", bundle.relative_path(just_bundle=True)
+            )
+            item_path = os.path.join(bundle_path, path_in_bundle)
+            already_exists = os.path.isfile(item_path)
+            missing = bundle.missing_blocks() if not already_exists else []
 
             if not missing:
-                bundle.restore_file(app.static_folder)
-                return flask.send_file(os.path.join(app.static_folder, bundle_path))
+                if not already_exists:
+                    bundle.restore_file(bundle_path)
+
+                return flask.send_file(item_path)
 
             contents = None  # get full contents of file then send file
 

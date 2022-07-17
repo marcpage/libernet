@@ -30,12 +30,12 @@ Windows support is expected but untested.
 1. Blocks can be loaded via URL
 2. Decrypted blocks can be loaded via URL
 3. Bundle contents can be loaded via URL
+4. Validated self-contained, relative-path websites can be contained in bundles
 
 
 # TODO
 
-1. Fix all bundle contents being dumped to root of storage
-2. Implement /sha256/like/\{identifier\}
+1. Implement /sha256/like/\{identifier\}
 
 
 

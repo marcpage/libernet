@@ -333,6 +333,17 @@ class Path:
 
                 destination_file.write(block_contents)
 
+    def relative_path(self, path=None, just_bundle=False):
+        """get the relative path to the bundle contents"""
+        base = os.path.join(
+            "sha256", self.__identifier[:2], self.__identifier, "aes256", self.__key
+        )
+
+        if just_bundle or path is None and self.__path is None:
+            return base
+
+        return os.path.join(base, self.__path if path is None else path)
+
     def missing_blocks(self, path=None):
         """Gets list of all known blocks needed to restore the file
         if self.__path and path is None then missing blocks for all files is returned
