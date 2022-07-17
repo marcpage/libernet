@@ -336,7 +336,11 @@ class Path:
     def relative_path(self, path=None, just_bundle=False):
         """get the relative path to the bundle contents"""
         base = os.path.join(
-            "sha256", self.__identifier[:2], self.__identifier, "aes256", self.__key
+            "sha256",
+            self.__identifier[: libernet.tools.block.BLOCK_TOP_DIR_SIZE],
+            self.__identifier,
+            "aes256",
+            self.__key,
         )
 
         if just_bundle or path is None and self.__path is None:

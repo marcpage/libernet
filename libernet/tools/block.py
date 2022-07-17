@@ -12,6 +12,7 @@ import libernet.tools.encrypt
 
 
 BLOCK_SIZE = 1024 * 1024
+BLOCK_TOP_DIR_SIZE = 3
 
 
 def store_block(contents, storage):
@@ -29,7 +30,7 @@ def store_block(contents, storage):
     encrypted = libernet.tools.encrypt.aes_encrypt(key, compressed)
     identifier = libernet.tools.hash.sha256_data_identifier(encrypted)
     upload_dir = os.path.join(storage, "upload", "local")
-    sha_dir = os.path.join(upload_dir, "sha256", identifier[:2])
+    sha_dir = os.path.join(upload_dir, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
     data_path = os.path.join(sha_dir, identifier + ".raw")
     aes_dir = os.path.join(sha_dir, identifier, "aes256")
     contents_path = os.path.join(aes_dir, contents_identifier + ".raw")
@@ -100,7 +101,7 @@ def decrypt_block(encrypted_path, block_key):
 def find_block(search_dir, block_identifier, block_key, load=True):
     """Find a block in a directory"""
     encrypted_path = os.path.join(
-        search_dir, "sha256", block_identifier[:2], block_identifier
+        search_dir, "sha256", block_identifier[:BLOCK_TOP_DIR_SIZE], block_identifier
     )
 
     if not os.path.isfile(encrypted_path + ".raw"):
