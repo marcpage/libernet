@@ -16,7 +16,7 @@ All information is securely encrypted and distributed across the Libernet.
 While information loss is possible, only information that no one is requesting would be lost.
 Similar to Bittorrent, information that is more popular is distributed to more nodes, making loss less likely and transfers faster.
 
-Note: We could use ZeroConf
+Note: We could use ZeroConf for local node discovery
 
 
 # Platform Support
@@ -40,6 +40,8 @@ Windows support is expected but untested.
 1. url stats (first, last, and count of requested, downloaded, purged with deleted and local flags)
 1. Server should send node identifier and signature of response to every request
    - Send timestamp and signature of timestamp and path
+   - Settings app could take url and headers and modify headers accordingly (or return headers dictionary)
+   - Servers should first push their public key (unencrypted block)
 1. Implement notification center (request blocks - wait with timeout, notify of blocks)
    - When requesting blocks a threading.Event is returned
    - Wait with a timeout on the event
@@ -49,6 +51,15 @@ Windows support is expected but untested.
    - Block id nearest to furthest from the node id
    - Thread for each connection to remote host
    - Each has a queue of requests which takes path and event
+   - Each connection should do the following when connecting to a server
+     - PUT its public key block (unencrypted block with json of public description, may be compressed)
+     - PUT server list
+     - PUT requests
+     - GET requests
+     - Fullfil any requests (PUT blocks or LIKE findings)
+     - Send out GET requests for requested blocks and LIKEs
+     - PUT some local blocks that best match this node (top 10?)
+1. Implement fail-safe to prevent two server from running on the same storage (lock file with pid?)
 
 
 
