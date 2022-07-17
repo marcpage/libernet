@@ -31,13 +31,11 @@ Windows support is expected but untested.
 2. Decrypted blocks can be loaded via URL
 3. Bundle contents can be loaded via URL
 
+
 # TODO
 
-1. libernet.tools.bundle.Path.missing should remove keys from missing urls \(should just be /sha256/\{identifier\}\)
+1. Fix all bundle contents being dumped to root of storage
 2. Implement /sha256/like/\{identifier\}
-3. Test web bundles \(a bunch of html files in a bundle can be treated like web pages, complete with images\)
-4. Convert bundle\["timestamp"\] to seconds from midnight, January 1, 2001 GMT
-5. Convert bundle\["files"\]\[\{file\}\]\["modified"\] to seconds from midnight, January 1, 2001 GMT
 
 
 

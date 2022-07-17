@@ -228,7 +228,8 @@ def missing_blocks(url, storage):
     bundle = load_raw(url, storage)
 
     if bundle is None:
-        return [url]
+        bundle_identifier = libernet.tools.block.validate_url(url)[0]
+        return [f"sha256/{bundle_identifier}"]
 
     missing = []
 
@@ -237,7 +238,8 @@ def missing_blocks(url, storage):
             exists = libernet.tools.block.retrieve(part["url"], storage, load=False)
 
             if not exists:
-                missing.append(part["url"])
+                bundle_identifier = libernet.tools.block.validate_url(part["url"])[0]
+                missing.append(f"sha256/{bundle_identifier}")
 
     for subbundle in bundle.get("bundles", []):
         missing.extend(missing_blocks(subbundle, storage))
