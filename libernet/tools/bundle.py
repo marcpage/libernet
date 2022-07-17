@@ -7,10 +7,10 @@ import os
 import json
 import threading
 import queue
-import time
 
 import libernet.tools.block
 import libernet.plat.dirs
+import libernet.plat.timestamp
 
 
 def start_thread(target, *args, **kwargs):
@@ -26,7 +26,7 @@ def process_file(source_path, storage, relative_path, previous):
     # pylint: disable=W0511
     # TODO use stat to get size and mtime
     current_file_size = os.path.getsize(full_path)
-    current_modified = os.path.getmtime(full_path)
+    current_modified = libernet.plat.timestamp.create(os.path.getmtime(full_path))
     urls = []
 
     if relative_path in previous["files"]:
@@ -218,7 +218,7 @@ def create(source_path, storage, url=None, max_threads=2):
         urls.extend(add_urls)
         description["files"][relative_path] = file_description
 
-    description["timestamp"] = time.time()
+    description["timestamp"] = libernet.plat.timestamp.create()
     sub_urls = finalize_bundle(description, storage)
     return [*sub_urls, *urls]
 
