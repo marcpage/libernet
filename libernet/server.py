@@ -195,12 +195,15 @@ def main():
     args = parse_args()
     log_level = logging.DEBUG if args.debug else logging.WARNING
     log_path = os.path.join(args.storage, "log.txt")
-    
+
     if os.path.getsize(log_path) > 1024 * 1024:
         archive_path = f"{log_path}_{time.strftime('%Y%m%d%H%M%S')}.zip"
-        archive = zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, False, 9)
-        archive.write(log_path, 'log.txt')
-        archive.close()
+
+        with zipfile.ZipFile(
+            archive_path, "w", zipfile.ZIP_DEFLATED, False, 9
+        ) as archive:
+            archive.write(log_path, "log.txt")
+
         os.unlink(log_path)
 
     logging.basicConfig(filename=log_path, level=log_level)
