@@ -8,6 +8,8 @@ import os
 import logging
 import io
 import zlib
+import zipfile
+import time
 
 import flask
 
@@ -192,7 +194,16 @@ def main():
 
     args = parse_args()
     log_level = logging.DEBUG if args.debug else logging.WARNING
-    logging.basicConfig(filename=os.path.join(args.storage, "log.txt"), level=log_level)
+    log_path = os.path.join(args.storage, "log.txt")
+    
+    if os.path.getsize(log_path) > 1024 * 1024:
+        archive_path = f"{log_path}_{time.strftime('%Y%m%d%H%M%S')}.zip"
+        archive = zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, False, 9)
+        archive.write(log_path, 'log.txt')
+        archive.close()
+        os.unlink(log_path)
+
+    logging.basicConfig(filename=log_path, level=log_level)
     app = create_app(args.storage)
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
