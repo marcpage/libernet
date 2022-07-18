@@ -392,10 +392,16 @@ class Path:
         if self.__path and path are None, all files are restored
         otherwise path (or if None, self.__path) is restored
         """
-        self.__ensure_description()
         path = path if path is not None else self.__path
+        found = self.__ensure_description(path)
+
+        if not found:
+            return found
+
         # pylint: disable=E1136
         files = self.__description["files"] if path is None else [path]
 
         for file in files:
             self.__restore_file(file, destination_root)
+
+        return True

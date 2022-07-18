@@ -7,6 +7,13 @@ import json
 import os
 
 import libernet.tools.encrypt
+import libernet.tools.block
+import libernet.plat.timestamp
+
+HTTP_TIMESTAMP = "X-Libernet-Timestamp"
+HTTP_PATH = "X-Libernet-Path"
+HTTP_AUTHOR = "X-Libernet-Author"
+HTTP_SIGNATURE = "X-Libernet-Signature"
 
 
 class App:
@@ -32,6 +39,11 @@ class App:
         except KeyError:
             self.__identity = libernet.tools.encrypt.RSA_Identity.create(key_size)
             self.__settings["identity"] = self.__identity.private_description()
+            libernet.tools.block.store_block(
+                self.__identity.public_description()["public"].encode("utf-8"),
+                self.__dir,
+                encrypt=False,
+            )
 
         self.flush()
 
@@ -47,3 +59,15 @@ class App:
     def identity(self):
         """Get the private identity for this server"""
         return self.__identity
+
+    def sign_request(self, path):
+        """Sign a request for a path"""
+        headers = {
+            HTTP_TIMESTAMP: f"{libernet.plat.timestamp.create():0.3f}",
+            HTTP_PATH: path,
+            HTTP_AUTHOR: self.__identity.identifier(),
+        }
+        headers[HTTP_SIGNATURE] = self.__identity.sign(
+            f"{headers[HTTP_TIMESTAMP]}:{headers[HTTP_PATH]}"
+        )
+        return headers

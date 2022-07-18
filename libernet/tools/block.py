@@ -16,7 +16,7 @@ BLOCK_TOP_DIR_SIZE = 3
 MINIMUM_MATCH_FOR_LIKE = 4  # 4 is about 1 seconds, 5 is about 10 seconds to generate
 
 
-def store_block(contents, storage):
+def store_block(contents, storage, encrypt=True):
     """Stores a block of data (no more than 1 MiB in size)"""
     assert (
         len(contents) <= BLOCK_SIZE
@@ -27,24 +27,36 @@ def store_block(contents, storage):
     if len(contents) < len(compressed):
         compressed = contents
 
-    key = libernet.tools.hash.binary_from_identifier(contents_identifier)
-    encrypted = libernet.tools.encrypt.aes_encrypt(key, compressed)
-    identifier = libernet.tools.hash.sha256_data_identifier(encrypted)
+    if encrypt:
+        key = libernet.tools.hash.binary_from_identifier(contents_identifier)
+        block_contents = libernet.tools.encrypt.aes_encrypt(key, compressed)
+        identifier = libernet.tools.hash.sha256_data_identifier(block_contents)
+    else:
+        identifier = contents_identifier
+        block_contents = compressed
+
     upload_dir = os.path.join(storage, "upload", "local")
     sha_dir = os.path.join(upload_dir, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
     data_path = os.path.join(sha_dir, identifier + ".raw")
-    aes_dir = os.path.join(sha_dir, identifier, "aes256")
-    contents_path = os.path.join(aes_dir, contents_identifier + ".raw")
-    libernet.plat.dirs.make_dirs(aes_dir)
+
+    if encrypt:
+        aes_dir = os.path.join(sha_dir, identifier, "aes256")
+        contents_path = os.path.join(aes_dir, contents_identifier + ".raw")
+        libernet.plat.dirs.make_dirs(aes_dir)
+
+    else:
+        libernet.plat.dirs.make_dirs(sha_dir)
 
     with open(data_path, "wb") as data_file:
-        data_file.write(encrypted)
+        data_file.write(block_contents)
 
-    with open(contents_path, "wb") as contents_file:
-        contents_file.write(contents)
+    if encrypt:
+        with open(contents_path, "wb") as contents_file:
+            contents_file.write(contents)
 
-    url = f"/sha256/{identifier}/aes256/{contents_identifier}"
-    return url
+        return f"/sha256/{identifier}/aes256/{contents_identifier}"
+
+    return f"/sha256/{identifier}"
 
 
 def validate_url(url):
@@ -99,7 +111,7 @@ def decrypt_block(encrypted_path, block_key):
     return None
 
 
-def find_block(search_dir, block_identifier, block_key, load=True):
+def find_block(search_dir, block_identifier, block_key=None, load=True):
     """Find a block in a directory"""
     encrypted_path = os.path.join(
         search_dir, "sha256", block_identifier[:BLOCK_TOP_DIR_SIZE], block_identifier
@@ -127,6 +139,12 @@ def find_block(search_dir, block_identifier, block_key, load=True):
 
         if calculated_identifier == block_identifier:
             return encrypted_data
+
+        uncompressed = zlib.decompress(encrypted_data)
+        calculated_identifier = libernet.tools.hash.sha256_data_identifier(uncompressed)
+
+        if calculated_identifier == block_identifier:
+            return uncompressed
 
     return None
 
