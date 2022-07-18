@@ -107,6 +107,9 @@ class Connection(threading.Thread):
         """do the dance with the remote connection to initiate the connection"""
         # Send our public key as an introduction
         self.__send_block(self.__settings.identity().identifier())
+        # get server list
+        # put server list
+        # get requests
 
     def run(self):
         """Loop to send requests to the remote node"""
