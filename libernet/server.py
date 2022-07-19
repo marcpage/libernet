@@ -20,6 +20,9 @@ import libernet.tools.bundle
 import libernet.tools.settings
 
 
+LOG_FILE_MAX_SIZE = 1024 * 1024  # 1 MiB
+
+
 def create_app(storage_path):
     """create the flask app"""
     app = flask.Flask(__name__)
@@ -189,14 +192,11 @@ def parse_args():
     return args
 
 
-def main():
-    """Entry point. Loop forever unless we are told not to."""
+def serve(port, storage, debug):
+    """Start the libernet web server"""
+    log_path = os.path.join(storage, "log.txt")
 
-    args = parse_args()
-    log_level = logging.DEBUG if args.debug else logging.WARNING
-    log_path = os.path.join(args.storage, "log.txt")
-
-    if os.path.getsize(log_path) > 1024 * 1024:
+    if os.path.getsize(log_path) > LOG_FILE_MAX_SIZE:
         archive_path = f"{log_path}_{time.strftime('%Y%m%d%H%M%S')}.zip"
 
         with zipfile.ZipFile(
@@ -206,9 +206,17 @@ def main():
 
         os.unlink(log_path)
 
+    log_level = logging.DEBUG if debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
-    app = create_app(args.storage)
-    app.run(host="0.0.0.0", debug=args.debug, port=args.port)
+    app = create_app(storage)
+    app.run(host="0.0.0.0", debug=debug, port=port)
+
+
+def main():
+    """Entry point. Loop forever unless we are told not to."""
+
+    args = parse_args()
+    serve(args.port, args.storage, args.debug)
 
 
 if __name__ == "__main__":
