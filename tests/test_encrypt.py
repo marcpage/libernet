@@ -18,16 +18,10 @@ def test_RSA_Identity():
     encrypted = restored_public.encrypt(b"to encrypt")
     assert restored_identity.decrypt(encrypted) == b"to encrypt"
     assert identity.decrypt(encrypted) == b"to encrypt"
-    signature = identity.sign(libernet.tools.hash.sha256_hasher(b"to sign"))
-    assert signature == restored_identity.sign(
-        libernet.tools.hash.sha256_hasher(b"to sign")
-    )
-    assert restored_public.verify(
-        libernet.tools.hash.sha256_hasher(b"to sign"), signature
-    )
-    assert not restored_public.verify(
-        libernet.tools.hash.sha256_hasher(b"not signed"), signature
-    )
+    signature = identity.sign_utf8("to sign")
+    assert signature == restored_identity.sign_utf8("to sign")
+    assert restored_public.verify_utf8("to sign", signature)
+    assert not restored_public.verify_utf8("not signed", signature)
 
 
 def test_aes():

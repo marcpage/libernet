@@ -3,6 +3,8 @@
 """ Libernet encryption
 """
 
+import base64
+
 import Crypto.Cipher.AES
 import Crypto.PublicKey.RSA
 import Crypto.Cipher.PKCS1_OAEP
@@ -86,10 +88,20 @@ class RSA_Identity:
     def sign(self, hasher):
         """Use the private key to sign the data"""
         signer = Crypto.Signature.PKCS1_v1_5.new(self.__private)
-        return signer.sign(hasher)
+        return base64.b64encode(signer.sign(hasher)).decode("ascii")
+
+    def sign_utf8(self, text):
+        """sign text"""
+        return self.sign(libernet.tools.hash.sha256_hasher(text.encode("utf-8")))
 
     def verify(self, hasher, signature):
         """use the public key to verify the signature of the data"""
         validater = Crypto.Signature.PKCS1_v1_5.new(self.__public)
         # pylint: disable=E1102
-        return validater.verify(hasher, signature)
+        return validater.verify(hasher, base64.b64decode(signature))
+
+    def verify_utf8(self, text, signature):
+        """verify signature of text"""
+        return self.verify(
+            libernet.tools.hash.sha256_hasher(text.encode("utf-8")), signature
+        )

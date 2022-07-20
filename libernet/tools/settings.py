@@ -67,7 +67,29 @@ class App:
             HTTP_PATH: path,
             HTTP_AUTHOR: self.__identity.identifier(),
         }
-        headers[HTTP_SIGNATURE] = self.__identity.sign(
+        headers[HTTP_SIGNATURE] = self.__identity.sign_utf8(
             f"{headers[HTTP_TIMESTAMP]}:{headers[HTTP_PATH]}"
         )
         return headers
+
+
+def verify_request(headers, storage):
+    """Verify request signature"""
+    timestamp = headers.get(HTTP_TIMESTAMP, None)
+    path = headers.get(HTTP_PATH, None)
+    author = headers.get(HTTP_AUTHOR, None)
+    signature = headers.get(HTTP_SIGNATURE, None)
+
+    if timestamp is None or path is None:
+        return False
+
+    if author is None or signature is None:
+        return False
+
+    author_description = {
+        "identifier": author,
+        "public": libernet.tools.block.retrieve(f"/sha256/{author}", storage),
+    }
+    author_identity = libernet.tools.encrypt.RSA_Identity(author_description)
+
+    return author_identity.verify_utf8(f"{timestamp}:{path}", signature)

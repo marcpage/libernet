@@ -139,7 +139,6 @@ def decrypt_block(encrypted_path, block_key):
 def find_block(search_dir, block_identifier, block_key=None, load=True):
     """Find a block in a directory"""
     encrypted_path = block_dir(search_dir, block_identifier, full=True)
-
     if not os.path.isfile(encrypted_path + ".raw"):
         return None
 
@@ -159,9 +158,9 @@ def find_block(search_dir, block_identifier, block_key=None, load=True):
         calculated_identifier = libernet.tools.hash.sha256_data_identifier(
             encrypted_data
         )
-
         if calculated_identifier == block_identifier:
             return encrypted_data
+
         # not tested from here down
         uncompressed = zlib.decompress(encrypted_data)
         calculated_identifier = libernet.tools.hash.sha256_data_identifier(uncompressed)
