@@ -16,6 +16,25 @@ BLOCK_TOP_DIR_SIZE = 3
 MINIMUM_MATCH_FOR_LIKE = 4  # 4 is about 1 seconds, 5 is about 10 seconds to generate
 
 
+def block_dir(storage_part, identifier, key=None, full=False):
+    """Find the path to various block directories"""
+    directory = os.path.join(storage_part, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
+
+    if not full and key is None:
+        return directory
+
+    if key is None:
+        return os.path.join(directory, identifier)
+
+    aes_dir = os.path.join(directory, identifier, "aes256")
+    libernet.plat.dirs.make_dirs(aes_dir)
+
+    if not full:
+        return aes_dir
+
+    return os.path.join(aes_dir, key)
+
+
 def store_block(contents, storage, encrypt=True):
     """Stores a block of data (no more than 1 MiB in size)"""
     assert (
@@ -36,16 +55,17 @@ def store_block(contents, storage, encrypt=True):
         block_contents = compressed
 
     upload_dir = os.path.join(storage, "upload", "local")
-    sha_dir = os.path.join(upload_dir, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
-    data_path = os.path.join(sha_dir, identifier + ".raw")
+    data_path = block_dir(upload_dir, identifier, full=True) + ".raw"
 
     if encrypt:
-        aes_dir = os.path.join(sha_dir, identifier, "aes256")
-        contents_path = os.path.join(aes_dir, contents_identifier + ".raw")
-        libernet.plat.dirs.make_dirs(aes_dir)
+        contents_path = (
+            block_dir(upload_dir, identifier, contents_identifier, full=True) + ".raw"
+        )
 
     else:
-        libernet.plat.dirs.make_dirs(sha_dir)
+        libernet.plat.dirs.make_dirs(
+            block_dir(upload_dir, identifier, contents_identifier)
+        )
 
     with open(data_path, "wb") as data_file:
         data_file.write(block_contents)
@@ -87,7 +107,6 @@ def decrypt_block(encrypted_path, block_key):
     else:
         with open(encrypted_path + ".raw", "rb") as encrypted_file:
             encrypted = encrypted_file.read()
-
         key = libernet.tools.hash.binary_from_identifier(block_key)
         compressed = libernet.tools.encrypt.aes_decrypt(key, encrypted)
         compressed_identifier = libernet.tools.hash.sha256_data_identifier(compressed)
@@ -96,8 +115,14 @@ def decrypt_block(encrypted_path, block_key):
         if compressed_identifier == block_key:
             contents = compressed
         else:
-            contents = zlib.decompress(compressed)
-            contents_identifier = libernet.tools.hash.sha256_data_identifier(contents)
+            try:
+                contents = zlib.decompress(compressed)
+                contents_identifier = libernet.tools.hash.sha256_data_identifier(
+                    contents
+                )
+
+            except zlib.error:
+                contents_identifier = None
 
             if contents_identifier != block_key:
                 contents = None
@@ -113,9 +138,7 @@ def decrypt_block(encrypted_path, block_key):
 
 def find_block(search_dir, block_identifier, block_key=None, load=True):
     """Find a block in a directory"""
-    encrypted_path = os.path.join(
-        search_dir, "sha256", block_identifier[:BLOCK_TOP_DIR_SIZE], block_identifier
-    )
+    encrypted_path = block_dir(search_dir, block_identifier, full=True)
 
     if not os.path.isfile(encrypted_path + ".raw"):
         return None
@@ -139,7 +162,7 @@ def find_block(search_dir, block_identifier, block_key=None, load=True):
 
         if calculated_identifier == block_identifier:
             return encrypted_data
-
+        # not tested from here down
         uncompressed = zlib.decompress(encrypted_data)
         calculated_identifier = libernet.tools.hash.sha256_data_identifier(uncompressed)
 
@@ -190,10 +213,7 @@ def retrieve(url, storage, load=True):
 def like(url, storage):
     """Find identifiers 'like' the given one"""
     identifier, _, _ = validate_url(url)
-    search_dirs = [
-        os.path.join(d, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
-        for d in get_search_dirs(storage)
-    ]
+    search_dirs = [block_dir(d, identifier) for d in get_search_dirs(storage)]
     found = []
     prefix = identifier[:MINIMUM_MATCH_FOR_LIKE]
 

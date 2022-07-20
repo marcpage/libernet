@@ -85,6 +85,80 @@ def test_validate_url():
     assert libernet.tools.block.validate_url(base_url+'/test/me') == (identifier, key, 'test/me')
 
 
+def test_missing_block():
+    identifier = '0000000000000000000000000000000000000000000000000000000000000000'
+    with tempfile.TemporaryDirectory() as storage:
+        libernet.plat.dirs.make_dirs(os.path.join(storage, "upload", "local"))
+        assert libernet.tools.block.get_contents(storage, identifier) == None
+
+
+def test_compressed_block():
+    contents = (
+          b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000')
+
+    with tempfile.TemporaryDirectory() as storage:
+        local_dir = os.path.join(storage, "upload", "local")
+        libernet.plat.dirs.make_dirs(local_dir)
+        url = libernet.tools.block.store_block(contents, storage)
+        identifier, key, _ = libernet.tools.block.validate_url(url)
+        assert os.path.isdir(local_dir)
+        contents_path = libernet.tools.block.block_dir(local_dir, identifier, key, full=True) + '.raw'
+        assert os.path.isfile(contents_path)
+        os.unlink(contents_path)
+        read = libernet.tools.block.retrieve(url, storage)
+        assert read == contents
+
+
+def test_bad_key():
+    bad_key = '0000000000000000000000000000000000000000000000000000000000000000'
+    contents = (
+          b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000')
+
+    with tempfile.TemporaryDirectory() as storage:
+        local_dir = os.path.join(storage, "upload", "local")
+        libernet.plat.dirs.make_dirs(local_dir)
+        url = libernet.tools.block.store_block(contents, storage)
+        identifier, key, _ = libernet.tools.block.validate_url(url)
+        assert os.path.isdir(local_dir)
+        contents_path = libernet.tools.block.block_dir(local_dir, identifier, key, full=True) + '.raw'
+        assert os.path.isfile(contents_path)
+        os.unlink(contents_path)
+        read = libernet.tools.block.retrieve(f"/sha256/{identifier}/aes256/{bad_key}", storage)
+        assert read == None
+
+
 def test_like():
     with tempfile.TemporaryDirectory() as storage:
         url = libernet.tools.block.store_block(b"test data", storage)
@@ -97,9 +171,58 @@ def test_like():
             random_data = struct.pack("q", i)
             random_url = libernet.tools.block.store_block(random_data, storage)
             data_identifier, _, _ = libernet.tools.block.validate_url(random_url)
-            
+
             if identifier.startswith(data_identifier[:libernet.tools.block.MINIMUM_MATCH_FOR_LIKE]):
                 expected_matches.add(f"/sha256/{data_identifier}")
-        
+
         assert set(libernet.tools.block.like(f"/sha256/{identifier}", storage)) == expected_matches
         assert len(expected_matches) == 3
+
+
+def test_compressed_unecnrypted_block():
+    contents = (
+          b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000'
+        + b'0000000000000000000000000000000000000000000000000000000000000000')
+
+    with tempfile.TemporaryDirectory() as storage:
+        local_dir = os.path.join(storage, "upload", "local")
+        libernet.plat.dirs.make_dirs(local_dir)
+        url = libernet.tools.block.store_block(contents, storage, encrypt=False)
+        identifier, _, _ = libernet.tools.block.validate_url(url)
+        assert os.path.isdir(local_dir)
+        contents_path = libernet.tools.block.block_dir(local_dir, identifier, full=True) + '.raw'
+        assert os.path.isfile(contents_path)
+        read = libernet.tools.block.retrieve(url, storage)
+        assert read == contents
+
+
+def test_uncompressed_unecnrypted_block():
+    contents = (b'12345')
+
+    with tempfile.TemporaryDirectory() as storage:
+        local_dir = os.path.join(storage, "upload", "local")
+        libernet.plat.dirs.make_dirs(local_dir)
+        url = libernet.tools.block.store_block(contents, storage, encrypt=False)
+        identifier, _, _ = libernet.tools.block.validate_url(url)
+        assert os.path.isdir(local_dir)
+        contents_path = libernet.tools.block.block_dir(local_dir, identifier, full=True) + '.raw'
+        assert os.path.isfile(contents_path)
+        read = libernet.tools.block.retrieve(url, storage)
+        assert read == contents
+
+
