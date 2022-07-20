@@ -19,6 +19,13 @@ def parse_args():
         help="Action to perform",
     )
     parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        default=False,
+        help="Dump files while processing",
+    )
+    parser.add_argument(
         "-s",
         "--storage",
         default=libernet.plat.dirs.pref_dir("libernet"),
@@ -43,6 +50,7 @@ def main():
             args.storage,
             args.previous,
             max_threads=multiprocessing.cpu_count(),
+            verbose=args.verbose,
         )
         print(f"url: {results[0]}")
 

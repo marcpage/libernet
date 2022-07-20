@@ -36,5 +36,3 @@ def test_create_large_files():
                 bundle = libernet.tools.bundle.Path(urls[0], storage)
                 assert not bundle.missing_blocks()
                 bundle.restore_file(to_restore)
-
-test_create_large_files()

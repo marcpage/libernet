@@ -74,18 +74,38 @@ def serialize_bundle(description):
     return json.dumps(description, sort_keys=True, separators=(",", ":"))
 
 
-def largest_files(description):
-    """get list of files sorted largest to smallest"""
+def smallest_files(description):
+    """get list of files sorted smallest to largest"""
     return sorted(
         description["files"],
         key=lambda f: description["files"][f]["size"],
-        reverse=True,
+        reverse=False,
     )
 
 
-def reduce_description(description, extracted_files, remove_one_more=False):
-    """reduce bundle down to fit within 1 MiB"""
-    files = largest_files(description)
+def reduce_description(description, top_level_bundle=False):
+    """remove files until we are bundle sized, returns files removed"""
+    contents = serialize_bundle(description)
+
+    if len(contents) <= libernet.tools.block.BLOCK_SIZE:
+        return {}
+
+    files = smallest_files(description)  # get the smallest to largest file
+    average_size_per_file = len(contents) / len(files)
+    subbundle_count = (
+        int(len(contents) / libernet.tools.block.BLOCK_SIZE) if top_level_bundle else 0
+    )
+    root_bundle_file_count = int(
+        libernet.tools.block.BLOCK_SIZE / average_size_per_file - subbundle_count / 2
+    )
+    extracted_files = {
+        f: description["files"][f] for f in files[root_bundle_file_count:]
+    }
+
+    for file in extracted_files:
+        del description["files"][file]
+
+    files = smallest_files(description)  # get the smallest to largest file
 
     while True:
         contents = serialize_bundle(description)
@@ -93,32 +113,36 @@ def reduce_description(description, extracted_files, remove_one_more=False):
         if len(contents) <= libernet.tools.block.BLOCK_SIZE:
             break
 
-        next_file = files.pop(0)
-        extracted_files[next_file] = description["files"][next_file]
-        del description["files"][next_file]
+        to_remove = files.pop()
+        extracted_files[to_remove] = description["files"][to_remove]
+        del description["files"][to_remove]
 
-    if files and remove_one_more and extracted_files:
-        # we need room for adding sub bundle(s)
-        next_file = files.pop(0)
-        extracted_files[next_file] = description["files"][next_file]
-        del description["files"][next_file]
+    assert len(contents) <= libernet.tools.block.BLOCK_SIZE, (
+        f"Unable to reduce description {len(contents)} "
+        + f"/ {libernet.tools.block.BLOCK_SIZE} "
+        + f"({len(contents) - libernet.tools.block.BLOCK_SIZE} too big)"
+    )
+    return extracted_files
 
 
 def finalize_bundle(description, storage):
     """create sub-bundles if necessary to get bundle down to 1 MiB"""
     urls = []
-    extracted_files = {}
-    reduce_description(description, extracted_files, remove_one_more=True)
+    extracted_files = reduce_description(description, top_level_bundle=True)
 
     if extracted_files:
         description["bundles"] = []
 
     while extracted_files:
         sub_description = {"files": extracted_files}
-        extracted_files = {}
-        reduce_description(sub_description, extracted_files)
+        extracted_files = reduce_description(sub_description, extracted_files)
         assert len(sub_description["files"]) > 0
         contents = serialize_bundle(sub_description)
+        assert len(contents) <= libernet.tools.block.BLOCK_SIZE, (
+            f"contents is too big {len(contents)} "
+            + f"/ {libernet.tools.block.BLOCK_SIZE} "
+            + f"({len(contents) - libernet.tools.block.BLOCK_SIZE} too big)"
+        )
         url = libernet.tools.block.store_block(contents.encode("utf-8"), storage)
         description["bundles"].append(url)
         urls.append(url)
@@ -185,7 +209,17 @@ def process_files(in_queue, out_queue, source_path, storage, previous):
         out_queue.put(results)
 
 
-def create(source_path, storage, url=None, max_threads=2):
+def __queue_all_files(path, file_queue):
+    """get all files in a path and queue them with a terminating None"""
+    all_files = find_all_relative_paths(path)
+
+    for relative_path in all_files:
+        file_queue.put(relative_path)
+
+    file_queue.put(None)
+
+
+def create(source_path, storage, url=None, max_threads=2, verbose=False):
     """Create or update a bundle from the contents of a directory"""
     if url is None:
         previous = {"files": {}}
@@ -197,26 +231,37 @@ def create(source_path, storage, url=None, max_threads=2):
     urls = []
     file_queue = queue.Queue()
     results_queue = queue.Queue()
-
     threads = [
         start_thread(
-            process_files, file_queue, results_queue, source_path, storage, previous
+            process_files,
+            file_queue,
+            results_queue,
+            source_path,
+            storage,
+            previous,
         )
         for _ in range(0, max_threads)
     ]
+    __queue_all_files(source_path, file_queue)
 
-    for relative_path in find_all_relative_paths(source_path):
-        file_queue.put(relative_path)
+    while True:
+        if file_queue is not None:
+            if file_queue.qsize() == 1:
+                file_queue = None
 
-    file_queue.put(None)
+                for thread in threads:
+                    thread.join()
 
-    for thread in threads:
-        thread.join()
+        if file_queue is None:
+            if results_queue.qsize() == 0:
+                break
 
-    while results_queue.qsize() > 0:
-        relative_path, file_description, add_urls = results_queue.get()
-        urls.extend(add_urls)
-        description["files"][relative_path] = file_description
+        found = results_queue.get()
+        urls.extend(found[2])
+        description["files"][found[0]] = found[1]
+
+        if verbose:
+            print(found[0])
 
     description["timestamp"] = libernet.plat.timestamp.create()
     sub_urls = finalize_bundle(description, storage)
