@@ -107,7 +107,7 @@ def reduce_description(description, top_level_bundle=False):
 
     files = smallest_files(description)  # get the smallest to largest file
 
-    while True:
+    while True:  # we rarely need to remove any more files
         contents = serialize_bundle(description)
 
         if len(contents) <= libernet.tools.block.BLOCK_SIZE:
@@ -159,7 +159,9 @@ def load_raw(url, storage):
 
 
 def get_files(url, storage, enforce=False):
-    """get all the files from the previous version if all the (sub)bundles are available"""
+    """ get all the files from the previous version if all the (sub)bundles are available 
+        enforce - if True then return None if we cannot find all files (missing (sub)bundles)
+    """
     bundle = load_raw(url, storage)
 
     if bundle is None:

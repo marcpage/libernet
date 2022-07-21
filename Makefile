@@ -12,7 +12,7 @@ test: venv
 	@python3 -m coverage run --source libernet -m pytest
 
 coverage: test
-	@python3 -m coverage report -m
+	@python3 -m coverage report -m --sort=cover --skip-covered
 
 debug: venv
 	@python3 -m libernet.server --debug
