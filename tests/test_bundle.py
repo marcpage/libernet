@@ -28,9 +28,10 @@ def test_create_large_files():
             mid = time.time()
             more_urls = libernet.tools.bundle.create(to_store, storage, urls[0], max_threads=multiprocessing.cpu_count())
             done = time.time()
-            assert (done - mid) < (mid - start) / 2
-            assert not libernet.tools.bundle.missing_blocks(urls[0], storage)
-            assert len(libernet.tools.bundle.load_raw(urls[0], storage).get('bundles', [])) >= 2
+            assert (done - mid) < (mid - start) / 2, (f"2nd store ({done-mid:0.3f} seconds) should have " 
+                                                        + f"been at least half 1st store ({mid-start:0.3f} seconds)")
+            assert not libernet.tools.bundle.missing_blocks(urls[0], storage), "Blocks are missing but shouldn't be"
+            assert len(libernet.tools.bundle.load_raw(urls[0], storage).get('bundles', [])) >= 2, "we should have at least 2 sub-bundles"
 
             with tempfile.TemporaryDirectory() as to_restore:
                 bundle = libernet.tools.bundle.Path(urls[0], storage)
