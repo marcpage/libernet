@@ -13,12 +13,14 @@ def sha256_hasher(data):
 
 def sha256_data_identifier(data):
     """get sha256 identifier of data"""
-    return sha256_hasher(data).hexdigest().lower()
+    identifier = sha256_hasher(data).hexdigest().lower()
+    return ("" if len(identifier) % 2 == 0 else "0") + identifier
 
 
 def binary_from_identifier(identifier):
     """get the binary form of an identifier"""
-    return bytes.fromhex(identifier)
+
+    return bytes.fromhex(("" if len(identifier) % 2 == 0 else "0") + identifier)
 
 
 def identifier_to_bits(identifier):
@@ -49,9 +51,12 @@ def identifier_match_score(id1, id2):
     """
     bits1 = identifier_to_bits(id1)
     bits2 = identifier_to_bits(id2)
+    widest = max(len(bits1), len(bits2))
+    padded_bits1 = bits1.zfill(widest)
+    padded_bits2 = bits2.zfill(widest)
 
-    for index, bit1_2 in enumerate(zip(bits1, bits2)):
+    for index, bit1_2 in enumerate(zip(padded_bits1, padded_bits2)):
         if bit1_2[0] != bit1_2[1]:
             return index
 
-    return min(len(bits1), len(bits2))
+    return len(padded_bits1)

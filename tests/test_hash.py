@@ -23,3 +23,15 @@ def test_identifier_match_score():
 
     score = libernet.tools.hash.identifier_match_score(id1, id1)
     assert score == 256
+
+
+def test_binary_from_identifier_first_nibble_zero():
+    libernet.tools.hash.binary_from_identifier('16019dc1e2ba3d35e462012d4481cc165dd0a77a095f9123ffeeab0f5a5ad98')
+
+
+def test_identifier_match_score_first_nibble_zero():
+    assert libernet.tools.hash.identifier_match_score('f', 'f0') == 0
+
+
+def test_identifier_match_score_first_byte_zero():
+    assert libernet.tools.hash.identifier_match_score('ff', 'ff00') == 0

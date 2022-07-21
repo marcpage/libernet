@@ -113,7 +113,7 @@ def reduce_description(description, top_level_bundle=False):
         if len(contents) <= libernet.tools.block.BLOCK_SIZE:
             break
 
-        to_remove = files.pop()
+        to_remove = files.pop()  # NOT TESTED
         extracted_files[to_remove] = description["files"][to_remove]
         del description["files"][to_remove]
 
@@ -163,7 +163,7 @@ def get_files(url, storage, enforce=False):
     bundle = load_raw(url, storage)
 
     if bundle is None:
-        if enforce:
+        if enforce:  # NOT TESTED
             return None
 
         bundle = {"files": {}}
@@ -175,7 +175,7 @@ def get_files(url, storage, enforce=False):
             # pylint: disable=E1136
             bundle["files"].update(sub_bundle["files"])
 
-        elif enforce:
+        elif enforce:  # NOT TESTED
             return None
 
     return bundle
@@ -261,7 +261,7 @@ def create(source_path, storage, url=None, max_threads=2, verbose=False):
         description["files"][found[0]] = found[1]
 
         if verbose:
-            print(found[0])
+            print(found[0])  # NOT TESTED
 
     description["timestamp"] = libernet.plat.timestamp.create()
     sub_urls = finalize_bundle(description, storage)
@@ -272,7 +272,7 @@ def missing_blocks(url, storage):
     """determine the blocks needed to fully restore this bundle"""
     bundle = load_raw(url, storage)
 
-    if bundle is None:
+    if bundle is None:  # NOT TESTED
         bundle_identifier = libernet.tools.block.validate_url(url)[0]
         return [f"sha256/{bundle_identifier}"]
 
@@ -282,7 +282,7 @@ def missing_blocks(url, storage):
         for part in bundle["files"][file]["parts"]:
             exists = libernet.tools.block.retrieve(part["url"], storage, load=False)
 
-            if not exists:
+            if not exists:  # NOT TESTED
                 bundle_identifier = libernet.tools.block.validate_url(part["url"])[0]
                 missing.append(f"sha256/{bundle_identifier}")
 
@@ -325,11 +325,11 @@ class Path:
             self.__description = json.loads(contents) if contents else None
 
         if self.__description is None:
-            return None
+            return None  # NOT TESTED
 
         # pylint: disable=E1136
         if path in self.__description["files"]:
-            return True
+            return True  # NOT TESTED
 
         # pylint: disable=E1136
         bundles = list(self.__description.get("bundles", []))
@@ -351,7 +351,7 @@ class Path:
 
                 # pylint: disable=E1136
                 if path in self.__description["files"]:
-                    return True
+                    return True  # NOT TESTED
 
         return path is None
 
@@ -368,11 +368,11 @@ class Path:
                     block["url"], self.__storage
                 )
 
-                if block_contents is None:
+                if block_contents is None:  # NOT TESTED
                     raise FileNotFoundError(f"Block not found: {block['url']}")
 
                 if len(block_contents) != block["size"]:
-                    raise ValueError(
+                    raise ValueError(  # NOT TESTED
                         f"Block is not the correct size {len(block_contents)} != {block['size']}"
                     )
 
