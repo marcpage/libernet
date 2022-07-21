@@ -327,7 +327,7 @@ class Path:
             self.__description = json.loads(contents) if contents else None
 
         if self.__description is None:
-            return None  # NOT TESTED
+            return None
 
         # pylint: disable=E1136
         if path in self.__description["files"]:
