@@ -38,6 +38,7 @@ Windows support is expected but untested.
 # TODO
 
 1. url stats (first, last, and count of requested, downloaded, purged with deleted and local flags)
+1. Server should accept PUT for `/sha256/{identifier}`
 1. Server should send node identifier and signature of response to every request
    - Send timestamp and signature of timestamp and path
    - Settings app could take url and headers and modify headers accordingly (or return headers dictionary)
