@@ -41,7 +41,7 @@ def test_create_large_files():
 
 def test_non_existent_bundle():
     with tempfile.TemporaryDirectory() as storage:
-        urls = libernet.tools.bundle.create("libernet", storage)
+        urls = libernet.tools.bundle.create("libernet", storage, verbose=True)
         bundle_url = urls[0]
         assert len(libernet.tools.bundle.missing_blocks(bundle_url, storage)) == 0
         local_storage = os.path.join(storage, 'upload', 'local')
@@ -55,6 +55,13 @@ def test_non_existent_bundle():
             missing = libernet.tools.bundle.missing_blocks(bundle_url, storage)
             assert len(missing) == 1 or len(missing) == (index + 1)
             
+            with tempfile.TemporaryDirectory() as to_restore:
+                try:
+                    bundle.restore_file(to_restore, "__init__.py")
+                    assert os.path.isfile(os.path.join(to_restore, "__init__.py"))
+                except FileNotFoundError:
+                    pass
+
             with tempfile.TemporaryDirectory() as to_restore:
                 try:
                     bundle.restore_file(to_restore)
@@ -75,3 +82,5 @@ def test_non_existent_bundle():
             files = libernet.tools.bundle.get_files(bundle_url, storage, enforce=True)
             assert files is None or len(files['files']) == total_count
             assert index < total_count or files is None
+
+test_non_existent_bundle()

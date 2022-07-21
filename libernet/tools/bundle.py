@@ -263,7 +263,7 @@ def create(source_path, storage, url=None, max_threads=2, verbose=False):
         description["files"][found[0]] = found[1]
 
         if verbose:
-            print(found[0])  # NOT TESTED
+            print(found[0])
 
     description["timestamp"] = libernet.plat.timestamp.create()
     sub_urls = finalize_bundle(description, storage)
@@ -331,7 +331,7 @@ class Path:
 
         # pylint: disable=E1136
         if path in self.__description["files"]:
-            return True  # NOT TESTED
+            return True
 
         # pylint: disable=E1136
         bundles = list(self.__description.get("bundles", []))
