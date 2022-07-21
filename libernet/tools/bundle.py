@@ -405,15 +405,16 @@ class Path:
         path_found = self.__ensure_description(path)
 
         if path_found is None:  # we don't even have the block
-            return [f"/sha256/{self.__identifier}"]  # NOT TESTED
+            return [f"/sha256/{self.__identifier}"]
 
         if not path_found:  # we have a bundle but haven't found the file in it
             # pylint: disable=E1136
-            missing = self.__description.get("bundles", None)  # NOT TESTED
+            missing = self.__description.get("bundles", None)
 
             if missing is None:  # there are no more bundles to search
                 return None  # file not found
 
+            # NOT TESTED
             return list(missing)  # we need other sub-bundles to search
 
         # pylint: disable=E1136
