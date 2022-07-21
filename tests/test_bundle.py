@@ -4,6 +4,7 @@ import tempfile
 import os
 import multiprocessing
 import time
+import shutil
 
 import libernet.tools.bundle
 import libernet.tools.block
@@ -15,8 +16,8 @@ def test_create():
 
 def test_create_large_files():
     libernet.tools.block.BLOCK_SIZE = 128 * 1024  # hack the block size to speed up the tests
-    file_size = 16 * 1024 * 1024
-    file_count = 32
+    file_size = 16 * 1024 * 1024  # average file size in bundle is 22k
+    file_count = 64
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as to_store:
             for file_index in range(0, file_count):
@@ -37,3 +38,28 @@ def test_create_large_files():
                 bundle = libernet.tools.bundle.Path(urls[0], storage)
                 assert not bundle.missing_blocks()
                 bundle.restore_file(to_restore)
+
+def test_non_existent_bundle():
+    with tempfile.TemporaryDirectory() as storage:
+        urls = libernet.tools.bundle.create("libernet", storage)
+        bundle_url = urls[0]
+        assert len(libernet.tools.bundle.missing_blocks(bundle_url, storage)) == 0
+        local_storage = os.path.join(storage, 'upload', 'local')
+        bundle = libernet.tools.bundle.Path(bundle_url, storage)
+        for index, url in enumerate(reversed(urls)):
+            identifier, _, _ = libernet.tools.block.validate_url(url)
+            block_path = libernet.tools.block.block_dir(local_storage, identifier, full=True)
+            os.unlink(block_path + '.raw')
+            shutil.rmtree(block_path)
+            missing = libernet.tools.bundle.missing_blocks(bundle_url, storage)
+            assert len(missing) == 1 or len(missing) == (index + 1)
+
+            with tempfile.TemporaryDirectory() as to_restore:
+                try:
+                    bundle.restore_file(to_restore)
+                    assert False, "We should have thrown a file-not-found exception"
+                    
+                except FileNotFoundError:
+                    pass
+
+test_non_existent_bundle()

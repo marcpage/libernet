@@ -274,7 +274,7 @@ def missing_blocks(url, storage):
     """determine the blocks needed to fully restore this bundle"""
     bundle = load_raw(url, storage)
 
-    if bundle is None:  # NOT TESTED
+    if bundle is None:
         bundle_identifier = libernet.tools.block.validate_url(url)[0]
         return [f"sha256/{bundle_identifier}"]
 
@@ -284,7 +284,7 @@ def missing_blocks(url, storage):
         for part in bundle["files"][file]["parts"]:
             exists = libernet.tools.block.retrieve(part["url"], storage, load=False)
 
-            if not exists:  # NOT TESTED
+            if not exists:
                 bundle_identifier = libernet.tools.block.validate_url(part["url"])[0]
                 missing.append(f"sha256/{bundle_identifier}")
 
@@ -370,7 +370,7 @@ class Path:
                     block["url"], self.__storage
                 )
 
-                if block_contents is None:  # NOT TESTED
+                if block_contents is None:
                     raise FileNotFoundError(f"Block not found: {block['url']}")
 
                 if len(block_contents) != block["size"]:
@@ -380,7 +380,7 @@ class Path:
 
                 destination_file.write(block_contents)
 
-    def relative_path(self, path=None, just_bundle=False):
+    def relative_path(self, path=None, just_bundle=False):  # NOT TESTED
         """get the relative path to the bundle contents"""
         base = os.path.join(
             "sha256",
@@ -405,11 +405,11 @@ class Path:
         path_found = self.__ensure_description(path)
 
         if path_found is None:  # we don't even have the block
-            return [f"/sha256/{self.__identifier}"]
+            return [f"/sha256/{self.__identifier}"]  # NOT TESTED
 
         if not path_found:  # we have a bundle but haven't found the file in it
             # pylint: disable=E1136
-            missing = self.__description.get("bundles", None)
+            missing = self.__description.get("bundles", None)  # NOT TESTED
 
             if missing is None:  # there are no more bundles to search
                 return None  # file not found
@@ -443,7 +443,7 @@ class Path:
         found = self.__ensure_description(path)
 
         if not found:
-            return found
+            return found  # NOT TESTED
 
         # pylint: disable=E1136
         files = self.__description["files"] if path is None else [path]
