@@ -159,8 +159,8 @@ def load_raw(url, storage):
 
 
 def get_files(url, storage, enforce=False):
-    """ get all the files from the previous version if all the (sub)bundles are available 
-        enforce - if True then return None if we cannot find all files (missing (sub)bundles)
+    """get all the files from the previous version if all the (sub)bundles are available
+    enforce - if True then return None if we cannot find all files (missing (sub)bundles)
     """
     bundle = load_raw(url, storage)
 
@@ -291,7 +291,7 @@ def missing_blocks(url, storage):
     for subbundle in bundle.get("bundles", []):
         missing.extend(missing_blocks(subbundle, storage))
 
-    return missing
+    return ["/".join(m.split("/")[:3]) for m in missing]
 
 
 class Path:
