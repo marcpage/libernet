@@ -165,7 +165,7 @@ def get_files(url, storage, enforce=False):
     bundle = load_raw(url, storage)
 
     if bundle is None:
-        if enforce:  # NOT TESTED
+        if enforce:
             return None
 
         bundle = {"files": {}}

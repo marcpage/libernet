@@ -46,7 +46,7 @@ def test_non_existent_bundle():
         assert len(libernet.tools.bundle.missing_blocks(bundle_url, storage)) == 0
         local_storage = os.path.join(storage, 'upload', 'local')
         bundle = libernet.tools.bundle.Path(bundle_url, storage)
-
+        total_count = len(urls) - 1
         for index, url in enumerate(reversed(urls)):
             identifier, _, _ = libernet.tools.block.validate_url(url)
             block_path = libernet.tools.block.block_dir(local_storage, identifier, full=True)
@@ -65,6 +65,13 @@ def test_non_existent_bundle():
             with tempfile.TemporaryDirectory() as to_restore:
                 try:
                     found = libernet.tools.bundle.Path(bundle_url, storage).restore_file(to_restore)
-                    assert found == None and index==15, "We should have thrown a file-not-found exception or had None"
+                    assert found == None and index == total_count, "We should have thrown a file-not-found exception or had None"
                 except FileNotFoundError:
                     pass
+            
+            files = libernet.tools.bundle.get_files(bundle_url, storage)
+            assert index == total_count or len(files['files']) == total_count
+            assert index != total_count or len(files['files']) == 0
+            files = libernet.tools.bundle.get_files(bundle_url, storage, enforce=True)
+            assert files is None or len(files['files']) == total_count
+            assert index < total_count or files is None
