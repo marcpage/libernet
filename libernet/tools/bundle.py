@@ -7,10 +7,12 @@ import os
 import json
 import threading
 import queue
+import stat
 
 import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.timestamp
+import libernet.plat.files
 
 MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE
 
@@ -22,14 +24,16 @@ def start_thread(target, *args, **kwargs):
     return thread
 
 
-def process_file(source_path, storage, relative_path, previous):
-    """process a single file"""
-    full_path = os.path.join(source_path, relative_path)
-    # pylint: disable=W0511
-    # TODO use stat to get size and mtime
-    current_file_size = os.path.getsize(full_path)
-    current_modified = libernet.plat.timestamp.create(os.path.getmtime(full_path))
-    urls = []
+def __get_file_description(full_path, relative_path, previous):
+    """Get initial file meta-data"""
+    file_info = os.lstat(full_path)
+    is_link = stat.S_ISLNK(file_info.st_mode)
+
+    if is_link:  # NOT TESTED
+        file_info = os.stat(full_path)
+
+    current_file_size = file_info.st_size
+    current_modified = libernet.plat.timestamp.create(file_info.st_mtime)
 
     if relative_path in previous["files"]:
         size_match = current_file_size == previous["files"][relative_path]["size"]
@@ -42,15 +46,30 @@ def process_file(source_path, storage, relative_path, previous):
         modified_match = False
 
     if modified_match and size_match:
-        # pylint: disable=W0511
-        # TODO should we return the urls if we didn't update them?
-        return (relative_path, previous["files"][relative_path], urls)
+        return None
 
     description = {
         "size": current_file_size,
         "modified": current_modified,
         "parts": [],
     }
+
+    if is_link:  # NOT TESTED
+        description["link"] = os.readlink(full_path)
+
+    return description
+
+
+def process_file(source_path, storage, relative_path, previous):
+    """process a single file"""
+    full_path = os.path.join(source_path, relative_path)
+    description = __get_file_description(full_path, relative_path, previous)
+    urls = []
+
+    if description is None:
+        # pylint: disable=W0511
+        # TODO should we return the urls if we didn't update them?
+        return (relative_path, previous["files"][relative_path], urls)
 
     with open(full_path, "rb") as source_file:
         while True:
@@ -188,16 +207,28 @@ def get_files(url, storage, enforce=False):
 def find_all_relative_paths(source_path):
     """find all files as relative paths in a directory"""
     all_relative_paths = []
+    all_relative_dirs = []
+    empty_dirs = []
 
-    for root, _, files in os.walk(source_path):
+    for root, dirs, files in os.walk(source_path):
         all_relative_paths.extend(
             [
                 libernet.plat.dirs.path_relative_to(os.path.join(root, f), source_path)
                 for f in files
             ]
         )
+        all_relative_dirs.extend(
+            [
+                libernet.plat.dirs.path_relative_to(os.path.join(root, d), source_path)
+                for d in dirs
+            ]
+        )
 
-    return all_relative_paths
+    for directory in all_relative_dirs:
+        if not any((f.startswith(directory) for f in all_relative_paths)):
+            empty_dirs.append(directory)  # NO TESTED
+
+    return (all_relative_paths, empty_dirs)
 
 
 def process_files(in_queue, out_queue, source_path, storage, previous):
@@ -215,12 +246,21 @@ def process_files(in_queue, out_queue, source_path, storage, previous):
 
 def __queue_all_files(path, file_queue):
     """get all files in a path and queue them with a terminating None"""
-    all_files = find_all_relative_paths(path)
+    (all_files, empty_dirs) = find_all_relative_paths(path)
 
     for relative_path in all_files:
         file_queue.put(relative_path)
 
     file_queue.put(None)
+
+    return {
+        d: (
+            {"link": os.readlink(os.path.join(path, d))}
+            if os.path.islink(os.path.join(path, d))
+            else {}
+        )
+        for d in empty_dirs
+    }
 
 
 def __add_files_to_description(description, source_path, storage, previous, **kwargs):
@@ -242,7 +282,7 @@ def __add_files_to_description(description, source_path, storage, previous, **kw
         )
         for _ in range(0, kwargs.get("max_threads", 2))
     ]
-    __queue_all_files(source_path, file_queue)
+    description["directories"] = __queue_all_files(source_path, file_queue)
 
     while True:
         if file_queue is not None:
@@ -365,7 +405,10 @@ class Path:
         if path in self.__description["files"]:
             return True
 
-        if just_load:
+        if path in self.__description.get("directories", []):
+            return True
+
+        if just_load:  # NOT TESTED
             return True
 
         # pylint: disable=E1136
@@ -398,6 +441,11 @@ class Path:
         # pylint: disable=E1136
         file_description = self.__description["files"][path]
         libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
+        link_contents = file_description.get("link", None)
+
+        if link_contents is not None:  # NOT TESTED
+            libernet.plat.files.symlink(link_contents, destination_path)
+            return
 
         with open(destination_path, "wb") as destination_file:
             for block in file_description["parts"]:
@@ -491,7 +539,7 @@ class Path:
         """
         path = path if path is not None else self.__path
 
-        if path is not None and not len(path) > 0:
+        if path is not None and not len(path) > 0:  # NOT TESTED
             index = self.__description.get("index", None)
 
             if index is not None:
@@ -503,9 +551,22 @@ class Path:
             return found
 
         # pylint: disable=E1136
-        files = self.__description["files"] if path is None else [path]
+        files = list(self.__description["files"]) if path is None else [path]
+
+        if path is None:
+            files.extend(self.__description.get("directories", []))
 
         for file in files:
-            self.__restore_file(file, destination_root)
+            if file in self.__description["files"]:
+                self.__restore_file(file, destination_root)
+
+            elif "link" in self.__description["directories"][file]:
+                libernet.plat.files.symlink(
+                    self.__description["directories"][file]["link"],
+                    os.path.join(destination_root, file),
+                )
+
+            else:
+                libernet.plat.dirs.make_dirs(os.path.join(destination_root, file))
 
         return True

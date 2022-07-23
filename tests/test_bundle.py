@@ -20,6 +20,7 @@ def test_create_large_files():
     libernet.tools.bundle.MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE  # hack bundle also
     file_size = 16 * 1024 * 1024  # average file size in bundle is 22k
     file_count = 64
+    
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as to_store:
             for file_index in range(0, file_count):
