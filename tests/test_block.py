@@ -224,5 +224,3 @@ def test_uncompressed_unecnrypted_block():
         assert os.path.isfile(contents_path)
         read = libernet.tools.block.retrieve(url, storage)
         assert read == contents
-
-

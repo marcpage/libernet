@@ -55,6 +55,7 @@ def create_app(storage_path):
         return forbidden()
 
     @app.route("/sha256/<path:path>")
+    # pylint: disable=R0911
     def sha256(path):
         full_url = f"/sha256/{path}"
         block_identifier, block_key, path_in_bundle = libernet.tools.block.validate_url(
@@ -75,6 +76,16 @@ def create_app(storage_path):
 
         if path_in_bundle is not None:
             bundle = libernet.tools.bundle.Path(full_url, settings.storage())
+
+            if path_in_bundle == "":
+                path_in_bundle = bundle.index()
+
+                if path_in_bundle is None:
+                    return (
+                        f"<html><body>{full_url} not found, bundle has no index</body></html>",
+                        404,
+                    )  # File not found
+
             bundle_path = os.path.join(
                 settings.storage(), "web", bundle.relative_path(just_bundle=True)
             )

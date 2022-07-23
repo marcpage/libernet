@@ -72,4 +72,3 @@ def test_pref_dir_windows_file():
     with tempfile.TemporaryDirectory() as home:
         with tempfile.TemporaryDirectory() as appdata:
             test_pref_dir_params("Windows", home, appdata, os.path.join(appdata, 'test.txt'), "test.txt")
-

@@ -32,6 +32,12 @@ def parse_args():
         help="Directory to store/retrieve data",
     )
     parser.add_argument(
+        "-i",
+        "--index",
+        default=None,
+        help="Name of the file in the root to use as the index",
+    )
+    parser.add_argument(
         "-d", "--dir", required=True, type=str, help="Directory to create a bundle for"
     )
     parser.add_argument("-p", "--previous", type=str, help="URL for previous version")
@@ -48,7 +54,8 @@ def main():
         results = libernet.tools.bundle.create(
             args.dir,
             args.storage,
-            args.previous,
+            previous=args.previous,
+            index=args.index,
             max_threads=multiprocessing.cpu_count(),
             verbose=args.verbose,
         )

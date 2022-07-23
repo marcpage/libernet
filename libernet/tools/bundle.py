@@ -12,6 +12,8 @@ import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.timestamp
 
+MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE
+
 
 def start_thread(target, *args, **kwargs):
     """Create a thread running a function with the given parameters."""
@@ -52,7 +54,7 @@ def process_file(source_path, storage, relative_path, previous):
 
     with open(full_path, "rb") as source_file:
         while True:
-            block = source_file.read(libernet.tools.block.BLOCK_SIZE)
+            block = source_file.read(MAX_BUNDLE_SIZE)
 
             if not block:
                 break
@@ -78,7 +80,7 @@ def smallest_files(description):
     """get list of files sorted smallest to largest"""
     return sorted(
         description["files"],
-        key=lambda f: description["files"][f]["size"],
+        key=lambda f: len(json.dumps({f: description["files"][f]})),
         reverse=False,
     )
 
@@ -86,17 +88,17 @@ def smallest_files(description):
 def reduce_description(description, top_level_bundle=False):
     """remove files until we are bundle sized, returns files removed"""
     contents = serialize_bundle(description)
-
-    if len(contents) <= libernet.tools.block.BLOCK_SIZE:
+    # pylint: disable=W0511
+    # TODO: Calculate all sub bundles in one run?
+    if len(contents) <= MAX_BUNDLE_SIZE:
         return {}
 
     files = smallest_files(description)  # get the smallest to largest file
-    average_size_per_file = len(contents) / len(files)
-    subbundle_count = (
-        int(len(contents) / libernet.tools.block.BLOCK_SIZE) if top_level_bundle else 0
-    )
+    average_bundle_size_per_file = len(contents) / len(files)
+    subbundle_count = int((len(contents)) / MAX_BUNDLE_SIZE) if top_level_bundle else 0
     root_bundle_file_count = int(
-        libernet.tools.block.BLOCK_SIZE / average_size_per_file - subbundle_count / 2
+        MAX_BUNDLE_SIZE / average_bundle_size_per_file
+        - ((subbundle_count / 2) if top_level_bundle else 0)
     )
     extracted_files = {
         f: description["files"][f] for f in files[root_bundle_file_count:]
@@ -110,17 +112,17 @@ def reduce_description(description, top_level_bundle=False):
     while True:  # we rarely need to remove any more files
         contents = serialize_bundle(description)
 
-        if len(contents) <= libernet.tools.block.BLOCK_SIZE:
+        if len(contents) <= MAX_BUNDLE_SIZE:
             break
 
-        to_remove = files.pop()  # NOT TESTED
+        to_remove = files.pop(-1)  # NOT TESTED
         extracted_files[to_remove] = description["files"][to_remove]
         del description["files"][to_remove]
 
-    assert len(contents) <= libernet.tools.block.BLOCK_SIZE, (
+    assert len(contents) <= MAX_BUNDLE_SIZE, (
         f"Unable to reduce description {len(contents)} "
-        + f"/ {libernet.tools.block.BLOCK_SIZE} "
-        + f"({len(contents) - libernet.tools.block.BLOCK_SIZE} too big)"
+        + f"/ {MAX_BUNDLE_SIZE} "
+        + f"({len(contents) - MAX_BUNDLE_SIZE} too big)"
     )
     return extracted_files
 
@@ -135,13 +137,13 @@ def finalize_bundle(description, storage):
 
     while extracted_files:
         sub_description = {"files": extracted_files}
-        extracted_files = reduce_description(sub_description, extracted_files)
+        extracted_files = reduce_description(sub_description)
         assert len(sub_description["files"]) > 0
         contents = serialize_bundle(sub_description)
-        assert len(contents) <= libernet.tools.block.BLOCK_SIZE, (
+        assert len(contents) <= MAX_BUNDLE_SIZE, (
             f"contents is too big {len(contents)} "
-            + f"/ {libernet.tools.block.BLOCK_SIZE} "
-            + f"({len(contents) - libernet.tools.block.BLOCK_SIZE} too big)"
+            + f"/ {MAX_BUNDLE_SIZE} "
+            + f"({len(contents) - MAX_BUNDLE_SIZE} too big)"
         )
         url = libernet.tools.block.store_block(contents.encode("utf-8"), storage)
         description["bundles"].append(url)
@@ -221,15 +223,11 @@ def __queue_all_files(path, file_queue):
     file_queue.put(None)
 
 
-def create(source_path, storage, url=None, max_threads=2, verbose=False):
-    """Create or update a bundle from the contents of a directory"""
-    if url is None:
-        previous = {"files": {}}
-        description = {"files": {}}
-    else:
-        previous = get_files(url, storage)
-        description = {"files": {}, "previous": url}
-
+def __add_files_to_description(description, source_path, storage, previous, **kwargs):
+    """finds all the files in source_path
+    adds them to storage and the description
+    returns the urls found
+    """
     urls = []
     file_queue = queue.Queue()
     results_queue = queue.Queue()
@@ -242,7 +240,7 @@ def create(source_path, storage, url=None, max_threads=2, verbose=False):
             storage,
             previous,
         )
-        for _ in range(0, max_threads)
+        for _ in range(0, kwargs.get("max_threads", 2))
     ]
     __queue_all_files(source_path, file_queue)
 
@@ -262,10 +260,44 @@ def create(source_path, storage, url=None, max_threads=2, verbose=False):
         urls.extend(found[2])
         description["files"][found[0]] = found[1]
 
-        if verbose:
+        if kwargs.get("verbose", False):
             print(found[0])
 
+    return urls
+
+
+def create(source_path, storage, max_threads=2, verbose=False, **kwargs):
+    """Create or update a bundle from the contents of a directory
+    kwargs
+        previous - the url of the previous incarnation (speeds up encoding)
+        index - the root file to return if no path is specified
+        all others are just included in the bundle description
+    """
+    description = dict(kwargs)
+    description["files"] = {}
+    previous = (
+        get_files(kwargs["previous"], storage)
+        if kwargs.get("previous", None)
+        else {"files": {}}
+    )
+    index = kwargs.get("index", None)
+    assert index is None or "/" not in index, "index must be a file in the root"
+    urls = __add_files_to_description(
+        description,
+        source_path,
+        storage,
+        previous,
+        max_threads=max_threads,
+        verbose=verbose,
+    )
     description["timestamp"] = libernet.plat.timestamp.create()
+
+    for key in [k for k, v in description.items() if v is None]:
+        del description[key]  # NOT TESTED
+
+    if index is not None and index not in description["files"]:  # NOT TESTED
+        raise FileNotFoundError(f"Requested index '{index}' is not in the bundle")
+
     sub_urls = finalize_bundle(description, storage)
     return [*sub_urls, *urls]
 
@@ -308,7 +340,7 @@ class Path:
         self.__path = path
         self.__description = None
 
-    def __ensure_description(self, path=None):
+    def __ensure_description(self, path=None, just_load=False):
         """ensure we have a loaded description
         returns None if the bundle was not found
         returns False if the path was not found in the bundle
@@ -331,6 +363,9 @@ class Path:
 
         # pylint: disable=E1136
         if path in self.__description["files"]:
+            return True
+
+        if just_load:
             return True
 
         # pylint: disable=E1136
@@ -395,6 +430,11 @@ class Path:
 
         return os.path.join(base, self.__path if path is None else path)
 
+    def index(self):  # NOT TESTED
+        """Get the index file (or None if there is none)"""
+        self.__ensure_description(just_load=True)
+        return self.__description.get("index", None)
+
     def missing_blocks(self, path=None):
         """Gets list of all known blocks needed to restore the file
         if self.__path and path is None then missing blocks for all files is returned
@@ -402,6 +442,15 @@ class Path:
         The missing blocks may not be the complete set needed
         """
         path = self.__path if path is None else path
+
+        if path == "":  # NOT TESTED
+            path = self.__description.get("index", None)
+
+            if path is None:
+                raise FileNotFoundError(
+                    "This bundle has no index, but one was requested"
+                )
+
         path_found = self.__ensure_description(path)
 
         if path_found is None:  # we don't even have the block
@@ -441,10 +490,17 @@ class Path:
         otherwise path (or if None, self.__path) is restored
         """
         path = path if path is not None else self.__path
+
+        if path is not None and not len(path) > 0:
+            index = self.__description.get("index", None)
+
+            if index is not None:
+                path = index
+
         found = self.__ensure_description(path)
 
         if not found:
-            return found  # NOT TESTED
+            return found
 
         # pylint: disable=E1136
         files = self.__description["files"] if path is None else [path]

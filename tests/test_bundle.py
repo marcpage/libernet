@@ -12,10 +12,12 @@ import libernet.tools.block
 def test_create():
     with tempfile.TemporaryDirectory() as storage:
         urls = libernet.tools.bundle.create("libernet", storage)
-        more_urls = libernet.tools.bundle.create("libernet", storage, urls[0])
+        more_urls = libernet.tools.bundle.create("libernet", storage, previous=urls[0])
 
 def test_create_large_files():
+    threads = multiprocessing.cpu_count()
     libernet.tools.block.BLOCK_SIZE = 128 * 1024  # hack the block size to speed up the tests
+    libernet.tools.bundle.MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE  # hack bundle also
     file_size = 16 * 1024 * 1024  # average file size in bundle is 22k
     file_count = 64
     with tempfile.TemporaryDirectory() as storage:
@@ -25,9 +27,9 @@ def test_create_large_files():
                     text_file.write('0'*file_size)
 
             start = time.time()
-            urls = libernet.tools.bundle.create(to_store, storage, max_threads=multiprocessing.cpu_count())
+            urls = libernet.tools.bundle.create(to_store, storage, max_threads=threads)
             mid = time.time()
-            more_urls = libernet.tools.bundle.create(to_store, storage, urls[0], max_threads=multiprocessing.cpu_count())
+            more_urls = libernet.tools.bundle.create(to_store, storage, previous=urls[0], max_threads=threads)
             done = time.time()
             assert (done - mid) < (mid - start) / 2, (f"2nd store ({done-mid:0.3f} seconds) should have " 
                                                         + f"been at least half 1st store ({mid-start:0.3f} seconds)")
@@ -89,5 +91,3 @@ def test_non_existent_bundle():
             files = libernet.tools.bundle.get_files(bundle_url, storage, enforce=True)
             assert files is None or len(files['files']) == total_count
             assert index < total_count or files is None
-
-test_non_existent_bundle()
