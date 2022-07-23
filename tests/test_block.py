@@ -3,6 +3,7 @@
 import tempfile
 import os
 import struct
+import shutil
 
 import libernet.tools.block
 import libernet.plat
@@ -224,3 +225,39 @@ def test_uncompressed_unecnrypted_block():
         assert os.path.isfile(contents_path)
         read = libernet.tools.block.retrieve(url, storage)
         assert read == contents
+
+def test_removals():
+    contents = (b'12345')
+
+    with tempfile.TemporaryDirectory() as storage:
+        local_dir = os.path.join(storage, "upload", "local")
+        libernet.plat.dirs.make_dirs(local_dir)
+        url = libernet.tools.block.store_block(contents, storage)
+        identifier, key, _ = libernet.tools.block.validate_url(url)
+
+        contents_path = libernet.tools.block.block_dir(local_dir, identifier, key, full=True) + '.raw'
+        assert os.path.isfile(contents_path)
+        assert contents == libernet.tools.block.retrieve(url, storage)
+        os.unlink(contents_path)
+        assert not os.path.isfile(contents_path)
+        assert contents == libernet.tools.block.retrieve(url, storage)
+        assert os.path.isfile(contents_path)
+
+        aes_dir = libernet.tools.block.block_dir(local_dir, identifier, key, full=False)
+        assert os.path.isdir(aes_dir)
+        assert contents == libernet.tools.block.retrieve(url, storage)
+        shutil.rmtree(aes_dir)
+        assert not os.path.isdir(aes_dir)
+        assert contents == libernet.tools.block.retrieve(url, storage)
+        assert os.path.isdir(aes_dir)
+        assert os.path.isfile(contents_path)
+
+        identifier_dir = libernet.tools.block.block_dir(local_dir, identifier, full=True)
+        assert os.path.isdir(identifier_dir)
+        assert contents == libernet.tools.block.retrieve(url, storage)
+        shutil.rmtree(identifier_dir)
+        assert not os.path.isdir(identifier_dir)
+        assert contents == libernet.tools.block.retrieve(url, storage)
+        assert os.path.isdir(identifier_dir)
+        assert os.path.isdir(aes_dir)
+        assert os.path.isfile(contents_path)

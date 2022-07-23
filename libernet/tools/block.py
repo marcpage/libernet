@@ -128,6 +128,7 @@ def decrypt_block(encrypted_path, block_key):
                 contents = None
 
         if contents is not None:
+            libernet.plat.dirs.make_dirs(os.path.split(full_path)[0])
             with open(full_path + ".raw", "wb") as data_file:
                 data_file.write(contents)
 
