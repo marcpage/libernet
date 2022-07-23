@@ -10,6 +10,7 @@ import io
 import zlib
 import zipfile
 import time
+import threading
 
 import flask
 
@@ -18,8 +19,9 @@ import libernet.plat.dirs
 import libernet.plat.network
 import libernet.tools.bundle
 import libernet.tools.settings
+import libernet.plat.files
 
-
+BROWSER_OPEN_DELAY_IN_SECONDS = 0.200
 LOG_FILE_MAX_SIZE = 1024 * 1024  # 1 MiB
 
 
@@ -196,11 +198,23 @@ def parse_args():
     parser.add_argument(
         "-d", "--debug", default=False, action="store_true", help="Run debug server."
     )
+    parser.add_argument(
+        "-b",
+        "--background",
+        default=False,
+        action="store_true",
+        help="Do not launch web browser.",
+    )
     args = parser.parse_args()
 
     libernet.plat.dirs.make_dirs(os.path.join(args.storage, "web"))
     libernet.plat.dirs.make_dirs(os.path.join(args.storage, "upload"))
     return args
+
+
+def __open_browser(url, delay_in_seconds):
+    time.sleep(delay_in_seconds)
+    libernet.plat.files.open_url(url)
 
 
 def serve(port, storage, debug):
@@ -220,6 +234,11 @@ def serve(port, storage, debug):
     log_level = logging.DEBUG if debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
     app = create_app(storage)
+    threading.Thread(
+        target=__open_browser,
+        args=(f"http://localhost:{port}", BROWSER_OPEN_DELAY_IN_SECONDS),
+        daemon=True,
+    ).start()
     app.run(host="0.0.0.0", debug=debug, port=port)
 
 
