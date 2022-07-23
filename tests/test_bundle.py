@@ -8,6 +8,8 @@ import shutil
 
 import libernet.tools.bundle
 import libernet.tools.block
+import libernet.plat.dirs
+import libernet.plat.files
 
 def test_create():
     with tempfile.TemporaryDirectory() as storage:
@@ -20,7 +22,7 @@ def test_create_large_files():
     libernet.tools.bundle.MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE  # hack bundle also
     file_size = 16 * 1024 * 1024  # average file size in bundle is 22k
     file_count = 64
-    
+
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as to_store:
             for file_index in range(0, file_count):
@@ -92,3 +94,78 @@ def test_non_existent_bundle():
             files = libernet.tools.bundle.get_files(bundle_url, storage, enforce=True)
             assert files is None or len(files['files']) == total_count
             assert index < total_count or files is None
+
+def test_empty_directories():
+    with tempfile.TemporaryDirectory() as storage:
+        with tempfile.TemporaryDirectory() as working:
+            deep_dirs = [
+                os.path.join("1", "2", "3"),
+                os.path.join("1", "2", "4"),
+                os.path.join("1", "5", "6"),
+                os.path.join("7", "8"),
+                os.path.join("9"),
+                os.path.join("A", "B", "C"),
+            ]
+
+            for directory in deep_dirs:
+                libernet.plat.dirs.make_dirs(os.path.join(working, directory))
+
+            urls = libernet.tools.bundle.create(working, storage)
+
+        with tempfile.TemporaryDirectory() as to_restore:
+            bundle = libernet.tools.bundle.Path(urls[0], storage)
+            assert not bundle.missing_blocks()
+            bundle.restore_file(to_restore)
+            
+            for directory in deep_dirs:
+                assert os.path.isdir(os.path.join(to_restore, directory)), f"Unable to restore {directory}"
+
+def test_symlinks():
+    data_contents = 'contents'
+    with tempfile.TemporaryDirectory() as storage:
+        with tempfile.TemporaryDirectory() as working:
+            data_path = os.path.join(working, 'data.txt')
+            inner_path = os.path.join(working, "inner")
+            copy_path = os.path.join(working, "inner", "copy.txt")
+            inner_link_path = os.path.join(working, "inner_link")
+            inner_data_path = os.path.join(inner_link_path, 'copy.txt')
+
+            with open(data_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            libernet.plat.dirs.make_dirs(inner_path)
+            libernet.plat.files.symlink("../data.txt", copy_path)
+            libernet.plat.files.symlink("inner", inner_link_path)
+
+            with open(data_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+            
+            with open(copy_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+
+            with open(inner_data_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+
+            urls = libernet.tools.bundle.create(working, storage)
+
+        with tempfile.TemporaryDirectory() as to_restore:
+            bundle = libernet.tools.bundle.Path(urls[0], storage)
+            assert not bundle.missing_blocks()
+            bundle.restore_file(to_restore)
+            data_path = os.path.join(to_restore, 'data.txt')
+            inner_path = os.path.join(to_restore, "inner")
+            copy_path = os.path.join(to_restore, "inner", "copy.txt")
+            inner_link_path = os.path.join(to_restore, "inner_link")
+            inner_data_path = os.path.join(inner_link_path, 'copy.txt')
+
+            with open(data_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+            
+            with open(copy_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+
+            with open(inner_data_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+
+test_symlinks()
+

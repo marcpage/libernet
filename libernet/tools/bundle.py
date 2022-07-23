@@ -29,7 +29,7 @@ def __get_file_description(full_path, relative_path, previous):
     file_info = os.lstat(full_path)
     is_link = stat.S_ISLNK(file_info.st_mode)
 
-    if is_link:  # NOT TESTED
+    if is_link:
         file_info = os.stat(full_path)
 
     current_file_size = file_info.st_size
@@ -54,7 +54,7 @@ def __get_file_description(full_path, relative_path, previous):
         "parts": [],
     }
 
-    if is_link:  # NOT TESTED
+    if is_link:
         description["link"] = os.readlink(full_path)
 
     return description
@@ -406,7 +406,7 @@ class Path:
             return True
 
         if path in self.__description.get("directories", []):
-            return True
+            return True  # NOT TESTED
 
         if just_load:  # NOT TESTED
             return True
@@ -443,7 +443,7 @@ class Path:
         libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
         link_contents = file_description.get("link", None)
 
-        if link_contents is not None:  # NOT TESTED
+        if link_contents is not None:
             libernet.plat.files.symlink(link_contents, destination_path)
             return
 
