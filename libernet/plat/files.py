@@ -23,4 +23,10 @@ def symlink(src, dst):
 def open_url(url):
     """opens the default browser (if supported)"""
     if SYSTEM == "Darwin":
-        os.system(f"open '{url}'")
+        os.system(f'open "{url}"')
+    
+    elif SYSTEM == "Windows":
+        os.system(f'explorer "{url}"')
+    
+    elif SYSTEM == "Linux":
+        os.system(f'xdg-open "{url}"')
