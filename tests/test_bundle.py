@@ -166,6 +166,3 @@ def test_symlinks():
 
             with open(inner_data_path, 'r') as text_file:
                 assert text_file.read() == data_contents
-
-test_symlinks()
-

@@ -24,9 +24,9 @@ def open_url(url):
     """opens the default browser (if supported)"""
     if SYSTEM == "Darwin":  # NOT TESTED
         os.system(f'open "{url}"')
-    
+
     elif SYSTEM == "Windows":  # NOT TESTED
         os.system(f'explorer "{url}"')
-    
+
     elif SYSTEM == "Linux":  # NOT TESTED
         os.system(f'xdg-open "{url}"')
