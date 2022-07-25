@@ -31,6 +31,8 @@ def __get_file_description(full_path, relative_path, previous):
     """Get initial file meta-data"""
     file_info = os.lstat(full_path)
     is_link = stat.S_ISLNK(file_info.st_mode)
+    is_readonly = (file_info.st_mode & stat.S_IWUSR) == 0
+    is_executable = (file_info.st_mode & stat.S_IXUSR) == stat.S_IXUSR
 
     if is_link:
         file_info = os.stat(full_path)
@@ -59,6 +61,14 @@ def __get_file_description(full_path, relative_path, previous):
 
     if is_link:
         description["link"] = os.readlink(full_path)
+
+    if is_readonly:
+        print(f"readonly: {full_path}")
+        description["readonly"] = True
+
+    if is_executable:
+        print(f"executable: {full_path}")
+        description["executable"] = True
 
     return description
 
@@ -467,6 +477,8 @@ class Path:
         file_description = self.__description["files"][path]
         libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
         link_contents = file_description.get("link", None)
+        is_readonly = file_description.get("readonly", False)
+        is_executable = file_description.get("executable", False)
 
         if link_contents is not None:
             libernet.plat.files.symlink(link_contents, destination_path)
@@ -489,6 +501,16 @@ class Path:
                         file_description["xattr"][attribute], self.__storage
                     ),
                 )
+
+        if is_readonly or is_executable:
+            mode = os.stat(destination_path).st_mode
+            print(f"old mode: {mode:o} {destination_path}")
+            mode = (mode & ~stat.S_IWUSR) if is_readonly else mode
+            mode = mode | (stat.S_IXUSR if is_executable else 0)
+            print(
+                f"new mode {mode:o} is_executable = {is_executable} is_readonly = {is_readonly}"
+            )
+            os.chmod(destination_path, mode)
 
     def relative_path(self, path=None, just_bundle=False):  # NOT TESTED
         """get the relative path to the bundle contents"""
