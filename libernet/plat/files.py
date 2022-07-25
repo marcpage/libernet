@@ -5,6 +5,7 @@ import os
 import platform
 
 SYSTEM = platform.system()
+RSRC_FORK = os.path.join("..namedfork", "rsrc")
 
 
 def symlink(src, dst):
@@ -30,3 +31,12 @@ def open_url(url):
 
     elif SYSTEM == "Linux":  # NOT TESTED
         os.system(f'xdg-open "{url}"')
+
+
+def rsrc_fork_path(path, verify=True):
+    """Get the path to the resource fork for the file if it exists, None otherwise"""
+    if SYSTEM == "Darwin":  # NOT TESTED
+        rsrc_path = os.path.join(path, RSRC_FORK)
+        return rsrc_path if not verify or os.path.isfile(rsrc_path) else None
+
+    return None

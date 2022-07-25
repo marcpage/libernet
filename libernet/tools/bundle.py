@@ -9,6 +9,8 @@ import threading
 import queue
 import stat
 
+import xattr
+
 import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.timestamp
@@ -61,6 +63,34 @@ def __get_file_description(full_path, relative_path, previous):
     return description
 
 
+def __store_file_parts(path, storage, urls):
+    parts = []
+
+    with open(path, "rb") as source_file:
+        while True:
+            block = source_file.read(MAX_BUNDLE_SIZE)
+
+            if not block:
+                break
+            url = libernet.tools.block.store_block(block, storage)
+            urls.append(url)
+            parts.append(
+                {
+                    "url": url,
+                    "size": len(block),
+                }
+            )
+
+    return parts
+
+
+def __store_xattr(path, storage):
+    return {
+        a: libernet.tools.block.store_block(xattr.getxattr(path, a), storage)
+        for a in xattr.listxattr(path)
+    }
+
+
 def __process_file(source_path, storage, relative_path, previous):
     """process a single file"""
     full_path = os.path.join(source_path, relative_path)
@@ -72,21 +102,15 @@ def __process_file(source_path, storage, relative_path, previous):
         # TODO should we return the urls if we didn't update them?
         return (relative_path, previous["files"][relative_path], urls)
 
-    with open(full_path, "rb") as source_file:
-        while True:
-            block = source_file.read(MAX_BUNDLE_SIZE)
+    description["parts"] = __store_file_parts(full_path, storage, urls)
+    rsrc_path = libernet.plat.files.rsrc_fork_path(full_path)
+    file_attributes = __store_xattr(full_path, storage)
 
-            if not block:
-                break
+    if rsrc_path is not None:
+        description["rsrc"] = __store_file_parts(rsrc_path, storage, urls)
 
-            url = libernet.tools.block.store_block(block, storage)
-            urls.append(url)
-            description["parts"].append(
-                {
-                    "url": url,
-                    "size": len(block),
-                }
-            )
+    if file_attributes:
+        description["xattr"] = file_attributes
 
     return (relative_path, description, urls)
 
@@ -127,6 +151,7 @@ def __breakdown_bundle(description):
         subcontent = __serialize_bundle(subbundle)
         assert len(subcontent) <= MAX_BUNDLE_SIZE
         bundles.append((subbundle, subcontent))
+
     bundles.sort(key=lambda f: len(f[1]))
     main_bundle = bundles.pop(0)[0]
     main_bundle.update(description)
@@ -418,20 +443,9 @@ class Path:
 
         return path is None
 
-    def __restore_file(self, path, destination_root):
-        """restore a single file to a given path"""
-        destination_path = os.path.join(destination_root, path)
-        # pylint: disable=E1136
-        file_description = self.__description["files"][path]
-        libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
-        link_contents = file_description.get("link", None)
-
-        if link_contents is not None:
-            libernet.plat.files.symlink(link_contents, destination_path)
-            return
-
-        with open(destination_path, "wb") as destination_file:
-            for block in file_description["parts"]:
+    def __restore_file_contents(self, path, parts):
+        with open(path, "wb") as destination_file:
+            for block in parts:
                 block_contents = libernet.tools.block.retrieve(
                     block["url"], self.__storage
                 )
@@ -445,6 +459,36 @@ class Path:
                     )
 
                 destination_file.write(block_contents)
+
+    def __restore_file(self, path, destination_root):
+        """restore a single file to a given path"""
+        destination_path = os.path.join(destination_root, path)
+        # pylint: disable=E1136
+        file_description = self.__description["files"][path]
+        libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
+        link_contents = file_description.get("link", None)
+
+        if link_contents is not None:
+            libernet.plat.files.symlink(link_contents, destination_path)
+            return
+
+        self.__restore_file_contents(destination_path, file_description["parts"])
+
+        if "rsrc" in file_description:
+            self.__restore_file_contents(
+                libernet.plat.files.rsrc_fork_path(destination_path, verify=False),
+                file_description["rsrc"],
+            )
+
+        if "xattr" in file_description:
+            for attribute in file_description["xattr"]:
+                xattr.setxattr(
+                    destination_path,
+                    attribute,
+                    libernet.tools.block.retrieve(
+                        file_description["xattr"][attribute], self.__storage
+                    ),
+                )
 
     def relative_path(self, path=None, just_bundle=False):  # NOT TESTED
         """get the relative path to the bundle contents"""
@@ -509,6 +553,24 @@ class Path:
                     u
                     for u in urls
                     if not libernet.tools.block.retrieve(u, self.__storage, load=False)
+                ]
+            )
+            missing.extend(
+                [
+                    u
+                    for u in self.__description["files"][file].get("rsrc", [])
+                    if not libernet.tools.block.retrieve(u, self.__storage, load=False)
+                ]
+            )
+            missing.extend(
+                [
+                    self.__description["files"][file]["xattr"][a]
+                    for a in self.__description["files"][file].get("xattr", [])
+                    if not libernet.tools.block.retrieve(
+                        self.__description["files"][file]["xattr"][a],
+                        self.__storage,
+                        load=False,
+                    )
                 ]
             )
 

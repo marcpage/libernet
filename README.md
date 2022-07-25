@@ -33,26 +33,25 @@ Windows support is expected but untested.
 1. Bundle contents can be loaded via URL
 1. Validated self-contained, relative-path websites can be contained in bundles
 1. Can find identifiers "like" other identifiers (first 4 nibbles or 16 bit matches)
-2. Symlinks and empty directories are preserved in bundles
+2. Symlinks, empty directories, macOS resource forks, and xattrs are preserved in bundles
+3. Index file supported in bundles (file to return when looking at the root of the bundle)
 
 
 # TODO
 
 1. url stats (first, last, and count of requested, downloaded, purged with deleted and local flags)
 2. Support read/write/execute permissions in bundles
-3. Support xattrs in bundles
-4. Add a starting file to bundles (path if the root of the bundle is requested)
-5. Server should accept PUT for `/sha256/{identifier}`
-6. Server should send node identifier and signature of response to every request
+3. Server should accept PUT for `/sha256/{identifier}`
+4. Server should send node identifier and signature of response to every request
    - Send timestamp and signature of timestamp and path
    - Settings app could take url and headers and modify headers accordingly (or return headers dictionary)
    - Servers should first push their public key (unencrypted block)
-7. Implement notification center (request blocks - wait with timeout, notify of blocks)
+5. Implement notification center (request blocks - wait with timeout, notify of blocks)
    - When requesting blocks a threading.Event is returned
    - Wait with a timeout on the event
    - If timeout, then return the status page
    - When a request comes in (if it does not already have an event) it sends the request to the connection pool
-8.  Implement connection pool that takes requests and events and walks them through each of the connections (on correct order) until it finds them
+6.  Implement connection pool that takes requests and events and walks them through each of the connections (on correct order) until it finds them
    - Block id nearest to furthest from the node id
    - Thread for each connection to remote host
    - Each has a queue of requests which takes path and event
