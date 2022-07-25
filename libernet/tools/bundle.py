@@ -63,11 +63,9 @@ def __get_file_description(full_path, relative_path, previous):
         description["link"] = os.readlink(full_path)
 
     if is_readonly:
-        print(f"readonly: {full_path}")
         description["readonly"] = True
 
     if is_executable:
-        print(f"executable: {full_path}")
         description["executable"] = True
 
     return description
@@ -116,7 +114,7 @@ def __process_file(source_path, storage, relative_path, previous):
     rsrc_path = libernet.plat.files.rsrc_fork_path(full_path)
     file_attributes = __store_xattr(full_path, storage)
 
-    if rsrc_path is not None:
+    if rsrc_path is not None:  # NOT TESTED
         description["rsrc"] = __store_file_parts(rsrc_path, storage, urls)
 
     if file_attributes:
@@ -222,7 +220,7 @@ def get_files(url, storage, enforce=False):
     return bundle
 
 
-def find_all_relative_paths(source_path):
+def __find_all_relative_paths(source_path):
     """find all files as relative paths in a directory"""
     all_relative_paths = []
     all_relative_dirs = []
@@ -249,7 +247,7 @@ def find_all_relative_paths(source_path):
     return (all_relative_paths, empty_dirs)
 
 
-def process_files(in_queue, out_queue, source_path, storage, previous):
+def __process_files(in_queue, out_queue, source_path, storage, previous):
     """thread to process files"""
     while True:
         relative_path = in_queue.get()
@@ -264,7 +262,7 @@ def process_files(in_queue, out_queue, source_path, storage, previous):
 
 def __queue_all_files(path, file_queue):
     """get all files in a path and queue them with a terminating None"""
-    (all_files, empty_dirs) = find_all_relative_paths(path)
+    (all_files, empty_dirs) = __find_all_relative_paths(path)
 
     for relative_path in all_files:
         file_queue.put(relative_path)
@@ -291,7 +289,7 @@ def __add_files_to_description(description, source_path, storage, previous, **kw
     results_queue = queue.Queue()
     threads = [
         __start_thread(
-            process_files,
+            __process_files,
             file_queue,
             results_queue,
             source_path,
@@ -351,7 +349,7 @@ def create(source_path, storage, max_threads=2, verbose=False, **kwargs):
     description["timestamp"] = libernet.plat.timestamp.create()
 
     for key in [k for k, v in description.items() if v is None]:
-        del description[key]  # NOT TESTED
+        del description[key]
 
     if index is not None and index not in description["files"]:  # NOT TESTED
         raise FileNotFoundError(f"Requested index '{index}' is not in the bundle")
@@ -426,7 +424,7 @@ class Path:
         if path in self.__description.get("directories", []):
             return True  # NOT TESTED
 
-        if just_load:  # NOT TESTED
+        if just_load:
             return True
 
         # pylint: disable=E1136
@@ -486,7 +484,7 @@ class Path:
 
         self.__restore_file_contents(destination_path, file_description["parts"])
 
-        if "rsrc" in file_description:
+        if "rsrc" in file_description:  # NOT TESTED
             self.__restore_file_contents(
                 libernet.plat.files.rsrc_fork_path(destination_path, verify=False),
                 file_description["rsrc"],
@@ -504,12 +502,8 @@ class Path:
 
         if is_readonly or is_executable:
             mode = os.stat(destination_path).st_mode
-            print(f"old mode: {mode:o} {destination_path}")
             mode = (mode & ~stat.S_IWUSR) if is_readonly else mode
             mode = mode | (stat.S_IXUSR if is_executable else 0)
-            print(
-                f"new mode {mode:o} is_executable = {is_executable} is_readonly = {is_readonly}"
-            )
             os.chmod(destination_path, mode)
 
     def relative_path(self, path=None, just_bundle=False):  # NOT TESTED
@@ -527,7 +521,7 @@ class Path:
 
         return os.path.join(base, self.__path if path is None else path)
 
-    def index(self):  # NOT TESTED
+    def index(self):
         """Get the index file (or None if there is none)"""
         self.__ensure_description(just_load=True)
         return self.__description.get("index", None)

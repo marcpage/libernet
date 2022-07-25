@@ -5,6 +5,7 @@ import os
 import multiprocessing
 import time
 import shutil
+import stat
 
 import libernet.tools.bundle
 import libernet.tools.block
@@ -13,7 +14,7 @@ import libernet.plat.files
 
 def test_create():
     with tempfile.TemporaryDirectory() as storage:
-        urls = libernet.tools.bundle.create("libernet", storage)
+        urls = libernet.tools.bundle.create("libernet", storage, index=None, previous=None)
         more_urls = libernet.tools.bundle.create("libernet", storage, previous=urls[0])
 
 def test_create_large_files():
@@ -146,11 +147,12 @@ def test_symlinks():
             with open(inner_data_path, 'r') as text_file:
                 assert text_file.read() == data_contents
 
-            urls = libernet.tools.bundle.create(working, storage)
+            urls = libernet.tools.bundle.create(working, storage, index="data.txt")
 
         with tempfile.TemporaryDirectory() as to_restore:
             bundle = libernet.tools.bundle.Path(urls[0], storage)
             assert not bundle.missing_blocks()
+            assert bundle.index() == "data.txt"
             bundle.restore_file(to_restore)
             data_path = os.path.join(to_restore, 'data.txt')
             inner_path = os.path.join(to_restore, "inner")
@@ -166,3 +168,51 @@ def test_symlinks():
 
             with open(inner_data_path, 'r') as text_file:
                 assert text_file.read() == data_contents
+
+def test_permissions():
+    data_contents = 'contents'
+    with tempfile.TemporaryDirectory() as storage:
+        with tempfile.TemporaryDirectory() as working:
+            normal_path = os.path.join(working, 'normal.txt')
+            readonly_path = os.path.join(working, 'readonly.txt')
+            execute_path = os.path.join(working, 'execute.txt')
+            readonly_execute_path = os.path.join(working, 'readonly_execute.txt')
+
+            with open(normal_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            with open(readonly_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            with open(execute_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            with open(readonly_execute_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            os.chmod(readonly_path, 0o444)
+            os.chmod(execute_path, 0o777)
+            os.chmod(readonly_execute_path, 0o555)
+
+            urls = libernet.tools.bundle.create(working, storage)
+
+        with tempfile.TemporaryDirectory() as to_restore:
+            bundle = libernet.tools.bundle.Path(urls[0], storage)
+            assert not bundle.missing_blocks()
+            bundle.restore_file(to_restore)
+            normal_path = os.path.join(to_restore, 'normal.txt')
+            readonly_path = os.path.join(to_restore, 'readonly.txt')
+            execute_path = os.path.join(to_restore, 'execute.txt')
+            readonly_execute_path = os.path.join(to_restore, 'readonly_execute.txt')
+            assert os.stat(normal_path).st_mode & stat.S_IRUSR == stat.S_IRUSR
+            assert os.stat(normal_path).st_mode & stat.S_IWUSR == stat.S_IWUSR
+            assert os.stat(normal_path).st_mode & stat.S_IXUSR == 0
+            assert os.stat(readonly_path).st_mode & stat.S_IRUSR == stat.S_IRUSR
+            assert os.stat(readonly_path).st_mode & stat.S_IWUSR == 0
+            assert os.stat(readonly_path).st_mode & stat.S_IXUSR == 0
+            assert os.stat(execute_path).st_mode & stat.S_IRUSR == stat.S_IRUSR
+            assert os.stat(execute_path).st_mode & stat.S_IWUSR == stat.S_IWUSR
+            assert os.stat(execute_path).st_mode & stat.S_IXUSR == stat.S_IXUSR
+            assert os.stat(readonly_execute_path).st_mode & stat.S_IRUSR == stat.S_IRUSR
+            assert os.stat(readonly_execute_path).st_mode & stat.S_IWUSR == 0
+            assert os.stat(readonly_execute_path).st_mode & stat.S_IXUSR == stat.S_IXUSR
