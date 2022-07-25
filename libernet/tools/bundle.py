@@ -114,7 +114,7 @@ def __process_file(source_path, storage, relative_path, previous):
     rsrc_path = libernet.plat.files.rsrc_fork_path(full_path)
     file_attributes = __store_xattr(full_path, storage)
 
-    if rsrc_path is not None:  # NOT TESTED
+    if rsrc_path is not None:  # NOT TESTED create bogus resource fork
         description["rsrc"] = __store_file_parts(rsrc_path, storage, urls)
 
     if file_attributes:
@@ -242,7 +242,7 @@ def __find_all_relative_paths(source_path):
 
     for directory in all_relative_dirs:
         if not any((f.startswith(directory) for f in all_relative_paths)):
-            empty_dirs.append(directory)  # NO TESTED
+            empty_dirs.append(directory)  # NOT TESTED create a bundle with empty directories
 
     return (all_relative_paths, empty_dirs)
 
@@ -351,7 +351,7 @@ def create(source_path, storage, max_threads=2, verbose=False, **kwargs):
     for key in [k for k, v in description.items() if v is None]:
         del description[key]
 
-    if index is not None and index not in description["files"]:  # NOT TESTED
+    if index is not None and index not in description["files"]:  # NOT TESTED pass index to create that doesn't exist in the bundle
         raise FileNotFoundError(f"Requested index '{index}' is not in the bundle")
 
     sub_urls = __finalize_bundle(description, storage)
@@ -422,7 +422,7 @@ class Path:
             return True
 
         if path in self.__description.get("directories", []):
-            return True  # NOT TESTED
+            return True  # NOT TESTED check for missing blocks for an empty directory in a bundle
 
         if just_load:
             return True
@@ -447,7 +447,7 @@ class Path:
 
                 # pylint: disable=E1136
                 if path in self.__description["files"]:
-                    return True  # NOT TESTED
+                    return True  # NOT TESTED check for missing blocks for a file in a bundle
 
         return path is None
 
@@ -484,7 +484,7 @@ class Path:
 
         self.__restore_file_contents(destination_path, file_description["parts"])
 
-        if "rsrc" in file_description:  # NOT TESTED
+        if "rsrc" in file_description:  # NOT TESTED create a bogus resource fork
             self.__restore_file_contents(
                 libernet.plat.files.rsrc_fork_path(destination_path, verify=False),
                 file_description["rsrc"],
@@ -506,7 +506,7 @@ class Path:
             mode = mode | (stat.S_IXUSR if is_executable else 0)
             os.chmod(destination_path, mode)
 
-    def relative_path(self, path=None, just_bundle=False):  # NOT TESTED
+    def relative_path(self, path=None, just_bundle=False):  # NOT TESTED assert relative path is as exepcted
         """get the relative path to the bundle contents"""
         base = os.path.join(
             "sha256",
@@ -534,7 +534,7 @@ class Path:
         """
         path = self.__path if path is None else path
 
-        if path == "":  # NOT TESTED
+        if path == "":  # NOT TESTED add an index and test for missing blocks on empty path
             path = self.__description.get("index", None)
 
             if path is None:
@@ -554,7 +554,7 @@ class Path:
             if missing is None:  # there are no more bundles to search
                 return None  # file not found
 
-            # NOT TESTED
+            # NOT TESTED  delete subbundle block
             return list(missing)  # we need other sub-bundles to search
 
         # pylint: disable=E1136
@@ -600,7 +600,7 @@ class Path:
         """
         path = path if path is not None else self.__path
 
-        if path is not None and not len(path) > 0:  # NOT TESTED
+        if path is not None and len(path) == 0:  # NOT TESTED set and index and restore "" and verify the index was created
             index = self.__description.get("index", None)
 
             if index is not None:
