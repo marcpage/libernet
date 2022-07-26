@@ -34,3 +34,26 @@ def test_symlink():
                     assert test_contents == text_file.read()
 
     libernet.plat.files.SYSTEM = system
+
+def test_non_mac_rsrc():
+    system = libernet.plat.files.SYSTEM
+    test_systems = ["Linux","Windows"]
+
+    for test_system in test_systems:
+        libernet.plat.files.SYSTEM = test_system
+
+        with tempfile.TemporaryDirectory() as working:
+            file_path = os.path.join(working, "test.txt")
+            
+            with open(file_path, 'w') as f: 
+                f.write("contents")
+            
+            assert libernet.plat.files.rsrc_fork_path(file_path) == None
+            
+    libernet.plat.files.SYSTEM = system
+
+def test_bogus_system_open_url():
+    system = libernet.plat.files.SYSTEM
+    libernet.plat.files.SYSTEM = "bogus"
+    libernet.plat.files.open_url("https://www.apple.com/")
+    libernet.plat.files.SYSTEM = system
