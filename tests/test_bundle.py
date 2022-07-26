@@ -17,8 +17,10 @@ def test_create():
         urls = libernet.tools.bundle.create("libernet", storage, index=None, previous=None)
         more_urls = libernet.tools.bundle.create("libernet", storage, previous=urls[0])
 
+
 def test_create_large_files():
     threads = multiprocessing.cpu_count()
+    old_block_size = libernet.tools.block.BLOCK_SIZE
     libernet.tools.block.BLOCK_SIZE = 128 * 1024  # hack the block size to speed up the tests
     libernet.tools.bundle.MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE  # hack bundle also
     file_size = 16 * 1024 * 1024  # average file size in bundle is 22k
@@ -44,6 +46,10 @@ def test_create_large_files():
                 bundle = libernet.tools.bundle.Path(urls[0], storage)
                 assert not bundle.missing_blocks()
                 bundle.restore_file(to_restore)
+    
+    libernet.tools.block.BLOCK_SIZE = old_block_size
+    libernet.tools.bundle.MAX_BUNDLE_SIZE = old_block_size
+
 
 def test_non_existent_bundle():
     with tempfile.TemporaryDirectory() as storage:
@@ -96,6 +102,7 @@ def test_non_existent_bundle():
             assert files is None or len(files['files']) == total_count
             assert index < total_count or files is None
 
+
 def test_empty_directories():
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
@@ -121,8 +128,10 @@ def test_empty_directories():
             for directory in deep_dirs:
                 assert os.path.isdir(os.path.join(to_restore, directory)), f"Unable to restore {directory}"
 
+
 def test_symlinks():
     data_contents = 'contents'
+
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
             data_path = os.path.join(working, 'data.txt')
@@ -169,8 +178,10 @@ def test_symlinks():
             with open(inner_data_path, 'r') as text_file:
                 assert text_file.read() == data_contents
 
+
 def test_permissions():
     data_contents = 'contents'
+
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
             normal_path = os.path.join(working, 'normal.txt')
@@ -221,6 +232,7 @@ def test_permissions():
 def test_rsrc():
     data_contents = 'contents'
     rsrc_contents = 'rsrc'
+
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
             normal_path = os.path.join(working, 'normal.txt')
@@ -246,3 +258,70 @@ def test_rsrc():
 
             with open(rsrc_path, 'r') as text_file:
                 assert text_file.read() == rsrc_contents
+
+
+def test_missing_index():
+    data_contents = 'contents'
+
+    with tempfile.TemporaryDirectory() as storage:
+        with tempfile.TemporaryDirectory() as working:
+            normal_path = os.path.join(working, 'normal.txt')
+
+            with open(normal_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            try:
+                urls = libernet.tools.bundle.create(working, storage, index="index.html")
+                assert False, "We should have thrown File not found"
+
+            except FileNotFoundError:
+                pass
+
+
+def test_index():
+    data_contents = 'contents'
+    urls = None
+
+    with tempfile.TemporaryDirectory() as storage:
+        with tempfile.TemporaryDirectory() as working:
+            normal_path = os.path.join(working, 'normal.txt')
+            libernet.plat.dirs.make_dirs(os.path.join(working, "empty dir"))
+
+            with open(normal_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            urls = libernet.tools.bundle.create(working, storage, index="normal.txt")
+        
+        bundle = libernet.tools.bundle.Path(urls[0], storage)
+        assert bundle.index() == "normal.txt"
+        identifier, key, _ = libernet.tools.block.validate_url(urls[0])
+        assert bundle.relative_path("normal.txt") == f"sha256/{identifier[:libernet.tools.block.BLOCK_TOP_DIR_SIZE]}/{identifier}/aes256/{key}/normal.txt"
+        assert len(bundle.missing_blocks("normal.txt")) == 0
+        assert len(bundle.missing_blocks("empty dir")) == 0
+
+
+def test_create_large_number_of_files():
+    threads = multiprocessing.cpu_count()
+    old_block_size = libernet.tools.block.BLOCK_SIZE
+    libernet.tools.block.BLOCK_SIZE = 1 * 1024  # hack the block size to speed up the tests
+    libernet.tools.bundle.MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE  # hack bundle also
+    file_contents = "contents"
+    
+    for file_count in range(1, 22):
+        with tempfile.TemporaryDirectory() as storage:
+            with tempfile.TemporaryDirectory() as to_store:
+                for file_index in range(0, file_count):
+                    with open(os.path.join(to_store, f"{file_index:x}.txt"), "w") as text_file:
+                        text_file.write(file_contents)
+
+                urls = libernet.tools.bundle.create(to_store, storage, max_threads=threads)
+
+                assert not libernet.tools.bundle.missing_blocks(urls[0], storage), "Blocks are missing but shouldn't be"
+
+                with tempfile.TemporaryDirectory() as to_restore:
+                    bundle = libernet.tools.bundle.Path(urls[0], storage)
+                    assert not bundle.missing_blocks()
+                    bundle.restore_file(to_restore)
+
+    libernet.tools.block.BLOCK_SIZE = old_block_size
+    libernet.tools.bundle.MAX_BUNDLE_SIZE = old_block_size

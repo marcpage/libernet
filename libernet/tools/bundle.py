@@ -15,9 +15,15 @@ import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.timestamp
 import libernet.plat.files
+import libernet.tools.encrypt
 
 MAX_BUNDLE_SIZE = libernet.tools.block.BLOCK_SIZE
 BUNDLE_OVERHEAD = len(json.dumps({"bundles": []}))
+FILE_OVERHEAD = len(json.dumps({"files": []}))
+PER_IDENTIFIER_OVERHEAD = len('", "')
+BLOCK_TOP_DIR_SIZE = libernet.tools.block.BLOCK_TOP_DIR_SIZE
+IDENTIFIER_LENGTH = libernet.tools.encrypt.IDENTIFIER_LENGTH
+URL_LENGTH = IDENTIFIER_LENGTH * 2 + len("/sh256/aes256") + BLOCK_TOP_DIR_SIZE
 
 
 def __start_thread(target, *args, **kwargs):
@@ -72,6 +78,7 @@ def __get_file_description(full_path, relative_path, previous):
 
 
 def __store_file_parts(path, storage, urls):
+    """take parts from a file at given path and store them and return urls"""
     parts = []
 
     with open(path, "rb") as source_file:
@@ -93,6 +100,7 @@ def __store_file_parts(path, storage, urls):
 
 
 def __store_xattr(path, storage):
+    """store all xattr properties from a given path and return map of attributes to stored url"""
     return {
         a: libernet.tools.block.store_block(xattr.getxattr(path, a), storage)
         for a in xattr.listxattr(path)
@@ -128,6 +136,34 @@ def __serialize_bundle(description):
     return json.dumps(description, sort_keys=True, separators=(",", ":"))
 
 
+def __find_files_in_bundle(files, files_by_relative_size):
+    """use binary search to find maximum files in each bundle"""
+    (low, high) = (1, len(files))
+
+    while True:
+        mid = int((high + low) / 2)
+        bundle_files = {
+            files_by_relative_size[i]: files[files_by_relative_size[i]]
+            for i in range(0, mid)
+        }
+        bundle_size = FILE_OVERHEAD + len(__serialize_bundle(bundle_files))
+
+        if bundle_size > MAX_BUNDLE_SIZE:
+            high = mid
+
+        else:
+            low = mid
+
+        if (high - low) <= 1 and bundle_size <= MAX_BUNDLE_SIZE:
+            break
+
+    for file in bundle_files:
+        del files[file]
+        files_by_relative_size.remove(file)
+
+    return bundle_files
+
+
 def __breakdown_bundle(description):
     """Returns the descriptions of all the bundles needed to store, with top-most first"""
     description = dict(description)  # don't modify the incoming description
@@ -139,31 +175,35 @@ def __breakdown_bundle(description):
     bundles = []
     files = dict(description["files"])
     description["bundles"] = []
-    del description["files"]
-    file_sizes = {f: len(files[f]) for f in files}
-    files_by_size = sorted(file_sizes, key=lambda f: file_sizes[f], reverse=True)
-    bundle_count = int((len(contents) + BUNDLE_OVERHEAD) / MAX_BUNDLE_SIZE) + 1
-    files_per_bundle = int(len(files) / bundle_count) + 1
+    description["files"] = {}
+    relative_file_sizes = {f: len(files[f]["parts"]) for f in files}
+    files_by_relative_size = sorted(
+        relative_file_sizes, key=lambda f: relative_file_sizes[f], reverse=True
+    )
 
     while len(files) > 0:
-        subbundle = {"files": {}}
-
-        for _ in range(0, files_per_bundle):
-            if not files_by_size:
-                break
-
-            file = files_by_size.pop(0)
-            subbundle["files"][file] = files[file]
-            del files[file]
-
+        subbundle = {"files": __find_files_in_bundle(files, files_by_relative_size)}
         subcontent = __serialize_bundle(subbundle)
-        assert len(subcontent) <= MAX_BUNDLE_SIZE
+        assert len(subcontent) <= MAX_BUNDLE_SIZE, (
+            f"subbundle is too big {len(subcontent)} "
+            + f"/ {MAX_BUNDLE_SIZE} "
+            + f"({len(subcontent) - MAX_BUNDLE_SIZE} too big)"
+        )
         bundles.append((subbundle, subcontent))
 
     bundles.sort(key=lambda f: len(f[1]))
-    main_bundle = bundles.pop(0)[0]
-    main_bundle.update(description)
-    bundles.insert(0, (main_bundle, None))
+    first_bundle_size = (
+        len(__serialize_bundle(description))
+        + len(bundles[0][1])
+        + (URL_LENGTH + PER_IDENTIFIER_OVERHEAD) * len(bundles)
+    )
+
+    if (
+        first_bundle_size < MAX_BUNDLE_SIZE
+    ):  # bundle small enough to merge with main bundle
+        description.update(bundles.pop(0)[0])
+
+    bundles.insert(0, (description, None))
     return bundles
 
 
@@ -179,6 +219,7 @@ def __finalize_bundle(description, storage):
 
     if "bundles" in main_bundle:
         urls.extend(main_bundle["bundles"])
+
     contents = __serialize_bundle(main_bundle)
     assert len(contents) <= MAX_BUNDLE_SIZE, (
         f"contents is too big {len(contents)} "
@@ -351,7 +392,6 @@ def create(source_path, storage, max_threads=2, verbose=False, **kwargs):
     for key in [k for k, v in description.items() if v is None]:
         del description[key]
 
-    # NOT TESTED pass index to create that doesn't exist in the bundle
     if index is not None and index not in description["files"]:
         raise FileNotFoundError(f"Requested index '{index}' is not in the bundle")
 
@@ -423,7 +463,7 @@ class Path:
             return True
 
         if path in self.__description.get("directories", []):
-            return True  # NOT TESTED check for missing blocks for an empty directory in a bundle
+            return True
 
         if just_load:
             return True
@@ -507,9 +547,7 @@ class Path:
             mode = mode | (stat.S_IXUSR if is_executable else 0)
             os.chmod(destination_path, mode)
 
-    def relative_path(
-        self, path=None, just_bundle=False
-    ):  # NOT TESTED assert relative path is as exepcted
+    def relative_path(self, path=None, just_bundle=False):
         """get the relative path to the bundle contents"""
         base = os.path.join(
             "sha256",
@@ -520,7 +558,7 @@ class Path:
         )
 
         if just_bundle or path is None and self.__path is None:
-            return base
+            return base  # NOT TESTED
 
         return os.path.join(base, self.__path if path is None else path)
 
@@ -537,9 +575,8 @@ class Path:
         """
         path = self.__path if path is None else path
 
-        if (
-            path == ""
-        ):  # NOT TESTED add an index and test for missing blocks on empty path
+        # NOT TESTED add an index and test for missing blocks on empty path
+        if path == "":
             path = self.__description.get("index", None)
 
             if path is None:
@@ -551,6 +588,9 @@ class Path:
 
         if path_found is None:  # we don't even have the block
             return [f"/sha256/{self.__identifier}"]
+
+        if path is not None and path in self.__description.get("directories", []):
+            return []
 
         if not path_found:  # we have a bundle but haven't found the file in it
             # pylint: disable=E1136

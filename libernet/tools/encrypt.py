@@ -12,6 +12,7 @@ import Crypto.Signature.PKCS1_v1_5
 
 import libernet.tools.hash
 
+IDENTIFIER_LENGTH = 256 / 4  # sha256 = 256 bits / 4 nibles
 
 # pylint: disable=C0103
 def aes_encrypt(key, data, iv=b"0" * Crypto.Cipher.AES.block_size):
