@@ -36,6 +36,11 @@ def test_server_bundle_index():
                 response = requests.get(f'http://localhost:{port_to_use}{urls[0]}/')
                 assert response.status_code == 200
                 assert response.content == index_contents
+
+                response = requests.get(f'http://localhost:{port_to_use}/')
+                assert response.status_code == 200
+
+                # add more requests here
                 break
             
             except requests.exceptions.ConnectionError:
