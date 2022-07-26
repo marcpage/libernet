@@ -227,7 +227,7 @@ def __finalize_bundle(description, storage):
         + f"({len(contents) - MAX_BUNDLE_SIZE} too big)"
     )
     urls.insert(0, libernet.tools.block.store_block(contents.encode("utf-8"), storage))
-    return sorted(set(urls), key=urls.index)
+    return urls
 
 
 def load_raw(url, storage):
