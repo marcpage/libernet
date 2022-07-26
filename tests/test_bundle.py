@@ -323,5 +323,9 @@ def test_create_large_number_of_files():
                     assert not bundle.missing_blocks()
                     bundle.restore_file(to_restore)
 
+                    for file_index in range(0, file_count):
+                        assert len(bundle.missing_blocks(f"{file_index:x}.txt")) == 0
+
+
     libernet.tools.block.BLOCK_SIZE = old_block_size
     libernet.tools.bundle.MAX_BUNDLE_SIZE = old_block_size
