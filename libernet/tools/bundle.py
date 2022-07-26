@@ -351,7 +351,8 @@ def create(source_path, storage, max_threads=2, verbose=False, **kwargs):
     for key in [k for k, v in description.items() if v is None]:
         del description[key]
 
-    if index is not None and index not in description["files"]:  # NOT TESTED pass index to create that doesn't exist in the bundle
+    # NOT TESTED pass index to create that doesn't exist in the bundle
+    if index is not None and index not in description["files"]:
         raise FileNotFoundError(f"Requested index '{index}' is not in the bundle")
 
     sub_urls = __finalize_bundle(description, storage)
@@ -506,7 +507,9 @@ class Path:
             mode = mode | (stat.S_IXUSR if is_executable else 0)
             os.chmod(destination_path, mode)
 
-    def relative_path(self, path=None, just_bundle=False):  # NOT TESTED assert relative path is as exepcted
+    def relative_path(
+        self, path=None, just_bundle=False
+    ):  # NOT TESTED assert relative path is as exepcted
         """get the relative path to the bundle contents"""
         base = os.path.join(
             "sha256",
@@ -534,7 +537,9 @@ class Path:
         """
         path = self.__path if path is None else path
 
-        if path == "":  # NOT TESTED add an index and test for missing blocks on empty path
+        if (
+            path == ""
+        ):  # NOT TESTED add an index and test for missing blocks on empty path
             path = self.__description.get("index", None)
 
             if path is None:
@@ -564,7 +569,9 @@ class Path:
         for file in files:
             # pylint: disable=E1136
             urls = [p["url"] for p in self.__description["files"][file]["parts"]]
-            rsrc_urls = [p["url"] for p in self.__description["files"][file].get("rsrc", [])]
+            rsrc_urls = [
+                p["url"] for p in self.__description["files"][file].get("rsrc", [])
+            ]
             missing.extend(
                 [
                     u
@@ -601,7 +608,9 @@ class Path:
         """
         path = path if path is not None else self.__path
 
-        if path is not None and len(path) == 0:  # NOT TESTED set and index and restore "" and verify the index was created
+        if (
+            path is not None and len(path) == 0
+        ):  # NOT TESTED set and index and restore "" and verify the index was created
             index = self.__description.get("index", None)
 
             if index is not None:
