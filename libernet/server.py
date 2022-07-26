@@ -30,7 +30,7 @@ def create_app(storage_path):
     app = flask.Flask(__name__)
     settings = libernet.tools.settings.App(storage_path)
 
-    def forbidden():
+    def forbidden():  # NOT TESTED
         return (
             """
 <html>
@@ -45,7 +45,7 @@ def create_app(storage_path):
     # Mark: Root
 
     @app.route("/")
-    def home():
+    def home():  # NOT TESTED
         if libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return f"""
 <html>
@@ -72,7 +72,7 @@ def create_app(storage_path):
         )
         local_request = libernet.plat.network.is_on_machine(flask.request.remote_addr)
 
-        if block_key is not None and not local_request:
+        if block_key is not None and not local_request:  # NOT TESTED
             logging.debug("block_key is not None and not local_request")
             return forbidden()
 
@@ -82,7 +82,7 @@ def create_app(storage_path):
             if path_in_bundle == "":
                 path_in_bundle = bundle.index()
 
-                if path_in_bundle is None:
+                if path_in_bundle is None:  # NOT TESTED
                     return (
                         f"<html><body>{full_url} not found, bundle has no index</body></html>",
                         404,
@@ -111,7 +111,7 @@ def create_app(storage_path):
                     already_exists,
                 )
 
-                if not already_exists:
+                if not already_exists:  # NOT TESTED
                     # the path was not found
                     return (
                         f"<html><body>{full_url} not found in bundle</body></html>",
@@ -121,6 +121,7 @@ def create_app(storage_path):
             if already_exists:
                 return flask.send_file(item_path)
 
+            # NOT TESTED
             contents = None  # get full contents of file then send file
 
         else:
@@ -158,19 +159,19 @@ def create_app(storage_path):
     # Mark: v1 API
 
     @app.route("/api/v1/backup/add")
-    def add_backup():
+    def add_backup():  # NOT TESTED
         if not libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return forbidden()
         return "{}"
 
     @app.route("/api/v1/backup/remove")
-    def remove_backup():
+    def remove_backup():  # NOT TESTED
         if not libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return forbidden()
         return "{}"
 
     @app.route("/api/v1/backup/list")
-    def list_backups():
+    def list_backups():  # NOT TESTED
         if not libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return forbidden()
         return "[]"
@@ -178,7 +179,7 @@ def create_app(storage_path):
     return app
 
 
-def parse_args():
+def parse_args():  # NOT TESTED
     """Parses and returns command line arguments."""
 
     parser = argparse.ArgumentParser(description="Libernet server")
@@ -221,7 +222,8 @@ def serve(port, storage, debug):
     """Start the libernet web server"""
     log_path = os.path.join(storage, "log.txt")
 
-    if os.path.getsize(log_path) > LOG_FILE_MAX_SIZE:
+    # NOT TESTED
+    if os.path.isfile(log_path) and os.path.getsize(log_path) > LOG_FILE_MAX_SIZE:
         archive_path = f"{log_path}_{time.strftime('%Y%m%d%H%M%S')}.zip"
 
         with zipfile.ZipFile(
@@ -234,20 +236,23 @@ def serve(port, storage, debug):
     log_level = logging.DEBUG if debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
     app = create_app(storage)
-    threading.Thread(
-        target=__open_browser,
-        args=(f"http://localhost:{port}", BROWSER_OPEN_DELAY_IN_SECONDS),
-        daemon=True,
-    ).start()
+
+    if debug:  # NOT TESTED
+        threading.Thread(
+            target=__open_browser,
+            args=(f"http://localhost:{port}", BROWSER_OPEN_DELAY_IN_SECONDS),
+            daemon=True,
+        ).start()
+
     app.run(host="0.0.0.0", debug=debug, port=port)
 
 
-def main():
+def main():  # NOT TESTED
     """Entry point. Loop forever unless we are told not to."""
 
     args = parse_args()
     serve(args.port, args.storage, args.debug)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # NOT TESTED
     main()
