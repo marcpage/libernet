@@ -216,3 +216,33 @@ def test_permissions():
             assert os.stat(readonly_execute_path).st_mode & stat.S_IRUSR == stat.S_IRUSR
             assert os.stat(readonly_execute_path).st_mode & stat.S_IWUSR == 0
             assert os.stat(readonly_execute_path).st_mode & stat.S_IXUSR == stat.S_IXUSR
+
+
+def test_rsrc():
+    data_contents = 'contents'
+    rsrc_contents = 'rsrc'
+    with tempfile.TemporaryDirectory() as storage:
+        with tempfile.TemporaryDirectory() as working:
+            normal_path = os.path.join(working, 'normal.txt')
+            rsrc_path = os.path.join(normal_path, "..namedfork", "rsrc")
+
+            with open(normal_path, 'w') as text_file:
+                text_file.write(data_contents)
+            
+            with open(rsrc_path, 'w') as text_file:
+                text_file.write(rsrc_contents)
+
+            urls = libernet.tools.bundle.create(working, storage)
+
+        with tempfile.TemporaryDirectory() as to_restore:
+            bundle = libernet.tools.bundle.Path(urls[0], storage)
+            assert not bundle.missing_blocks()
+            bundle.restore_file(to_restore)
+            normal_path = os.path.join(to_restore, 'normal.txt')
+            rsrc_path = os.path.join(normal_path, "..namedfork", "rsrc")
+
+            with open(normal_path, 'r') as text_file:
+                assert text_file.read() == data_contents
+
+            with open(rsrc_path, 'r') as text_file:
+                assert text_file.read() == rsrc_contents

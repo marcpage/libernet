@@ -114,7 +114,7 @@ def __process_file(source_path, storage, relative_path, previous):
     rsrc_path = libernet.plat.files.rsrc_fork_path(full_path)
     file_attributes = __store_xattr(full_path, storage)
 
-    if rsrc_path is not None:  # NOT TESTED create bogus resource fork
+    if rsrc_path is not None:
         description["rsrc"] = __store_file_parts(rsrc_path, storage, urls)
 
     if file_attributes:
@@ -242,7 +242,7 @@ def __find_all_relative_paths(source_path):
 
     for directory in all_relative_dirs:
         if not any((f.startswith(directory) for f in all_relative_paths)):
-            empty_dirs.append(directory)  # NOT TESTED create a bundle with empty directories
+            empty_dirs.append(directory)
 
     return (all_relative_paths, empty_dirs)
 
@@ -484,7 +484,7 @@ class Path:
 
         self.__restore_file_contents(destination_path, file_description["parts"])
 
-        if "rsrc" in file_description:  # NOT TESTED create a bogus resource fork
+        if "rsrc" in file_description:
             self.__restore_file_contents(
                 libernet.plat.files.rsrc_fork_path(destination_path, verify=False),
                 file_description["rsrc"],
@@ -564,6 +564,7 @@ class Path:
         for file in files:
             # pylint: disable=E1136
             urls = [p["url"] for p in self.__description["files"][file]["parts"]]
+            rsrc_urls = [p["url"] for p in self.__description["files"][file].get("rsrc", [])]
             missing.extend(
                 [
                     u
@@ -574,7 +575,7 @@ class Path:
             missing.extend(
                 [
                     u
-                    for u in self.__description["files"][file].get("rsrc", [])
+                    for u in rsrc_urls
                     if not libernet.tools.block.retrieve(u, self.__storage, load=False)
                 ]
             )
