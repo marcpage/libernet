@@ -227,7 +227,7 @@ def __finalize_bundle(description, storage):
         + f"({len(contents) - MAX_BUNDLE_SIZE} too big)"
     )
     urls.insert(0, libernet.tools.block.store_block(contents.encode("utf-8"), storage))
-    return urls
+    return sorted(set(urls), key=urls.index)
 
 
 def load_raw(url, storage):
@@ -396,7 +396,8 @@ def create(source_path, storage, max_threads=2, verbose=False, **kwargs):
         raise FileNotFoundError(f"Requested index '{index}' is not in the bundle")
 
     sub_urls = __finalize_bundle(description, storage)
-    return [*sub_urls, *urls]
+    all_urls = [*sub_urls, *urls]
+    return sorted(set(all_urls), key=all_urls.index)
 
 
 def missing_blocks(url, storage):
@@ -488,7 +489,7 @@ class Path:
 
                 # pylint: disable=E1136
                 if path in self.__description["files"]:
-                    return True  # NOT TESTED check for missing blocks for a file in a bundle
+                    return True
 
         return path is None
 
@@ -503,7 +504,7 @@ class Path:
                     raise FileNotFoundError(f"Block not found: {block['url']}")
 
                 if len(block_contents) != block["size"]:
-                    raise ValueError(  # NOT TESTED
+                    raise ValueError(
                         f"Block is not the correct size {len(block_contents)} != {block['size']}"
                     )
 
@@ -574,8 +575,8 @@ class Path:
         The missing blocks may not be the complete set needed
         """
         path = self.__path if path is None else path
+        self.__ensure_description(just_load=True)
 
-        # NOT TESTED add an index and test for missing blocks on empty path
         if path == "":
             path = self.__description.get("index", None)
 
@@ -599,7 +600,6 @@ class Path:
             if missing is None:  # there are no more bundles to search
                 return None  # file not found
 
-            # NOT TESTED  delete subbundle block
             return list(missing)  # we need other sub-bundles to search
 
         # pylint: disable=E1136
@@ -648,9 +648,7 @@ class Path:
         """
         path = path if path is not None else self.__path
 
-        if (
-            path is not None and len(path) == 0
-        ):  # NOT TESTED set and index and restore "" and verify the index was created
+        if path is not None and len(path) == 0:
             index = self.__description.get("index", None)
 
             if index is not None:
