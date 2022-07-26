@@ -41,17 +41,18 @@ Windows support is expected but untested.
 # TODO
 
 1. url stats (first, last, and count of requested, downloaded, purged with deleted and local flags)
-2. Server should accept PUT for `/sha256/{identifier}`
-3. Server should send node identifier and signature of response to every request
+2. Bundles can be signed and signature verified before unbundling (public key can show up as missing_block)
+3. Server should accept PUT for `/sha256/{identifier}`
+4. Server should send node identifier and signature of response to every request
    - Send timestamp and signature of timestamp and path
    - Settings app could take url and headers and modify headers accordingly (or return headers dictionary)
    - Servers should first push their public key (unencrypted block)
-4. Implement notification center (request blocks - wait with timeout, notify of blocks)
+5. Implement notification center (request blocks - wait with timeout, notify of blocks)
    - When requesting blocks a threading.Event is returned
    - Wait with a timeout on the event
    - If timeout, then return the status page
    - When a request comes in (if it does not already have an event) it sends the request to the connection pool
-5.  Implement connection pool that takes requests and events and walks them through each of the connections (on correct order) until it finds them
+6.  Implement connection pool that takes requests and events and walks them through each of the connections (on correct order) until it finds them
    - Block id nearest to furthest from the node id
    - Thread for each connection to remote host
    - Each has a queue of requests which takes path and event
