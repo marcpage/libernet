@@ -26,6 +26,13 @@ Linux support is expected but untested.
 Windows support is expected but untested.
 
 
+# Protocol
+
+Libernet uses http protocol for both user interface and node communication.
+Local connections can access all aspects of the http interface.
+Remote connections are limited to `/sha256/{identifier}` and similar locations.
+
+
 # Progress
 
 1. Blocks can be loaded via URL
