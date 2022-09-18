@@ -13,6 +13,7 @@ def __validate(message_center):
         if this_value is not None:
             if last_value is not None:
                 assert this_value > last_value
+                assert this_value - last_value == 1
 
             last_value = this_value
 
