@@ -17,6 +17,8 @@ def __validate(message_center):
 
             last_value = this_value
 
+    assert last_value is not None
+
 
 def __send_numbers(message_center):
     for i in range(0, 10000):
