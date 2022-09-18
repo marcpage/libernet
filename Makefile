@@ -1,28 +1,38 @@
-.PHONY:venv test coverage debug lint serve format
+.PHONY:clean venv test coverage debug lint serve format
+all:clean venv test coverage lint
 
-all:venv test coverage lint
+INITIAL_PYTHON?=python3
+VENV_DIR?=.venv
+VENV_PYTHON?=$(VENV_DIR)/bin/$(INITIAL_PYTHON)
 
 venv:
-	@python3 -m venv .venv
-	@. .venv/bin/activate
+	@$(INITIAL_PYTHON) -m venv $(VENV_DIR)
+	@. $(VENV_DIR)/bin/activate
 	@pip3 install -q --upgrade pip
 	@pip3 install -q -r requirements.txt
 
 test: venv
-	@python3 -m coverage run --source libernet -m pytest
+	@$(VENV_PYTHON) -m coverage run --source libernet -m pytest
 
 coverage: test
-	@python3 -m coverage report -m --sort=cover --skip-covered
+	@$(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered
 
 debug: venv
-	@python3 -m libernet.server --debug
+	@$(VENV_PYTHON) -m libernet.server --debug
 
 serve: venv
-	@python3 -m libernet.server
+	@$(VENV_PYTHON) -m libernet.server
 
 format: venv
-	@python3 -m black libernet
+	@$(VENV_PYTHON) -m black libernet
 
 lint: venv
-	@python3 -m pylint libernet
-	@python3 -m black libernet --check
+	@$(VENV_PYTHON) -m pylint libernet
+	@$(VENV_PYTHON) -m black libernet --check
+
+clean:
+	@rm -Rf $(VENV_DIR)
+	@rm -f .coverage
+	@rm -Rf .pytest_cache
+
+
