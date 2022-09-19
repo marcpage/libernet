@@ -12,7 +12,7 @@ import libernet.tools.encrypt
 
 
 BLOCK_SIZE = 1024 * 1024
-BLOCK_TOP_DIR_SIZE = 3
+BLOCK_TOP_DIR_SIZE = 3  # number of characters in block grouping directory name
 MINIMUM_MATCH_FOR_LIKE = 4  # 4 is about 1 seconds, 5 is about 10 seconds to generate
 
 
