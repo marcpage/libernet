@@ -44,14 +44,18 @@ class Center(threading.Thread):
         """Are we still processing"""
         if self.__running:
             return True
-        
+
         if self.__input.qsize() > 0:
-                return True
+            return True
 
         thread_id = threading.current_thread().ident
 
         with self.__lock:
-            return thread_id in self.__output and  'queue' in self.__output[thread_id] and self.__output[thread_id]['queue'].qsize() > 0
+            return (
+                thread_id in self.__output
+                and "queue" in self.__output[thread_id]
+                and self.__output[thread_id]["queue"].qsize() > 0
+            )
 
     def send(self, message):
         """Send a message to all recipients"""
