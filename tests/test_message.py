@@ -42,7 +42,7 @@ def test_high_threading():
 
     try:
         message_center.send("failure")
-        assert False, "We should have thrown an exception"
+        raise SyntaxError("We should have thrown an exception")
 
     except AssertionError:
         pass
