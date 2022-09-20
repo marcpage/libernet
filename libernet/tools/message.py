@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 
-""" Libernet message management
+""" Libernet message management.
+    Create a message.Center() and pass it around 
+    Sending messages broadcasts that message t every recipient
+    Each Python thread will receive its own copy of the message
+    Each recevier should be on its own thread
 """
 
 import threading
