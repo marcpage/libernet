@@ -6,11 +6,46 @@ import multiprocessing
 import time
 import shutil
 import stat
+import filecmp
 
 import libernet.tools.bundle
 import libernet.tools.block
 import libernet.plat.dirs
 import libernet.plat.files
+import libernet.bundle
+
+def test_get_arg_parser():
+    parser = libernet.bundle.get_arg_parser()
+    assert parser is not None
+
+
+def test_store_restore():
+    args = type('',(),{})
+
+    with tempfile.TemporaryDirectory() as storage, tempfile.TemporaryDirectory() as output:
+        args.action = "store"
+        args.verbose = False
+        args.storage = storage  # the place to store data
+        args.index = None
+        args.dir = "libernet"  # directory to store
+        args.previous = None  # url of previous version
+        args.url = None  # the url to restore
+        url = libernet.bundle.handle_args(args)
+        
+        args.action = "restore"
+        args.verbose = False
+        args.storage = storage  # the place to store data
+        args.index = None
+        args.dir = output  # directory to store
+        args.previous = None  # url of previous version
+        args.url = url  # the url to restore
+        libernet.bundle.handle_args(args)
+
+        comparison = filecmp.dircmp("libernet", output)
+        assert len(comparison.diff_files) == 0, "restored files differ from source: " + ", ".join(comparison.diff_files)
+        assert len(comparison.left_only) == 0, "files not restored: " + ", ".join(comparison.left_only)
+        assert len(comparison.right_only) == 0, "extra files in restored: " + ", ".join(comparison.right_only)
+    
 
 def test_create():
     with tempfile.TemporaryDirectory() as storage:
