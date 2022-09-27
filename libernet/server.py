@@ -46,12 +46,21 @@ def create_app(storage_path):
 
     @app.route("/")
     def home():  # NOT TESTED
+        """
+        http://localhost:8000/?
+
+        flask.request.environ['REQUEST_URI'] = '/?', 
+        flask.request.environ['RAW_URI'] = '/?', 
+        """
         if libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return f"""
 <html>
     <body>
         <h1>Welcome</h1>
         {flask.request.remote_addr}
+        <br/>
+        REQUEST_URI = '{flask.request.environ['REQUEST_URI']}'<br/>
+        RAW_URI = '{flask.request.environ['RAW_URI']}'<br/>
     </body>
 </html>"""
         return forbidden()
