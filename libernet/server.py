@@ -179,9 +179,8 @@ def create_app(storage_path):
     return app
 
 
-def parse_args():  # NOT TESTED
-    """Parses and returns command line arguments."""
-
+def get_arg_parser():
+    """Describe the command line arguments"""
     parser = argparse.ArgumentParser(description="Libernet server")
     parser.add_argument(
         "-p",
@@ -206,11 +205,7 @@ def parse_args():  # NOT TESTED
         action="store_true",
         help="Do not launch web browser.",
     )
-    args = parser.parse_args()
-
-    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "web"))
-    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "upload"))
-    return args
+    return parser
 
 
 def __open_browser(url, delay_in_seconds):
@@ -247,11 +242,16 @@ def serve(port, storage, debug):
     app.run(host="0.0.0.0", debug=debug, port=port)
 
 
+def handle_args(args):
+    """respond to the arguments passed in"""
+    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "web"))
+    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "upload"))
+    serve(args.port, args.storage, args.debug)
+
+
 def main():  # NOT TESTED
     """Entry point. Loop forever unless we are told not to."""
-
-    args = parse_args()
-    serve(args.port, args.storage, args.debug)
+    handle_args(get_arg_parser().parse_args())
 
 
 if __name__ == "__main__":  # NOT TESTED
