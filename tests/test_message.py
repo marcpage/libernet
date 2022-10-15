@@ -18,7 +18,7 @@ def __validate(message_center):
             last_value = this_value
 
     assert last_value is not None
-    assert last_value == 9999, f"Last value was {last_value}"
+    assert last_value in [9999, 9998], f"Last value was {last_value}"
 
 
 def __send_numbers(message_center):

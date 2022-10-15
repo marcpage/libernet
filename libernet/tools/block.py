@@ -36,7 +36,9 @@ def block_dir(storage_part, identifier, key=None, full=False):
 
 
 def store_block(contents, storage, encrypt=True):
-    """Stores a block of data (no more than 1 MiB in size)"""
+    """ Stores a block of data (no more than 1 MiB in size) 
+        returns the url for the block
+    """
     assert (
         len(contents) <= BLOCK_SIZE
     ), f"Block too big {len(contents)} vs {BLOCK_SIZE} ({len(contents) - BLOCK_SIZE} bytes too big)"
@@ -138,7 +140,14 @@ def decrypt_block(encrypted_path, block_key):
 
 
 def find_block(search_dir, block_identifier, block_key=None, load=True):
-    """Find a block in a directory"""
+    """ Find a block in a directory 
+        returns
+            None - if the .raw file does not exist in the directory
+            None - if the identifier is not found
+            True - if the .raw file exists and load is False
+            contents - if the contents can be retrieved
+
+    """
     encrypted_path = block_dir(search_dir, block_identifier, full=True)
     if not os.path.isfile(encrypted_path + ".raw"):
         return None
@@ -162,7 +171,6 @@ def find_block(search_dir, block_identifier, block_key=None, load=True):
         if calculated_identifier == block_identifier:
             return encrypted_data
 
-        # not tested from here down
         uncompressed = zlib.decompress(encrypted_data)
         calculated_identifier = libernet.tools.hash.sha256_data_identifier(uncompressed)
 

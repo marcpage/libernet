@@ -130,8 +130,7 @@ def create_app(storage_path, key_size=4096):
             if already_exists:
                 return flask.send_file(item_path)
 
-            # NOT TESTED
-            contents = None  # get full contents of file then send file
+            contents = None  # need to get full contents of file then send file
 
         else:
             try:
@@ -139,14 +138,14 @@ def create_app(storage_path, key_size=4096):
                     settings.storage(), block_identifier, block_key
                 )
 
-            except zlib.error:  # NOT TESTED
+            except zlib.error:
                 # the key field is probably incorrect
                 return (
                     f"<html><body>{full_url} unable to decrypt</body></html>",
                     400,
                 )  # Bad request
 
-        if contents is None:  # NOT TESTED
+        if contents is None:
             # temporarily not available
             # start requesting this block
             return (
@@ -168,19 +167,19 @@ def create_app(storage_path, key_size=4096):
     # Mark: v1 API
 
     @app.route("/api/v1/backup/add")
-    def add_backup():  # NOT TESTED
+    def add_backup():
         if not libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return forbidden()
         return "{}"
 
     @app.route("/api/v1/backup/remove")
-    def remove_backup():  # NOT TESTED
+    def remove_backup():
         if not libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return forbidden()
         return "{}"
 
     @app.route("/api/v1/backup/list")
-    def list_backups():  # NOT TESTED
+    def list_backups():
         if not libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return forbidden()
         return "[]"
@@ -217,7 +216,7 @@ def get_arg_parser():
     return parser
 
 
-def __open_browser(url, delay_in_seconds):
+def __open_browser(url, delay_in_seconds):  # NOT TESTED
     time.sleep(delay_in_seconds)
     libernet.plat.files.open_url(url)
 
@@ -251,11 +250,11 @@ def serve(port, storage, debug, key_size=4096):
     app.run(host="0.0.0.0", debug=debug, port=port)
 
 
-def handle_args(args):
+def handle_args(args, key_size=4096):
     """respond to the arguments passed in"""
     libernet.plat.dirs.make_dirs(os.path.join(args.storage, "web"))
     libernet.plat.dirs.make_dirs(os.path.join(args.storage, "upload"))
-    serve(args.port, args.storage, args.debug)
+    serve(args.port, args.storage, args.debug, key_size=key_size)
 
 
 def main():  # NOT TESTED

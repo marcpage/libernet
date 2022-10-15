@@ -4,17 +4,17 @@ import threading
 import os
 import time
 import sys
+import shutil
 
 import requests
 
 import libernet.server
 import libernet.tools.bundle
-
+import libernet.tools.block
 
 def test_arg_parser():
         parser = libernet.server.get_arg_parser()
-        help = parser.format_help()
-        assert "Libernet" in help
+        assert parser is not None
 
 
 def test_server_bundle_index():
@@ -23,8 +23,13 @@ def test_server_bundle_index():
     debug = False
     index_contents = b"<html><body>" + b" index " * 100 + b"</body></html>"
     test_contents = b"<html><body>" + b" test " * 100 + b"</body></html>"
+    args = type('',(),{})
+    args.port = port_to_use
+    args.debug = False
 
     with tempfile.TemporaryDirectory() as storage:
+        args.storage = storage
+
         with tempfile.TemporaryDirectory() as working:
             with open(os.path.join(working, "index.html"), 'wb') as f:
                 f.write(index_contents)
@@ -37,15 +42,31 @@ def test_server_bundle_index():
             
             urls2 = libernet.tools.bundle.create(working, storage)
         
+
         threading.Thread(
-            target=libernet.server.serve,
-            args=(port_to_use, storage, debug, key_size),
+            target=libernet.server.handle_args,
+            args=(args, key_size),
             daemon=True,
         ).start()
 
         start = time.time()
         bundle1 = urls1[0]
         bundle2 = urls2[0]
+        url3 = libernet.tools.block.store_block(contents=b' testing ' * 50, storage=storage, encrypt=False)
+        url4 = libernet.tools.block.store_block(contents=b' testing ', storage=storage, encrypt=False)
+        url4_parts = libernet.tools.block.validate_url(url4)
+        search_dirs = libernet.tools.block.get_search_dirs(storage=storage)
+
+        for search_dir in search_dirs:
+            block_path = libernet.tools.block.block_dir(search_dir, url4_parts[0], full=True)
+            block_file = block_path + '.raw'
+
+            if os.path.isfile(block_file):
+                print(f"Corrupting: {block_file}")
+                with open(block_file, 'a') as block_file:
+                        block_file.write(" corupted ")
+
+        not_bundle = urls1[0][:-4] + 'FFFF'
         block1 = f"/{bundle1.split('/')[1]}/{bundle1.split('/')[2]}"
         block2 = f"/{bundle2.split('/')[1]}/{bundle2.split('/')[2]}"
         local_machine = libernet.plat.network.TEST_NOT_LOCAL_MACHINE
@@ -139,6 +160,15 @@ def test_server_bundle_index():
                 
                 response = requests.get(f'http://localhost:{port_to_use}{bundle2}/')
                 assert response.status_code == 404  # File not found
+                
+                response = requests.get(f'http://localhost:{port_to_use}{url3}')
+                assert response.status_code == 200
+                
+                response = requests.get(f'http://localhost:{port_to_use}{url4}')
+                assert response.status_code == 400  # bad request
+                
+                response = requests.get(f'http://localhost:{port_to_use}{not_bundle}/test.html')
+                assert response.status_code == 409  # Conflict
 
                 response = requests.get(f'http://127.0.0.1:{port_to_use}/api/v1/backup/add')
                 assert response.status_code == 200
@@ -164,3 +194,4 @@ def test_server_bundle_index():
                 time.sleep(1.0)  # wait for the Flask app server to cme up
 
         libernet.plat.network.TEST_NOT_LOCAL_MACHINE = local_machine
+
