@@ -36,8 +36,8 @@ def block_dir(storage_part, identifier, key=None, full=False):
 
 
 def store_block(contents, storage, encrypt=True):
-    """ Stores a block of data (no more than 1 MiB in size) 
-        returns the url for the block
+    """Stores a block of data (no more than 1 MiB in size)
+    returns the url for the block
     """
     assert (
         len(contents) <= BLOCK_SIZE
@@ -140,12 +140,12 @@ def decrypt_block(encrypted_path, block_key):
 
 
 def find_block(search_dir, block_identifier, block_key=None, load=True):
-    """ Find a block in a directory 
-        returns
-            None - if the .raw file does not exist in the directory
-            None - if the identifier is not found
-            True - if the .raw file exists and load is False
-            contents - if the contents can be retrieved
+    """Find a block in a directory
+    returns
+        None - if the .raw file does not exist in the directory
+        None - if the identifier is not found
+        True - if the .raw file exists and load is False
+        contents - if the contents can be retrieved
 
     """
     encrypted_path = block_dir(search_dir, block_identifier, full=True)
