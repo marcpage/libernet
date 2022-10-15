@@ -6,6 +6,8 @@
 import ipaddress
 import socket
 
+TEST_NOT_LOCAL_MACHINE = False
+
 
 def machine_name(remote_addr):
     """Get the dns name of remote_addr"""
@@ -20,4 +22,4 @@ def is_on_machine(remote_addr):
     address = ipaddress.ip_address(remote_addr)
     local_address = address.is_private and not address.is_global
     name_matches = address.is_loopback or socket.getfqdn() == machine_name(remote_addr)
-    return local_address and name_matches
+    return local_address and name_matches and not TEST_NOT_LOCAL_MACHINE

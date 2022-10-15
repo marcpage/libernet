@@ -47,6 +47,12 @@ class App:
 
         self.flush()
 
+    def __str__(self) -> str:
+        return f"App({self.__dir}, {self.__settings_path}, {self.__settings})"
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
     def flush(self):
         """flush any changes to the settings to disk"""
         with open(self.__settings_path, "w", encoding="utf-8") as settings_file:
@@ -54,6 +60,7 @@ class App:
 
     def storage(self):
         """Get the storage directory"""
+        assert os.path.isdir(self.__dir), self.__dir
         return self.__dir
 
     def identity(self):

@@ -57,3 +57,15 @@ def test_bogus_system_open_url():
     libernet.plat.files.SYSTEM = "bogus"
     libernet.plat.files.open_url("https://www.apple.com/")
     libernet.plat.files.SYSTEM = system
+
+def test_open_url():
+    system = libernet.plat.files.SYSTEM
+    test_systems = [s for s in ["Linux","Windows", "Darwin"] if s != system]
+
+    for test_system in test_systems:
+        libernet.plat.files.SYSTEM = test_system
+        libernet.plat.files.open_url("https://www.apple.com/")
+
+    libernet.plat.files.SYSTEM = system
+
+test_open_url()

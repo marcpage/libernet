@@ -21,16 +21,16 @@ import libernet.tools.bundle
 import libernet.tools.settings
 import libernet.plat.files
 
-BROWSER_OPEN_DELAY_IN_SECONDS = 0.200
+BROWSER_OPEN_DELAY_IN_SECONDS = 21.000
 LOG_FILE_MAX_SIZE = 1024 * 1024  # 1 MiB
 
 
-def create_app(storage_path):
+def create_app(storage_path, key_size=4096):
     """create the flask app"""
     app = flask.Flask(__name__)
-    settings = libernet.tools.settings.App(storage_path)
+    settings = libernet.tools.settings.App(storage_path, key_size=key_size)
 
-    def forbidden():  # NOT TESTED
+    def forbidden():
         return (
             """
 <html>
@@ -45,12 +45,12 @@ def create_app(storage_path):
     # Mark: Root
 
     @app.route("/")
-    def home():  # NOT TESTED
+    def home():
         """
         http://localhost:8000/?
 
-        flask.request.environ['REQUEST_URI'] = '/?', 
-        flask.request.environ['RAW_URI'] = '/?', 
+        flask.request.environ['REQUEST_URI'] = '/?',
+        flask.request.environ['RAW_URI'] = '/?',
         """
         if libernet.plat.network.is_on_machine(flask.request.remote_addr):
             return f"""
@@ -81,7 +81,7 @@ def create_app(storage_path):
         )
         local_request = libernet.plat.network.is_on_machine(flask.request.remote_addr)
 
-        if block_key is not None and not local_request:  # NOT TESTED
+        if block_key is not None and not local_request:
             logging.debug("block_key is not None and not local_request")
             return forbidden()
 
@@ -91,7 +91,7 @@ def create_app(storage_path):
             if path_in_bundle == "":
                 path_in_bundle = bundle.index()
 
-                if path_in_bundle is None:  # NOT TESTED
+                if path_in_bundle is None:
                     return (
                         f"<html><body>{full_url} not found, bundle has no index</body></html>",
                         404,
@@ -120,7 +120,7 @@ def create_app(storage_path):
                     already_exists,
                 )
 
-                if not already_exists:  # NOT TESTED
+                if not already_exists:
                     # the path was not found
                     return (
                         f"<html><body>{full_url} not found in bundle</body></html>",
@@ -139,14 +139,14 @@ def create_app(storage_path):
                     settings.storage(), block_identifier, block_key
                 )
 
-            except zlib.error:
+            except zlib.error:  # NOT TESTED
                 # the key field is probably incorrect
                 return (
                     f"<html><body>{full_url} unable to decrypt</body></html>",
                     400,
                 )  # Bad request
 
-        if contents is None:
+        if contents is None:  # NOT TESTED
             # temporarily not available
             # start requesting this block
             return (
@@ -222,7 +222,7 @@ def __open_browser(url, delay_in_seconds):
     libernet.plat.files.open_url(url)
 
 
-def serve(port, storage, debug):
+def serve(port, storage, debug, key_size=4096):
     """Start the libernet web server"""
     log_path = os.path.join(storage, "log.txt")
 
@@ -239,7 +239,7 @@ def serve(port, storage, debug):
 
     log_level = logging.DEBUG if debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
-    app = create_app(storage)
+    app = create_app(storage, key_size=key_size)
 
     if debug:  # NOT TESTED
         threading.Thread(
