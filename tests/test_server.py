@@ -28,15 +28,15 @@ def test_server_local():
         with tempfile.TemporaryDirectory() as working:
             with open(os.path.join(working, "index.html"), 'wb') as f:
                 f.write(index_contents)
-            
+
             urls1 = libernet.tools.bundle.create(working, storage, index="index.html")
 
         with tempfile.TemporaryDirectory() as working:
             with open(os.path.join(working, "test.html"), 'wb') as f:
                 f.write(test_contents)
-            
+
             urls2 = libernet.tools.bundle.create(working, storage)
-        
+
         server = multiprocessing.Process(
             target=libernet.server.test_run,
             args=(port_to_use, storage, debug, key_size, False),
@@ -93,23 +93,23 @@ def test_server_local():
 
                 response = requests.get(f'http://127.0.0.1:{port_to_use}/')
                 assert response.status_code == 200
-                
+
                 response = requests.get(f'http://localhost:{port_to_use}{bundle2}/test.html')
                 assert response.status_code == 200
                 assert response.content == test_contents
 
                 response = requests.get(f'http://localhost:{port_to_use}{bundle2}/not_found.html')
                 assert response.status_code == 404
-                
+
                 response = requests.get(f'http://localhost:{port_to_use}{bundle2}/')
                 assert response.status_code == 404  # File not found
-                
+
                 response = requests.get(f'http://localhost:{port_to_use}{url3}')
                 assert response.status_code == 200
-                
+
                 response = requests.get(f'http://localhost:{port_to_use}{url4}')
                 assert response.status_code == 400  # bad request
-                
+
                 response = requests.get(f'http://localhost:{port_to_use}{not_bundle}/test.html')
                 assert response.status_code == 409  # Conflict
 
@@ -128,14 +128,15 @@ def test_server_local():
                 # add more local requests here
 
                 break
-            
+
             except requests.exceptions.ConnectionError:
-                assert time.time() - start < 30  # typically 5 - 20 seconds
+                assert time.time() - start < 5.0  # max 5 seconds
                 sys.stdout.write(f'{time.time() - start:0.0f} ')
                 sys.stdout.flush()
                 time.sleep(1.0)  # wait for the Flask app server to cme up
 
-        server.kill()
+        server.terminate()
+        server.join()
 
 
 def test_server_remote():
@@ -149,15 +150,15 @@ def test_server_remote():
         with tempfile.TemporaryDirectory() as working:
             with open(os.path.join(working, "index.html"), 'wb') as f:
                 f.write(index_contents)
-            
+
             urls1 = libernet.tools.bundle.create(working, storage, index="index.html")
 
         with tempfile.TemporaryDirectory() as working:
             with open(os.path.join(working, "test.html"), 'wb') as f:
                 f.write(test_contents)
-            
+
             urls2 = libernet.tools.bundle.create(working, storage)
-        
+
         server = multiprocessing.Process(
             target=libernet.server.test_run,
             args=(port_to_use, storage, debug, key_size, True),
@@ -225,12 +226,16 @@ def test_server_remote():
                 # add more remote requests here
 
                 break
-            
+
             except requests.exceptions.ConnectionError:
-                assert time.time() - start < 30  # typically 5 - 20 seconds
+                assert time.time() - start < 5.0  # max 5 seconds
                 sys.stdout.write(f'{time.time() - start:0.0f} ')
                 sys.stdout.flush()
                 time.sleep(1.0)  # wait for the Flask app server to cme up
 
-        server.kill()
+        server.terminate()
+        server.join()
 
+if __name__ == "__main__":  # NOT TESTED
+    test_server_local()
+    test_server_remote()

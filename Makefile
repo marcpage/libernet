@@ -8,9 +8,10 @@ VENV_PIP?=$(VENV_DIR)/bin/pip3
 SET_ENV?=. $(VENV_DIR)/bin/activate
 SOURCES=$(shell find libernet -type f -iname "*.py")
 TESTS=$(shell find tests -type f -iname "test_*.py")
-COVERAGE_FILE=.coverage
+COVERAGE_FILE=objects/coverage.bin
 FORMAT_FILE=$(VENV_DIR)/format.txt
 LINT_FILE=$(VENV_DIR)/lint.txt
+COVERAGE=COVERAGE_PROCESS_START=coverage.rc
 
 $(VENV_DIR)/touchfile: requirements.txt
 	@test -d $(VENV_DIR) || $(INITIAL_PYTHON) -m venv $(VENV_DIR)
@@ -22,13 +23,16 @@ $(VENV_DIR)/touchfile: requirements.txt
 
 venv: $(VENV_DIR)/touchfile
 
+# https://stackoverflow.com/questions/28297497/python-code-coverage-and-multiprocessing
 $(COVERAGE_FILE): $(VENV_DIR)/touchfile $(SOURCES) $(TESTS)
-	@$(SET_ENV); $(VENV_PYTHON) -m coverage run --source libernet -m pytest
+	mkdir -p objects
+	@$(SET_ENV); env $(COVERAGE) $(VENV_PYTHON) -m coverage run -m pytest
+	@$(SET_ENV); $(VENV_PYTHON) -m coverage combine --data-file=$(COVERAGE_FILE)
 
 test: $(COVERAGE_FILE)
 
-coverage: .coverage
-	@$(SET_ENV); $(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered
+coverage: $(COVERAGE_FILE)
+	@$(SET_ENV); $(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered --data-file=$(COVERAGE_FILE)
 
 debug: venv
 	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --debug
@@ -51,6 +55,7 @@ lint: $(LINT_FILE)
 
 clean:
 	@rm -Rf $(VENV_DIR)
-	@rm -f .coverage
+	@rm -Rf objects
+	@rm -f $(COVERAGE_FILE)*
 	@rm -Rf .pytest_cache
 	@find . -iname "*.pyc" -delete

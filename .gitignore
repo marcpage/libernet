@@ -1,6 +1,7 @@
 # ignore documentation and bin directory
 documentation
 bin
+objects
 
 # Binaries for programs and plugins
 *.exe

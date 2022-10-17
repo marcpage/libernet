@@ -11,6 +11,9 @@ import zlib
 import zipfile
 import time
 import threading
+import sys
+import signal
+import coverage
 
 import flask
 
@@ -262,6 +265,11 @@ def main():  # NOT TESTED
     handle_args(get_arg_parser().parse_args())
 
 
+def asked_to_quit(*args):
+    print("Exiting gracefully")
+    sys.exit(0)
+
+
 def test_run(port:int, storage:str, debug:bool, key_size:int, fake_remote:bool):
     """ This test code needs to be here to be able to set the local machine test value """
     args = type('',(),{})
@@ -270,6 +278,8 @@ def test_run(port:int, storage:str, debug:bool, key_size:int, fake_remote:bool):
     args.debug = debug
     testing = libernet.plat.network.TEST_NOT_LOCAL_MACHINE
     libernet.plat.network.TEST_NOT_LOCAL_MACHINE = fake_remote
+    signal.signal(signal.SIGINT, asked_to_quit)
+    signal.signal(signal.SIGTERM, asked_to_quit)
     handle_args(args, key_size=key_size)
     libernet.plat.network.TEST_NOT_LOCAL_MACHINE = testing
     

@@ -1,0 +1,6 @@
+[run]
+branch = False
+concurrency = multiprocessing
+source = libernet
+parallel = True
+data_file = objects/coverage.bin
