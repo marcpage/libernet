@@ -4,7 +4,7 @@ import multiprocessing
 import os
 import time
 import sys
-import shutil
+import signal
 
 import requests
 
@@ -16,6 +16,25 @@ def test_arg_parser():
         parser = libernet.server.get_arg_parser()
         assert parser is not None
 
+
+def __asked_to_quit(*args):
+    print("Exiting gracefully")
+    sys.exit(0)
+
+
+def __run_server(port:int, storage:str, debug:bool, key_size:int, fake_remote:bool):
+    """ This test code needs to be here to be able to set the local machine test value """
+    args = type('',(),{})
+    args.port = port
+    args.storage = storage
+    args.debug = debug
+    testing = libernet.plat.network.TEST_NOT_LOCAL_MACHINE
+    libernet.plat.network.TEST_NOT_LOCAL_MACHINE = fake_remote
+    signal.signal(signal.SIGINT, __asked_to_quit)
+    signal.signal(signal.SIGTERM, __asked_to_quit)
+    libernet.server.handle_args(args, key_size=key_size)
+    libernet.plat.network.TEST_NOT_LOCAL_MACHINE = testing
+    
 
 def test_server_local():
     port_to_use = 8086
@@ -38,7 +57,7 @@ def test_server_local():
             urls2 = libernet.tools.bundle.create(working, storage)
 
         server = multiprocessing.Process(
-            target=libernet.server.test_run,
+            target=__run_server,
             args=(port_to_use, storage, debug, key_size, False),
             daemon=True,
         )
@@ -160,7 +179,7 @@ def test_server_remote():
             urls2 = libernet.tools.bundle.create(working, storage)
 
         server = multiprocessing.Process(
-            target=libernet.server.test_run,
+            target=__run_server,
             args=(port_to_use, storage, debug, key_size, True),
             daemon=True,
         )
