@@ -4,3 +4,4 @@ concurrency = multiprocessing
 source = libernet
 parallel = True
 data_file = objects/coverage.bin
+# data_file must match Makefile variable COVERAGE_FILE

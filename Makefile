@@ -8,7 +8,7 @@ VENV_PIP?=$(VENV_DIR)/bin/pip3
 SET_ENV?=. $(VENV_DIR)/bin/activate
 SOURCES=$(shell find libernet -type f -iname "*.py")
 TESTS=$(shell find tests -type f -iname "test_*.py")
-COVERAGE_FILE=objects/coverage.bin
+COVERAGE_FILE=objects/coverage.bin  # must match data-file in coverage.rc
 FORMAT_FILE=$(VENV_DIR)/format.txt
 LINT_FILE=$(VENV_DIR)/lint.txt
 COVERAGE=COVERAGE_PROCESS_START=coverage.rc
