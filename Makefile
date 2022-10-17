@@ -56,6 +56,6 @@ lint: $(LINT_FILE)
 clean:
 	@rm -Rf $(VENV_DIR)
 	@rm -Rf objects
-	@rm -f $(COVERAGE_FILE)*
+	@rm -f $(strip $(COVERAGE_FILE))*
 	@rm -Rf .pytest_cache
 	@find . -iname "*.pyc" -delete
