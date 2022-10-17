@@ -262,5 +262,17 @@ def main():  # NOT TESTED
     handle_args(get_arg_parser().parse_args())
 
 
+def test_run(port:int, storage:str, debug:bool, key_size:int, fake_remote:bool):
+    """ This test code needs to be here to be able to set the local machine test value """
+    args = type('',(),{})
+    args.port = port
+    args.storage = storage
+    args.debug = debug
+    testing = libernet.plat.network.TEST_NOT_LOCAL_MACHINE
+    libernet.plat.network.TEST_NOT_LOCAL_MACHINE = fake_remote
+    handle_args(args, key_size=key_size)
+    libernet.plat.network.TEST_NOT_LOCAL_MACHINE = testing
+    
+
 if __name__ == "__main__":  # NOT TESTED
     main()

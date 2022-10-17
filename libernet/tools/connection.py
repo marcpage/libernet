@@ -4,7 +4,6 @@
 """
 
 import threading
-import queue
 import os
 
 import requests
@@ -13,20 +12,21 @@ import libernet.plat.dirs
 import libernet.tools.block
 import libernet.tools.encrypt
 import libernet.tools.settings
+import libernet.tools.message
 
 
 class Connection(threading.Thread):
     """a thread that communicates to another libernet node"""
 
-    def __init__(self, address, port, settings):
+    def __init__(self, address, port, messages, settings):
         """create a new connection"""
         self.__state = {
             "running": True,
             "url": f"http://{address}:{port}",
         }
         self.__settings = settings
+        self.__messages = messages
         self.__identity = None
-        self.__requests = queue.Queue()
         self.__session = None
         self.idle = False
         threading.Thread.__init__(self)
@@ -47,7 +47,7 @@ class Connection(threading.Thread):
         )
 
     def __block_path(self, identifier):
-        """Get the locak path for data from the remote node"""
+        """Get the local path for data from the remote node"""
         like_name = identifier[: libernet.tools.block.BLOCK_TOP_DIR_SIZE]
         relative = os.path.join(
             self.__identity.identifier(), "sha256", like_name, identifier + ".raw"
@@ -117,9 +117,5 @@ class Connection(threading.Thread):
         self.__session.headers["Connection"] = "Keep-Alive"
         self.__say_hello()
 
-        while self.__state["running"]:
-            request = self.__requests.get()
-
-            if request is None:
-                self.__state["running"] = False
-                continue
+        while self.__messages.active():
+            request = self.__messages.receive()
