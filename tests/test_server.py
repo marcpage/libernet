@@ -97,6 +97,7 @@ def test_server_local():
                 assert response.status_code == 404
 
                 response = requests.get(f'http://localhost:{port_to_use}{bundle1}')
+                #with open(os.path.join(storage, "log.txt"), 'r') as log_file: print(log_file.read())
                 assert response.status_code == 200
 
                 response = requests.get(f'http://localhost:{port_to_use}{block1}')
@@ -108,7 +109,7 @@ def test_server_local():
                 assert len(response.content) <= len(test_contents)
 
                 response = requests.get(f'http://localhost:{port_to_use}/')
-                assert response.status_code == 200
+                assert response.status_code == 200, response.content
 
                 response = requests.get(f'http://127.0.0.1:{port_to_use}/')
                 assert response.status_code == 200

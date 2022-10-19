@@ -47,8 +47,8 @@ format: $(FORMAT_FILE)
 	@cat $^
 
 $(LINT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
-	@$(SET_ENV); $(VENV_PYTHON) -m pylint libernet &> $@
-	@$(SET_ENV); $(VENV_PYTHON) -m black libernet --check >> $@  2>&1
+	-@$(SET_ENV); $(VENV_PYTHON) -m pylint libernet &> $@
+	-@$(SET_ENV); $(VENV_PYTHON) -m black libernet --check >> $@  2>&1
 
 lint: $(LINT_FILE)
 	@cat $^

@@ -119,3 +119,4 @@ class Connection(threading.Thread):
 
         while self.__messages.active():
             request = self.__messages.receive()
+            print(request)
