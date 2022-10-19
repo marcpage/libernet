@@ -41,7 +41,7 @@ def create_app(storage_path, key_size=4096):
     @app.route("/sha256/<path:path>")
     def sha256(path):
         result = libernet.tools.contents.sha256(
-            path, flask.request.remote_addr, settings
+            path, flask.request.remote_addr, settings.storage()
         )
 
         if result[0] == "file":

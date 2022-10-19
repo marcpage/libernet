@@ -50,9 +50,10 @@ def home(remote_addr: str, environ):
 
 
 # pylint: disable=R0911
-def sha256(path, remote_addr, settings):
+def sha256(path, remote_addr, storage):
     """
     remote_addr - flask.request.remote_addr
+    storage - settings.storage()
     """
     full_url = f"/sha256/{path}"
     block_identifier, block_key, path_in_bundle = libernet.tools.block.validate_url(
@@ -72,7 +73,7 @@ def sha256(path, remote_addr, settings):
         return forbidden()
 
     if path_in_bundle is not None:
-        bundle = libernet.tools.bundle.Path(full_url, settings.storage())
+        bundle = libernet.tools.bundle.Path(full_url, storage)
 
         if path_in_bundle == "":
             path_in_bundle = bundle.index()
@@ -84,7 +85,7 @@ def sha256(path, remote_addr, settings):
                 )  # File not found
 
         bundle_path = os.path.join(
-            settings.storage(), "web", bundle.relative_path(just_bundle=True)
+            storage, "web", bundle.relative_path(just_bundle=True)
         )
         item_path = os.path.join(bundle_path, path_in_bundle)
         already_exists = os.path.isfile(item_path)
@@ -119,7 +120,7 @@ def sha256(path, remote_addr, settings):
     else:
         try:
             contents = libernet.tools.block.get_contents(
-                settings.storage(), block_identifier, block_key
+                storage, block_identifier, block_key
             )
 
         except zlib.error:
