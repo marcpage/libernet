@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import tempfile
 import multiprocessing
 import os
@@ -43,6 +44,7 @@ def test_server_local():
     port_to_use = 8086
     key_size = 1024
     debug = False
+    fake_remote = False
     index_contents = b"<html><body>" + b" index " * 100 + b"</body></html>"
     test_contents = b"<html><body>" + b" test " * 100 + b"</body></html>"
 
@@ -61,7 +63,7 @@ def test_server_local():
 
         server = multiprocessing.Process(
             target=__run_server,
-            args=(port_to_use, storage, debug, key_size, False),
+            args=(port_to_use, storage, debug, key_size, fake_remote),
             daemon=True,
         )
         server.start()
@@ -166,6 +168,7 @@ def test_server_remote():
     port_to_use = 8087
     key_size = 1024
     debug = False
+    fake_remote = True
     index_contents = b"<html><body>" + b" index " * 100 + b"</body></html>"
     test_contents = b"<html><body>" + b" test " * 100 + b"</body></html>"
 
@@ -184,7 +187,7 @@ def test_server_remote():
 
         server = multiprocessing.Process(
             target=__run_server,
-            args=(port_to_use, storage, debug, key_size, True),
+            args=(port_to_use, storage, debug, key_size, fake_remote),
             daemon=True,
         )
         server.start()

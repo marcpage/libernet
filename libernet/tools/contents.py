@@ -85,7 +85,9 @@ def sha256(path, remote_addr, storage):
                 )  # File not found
 
         bundle_path = os.path.join(
-            storage, "web", bundle.relative_path(just_bundle=True)
+            storage,
+            libernet.tools.block.WEB_SUBDIR,
+            bundle.relative_path(just_bundle=True),
         )
         item_path = os.path.join(bundle_path, path_in_bundle)
         already_exists = os.path.isfile(item_path)

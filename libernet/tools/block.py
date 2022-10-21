@@ -14,6 +14,9 @@ import libernet.tools.encrypt
 BLOCK_SIZE = 1024 * 1024
 BLOCK_TOP_DIR_SIZE = 3  # number of characters in block grouping directory name
 MINIMUM_MATCH_FOR_LIKE = 4  # 4 is about 1 seconds, 5 is about 10 seconds to generate
+UPLOAD_SUBDIR = "upload"
+LOCAL_SUBDIR = os.path.join(UPLOAD_SUBDIR, "local")
+WEB_SUBDIR = "web"
 
 
 def block_dir(search_dir: str, identifier: str, key=None, full: bool = False):
@@ -40,7 +43,7 @@ def block_dir(search_dir: str, identifier: str, key=None, full: bool = False):
     return os.path.join(aes_dir, key)
 
 
-def store_block(contents, storage, encrypt=True):
+def store_block(contents, storage, encrypt=True, server_identifier=None):
     """Stores a block of data (no more than 1 MiB in size)
     returns the url for the block
     """
@@ -61,7 +64,12 @@ def store_block(contents, storage, encrypt=True):
         identifier = contents_identifier
         block_contents = compressed
 
-    upload_dir = os.path.join(storage, "upload", "local")
+    upload_dir = os.path.join(
+        storage,
+        LOCAL_SUBDIR
+        if server_identifier is None
+        else os.path.join(UPLOAD_SUBDIR, server_identifier),
+    )
     data_path = block_dir(upload_dir, identifier, full=True) + ".raw"
 
     if encrypt:
@@ -187,15 +195,15 @@ def find_block(search_dir, block_identifier, block_key=None, load=True):
 
 def get_search_dirs(storage):
     """get a list of directories to search for blocks in the storage"""
-    upload_dir = os.path.join(storage, "upload")
-    upload_local_dir = os.path.join(upload_dir, "local")
-    search_dirs = [os.path.join(storage, "web")]
+    upload_dir = os.path.join(storage, UPLOAD_SUBDIR)
+    upload_local_dir = os.path.join(storage, LOCAL_SUBDIR)
+    search_dirs = [os.path.join(storage, WEB_SUBDIR)]
     search_dirs = [
         os.path.join(upload_dir, d)
         for d in os.listdir(upload_dir)
         if os.path.isdir(os.path.join(upload_dir, d))
     ]
-    search_dirs.insert(0, os.path.join(storage, "web"))
+    search_dirs.insert(0, os.path.join(storage, WEB_SUBDIR))
 
     if upload_local_dir in search_dirs:
         search_dirs.remove(upload_local_dir)

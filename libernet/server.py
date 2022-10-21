@@ -38,6 +38,24 @@ def create_app(storage_path, key_size=4096):
             flask.request.remote_addr, flask.request.environ
         )
 
+    @app.route("/sha256/<identifier>", methods=["PUT"])
+    def put_sha256(identifier):
+        response = flask.Response(
+            "<html><body>Thank you for sending the data</body></html>"
+        )
+        sender = flask.request.headers.get(libernet.tools.settings.HTTP_AUTHOR)
+        search_dir = os.path.join(
+            settings.storage(), libernet.tools.block.UPLOAD_SUBDIR, sender
+        )
+        path = (
+            libernet.tools.block.block_dir(search_dir, identifier, full=True) + ".raw"
+        )
+        response.headers[
+            libernet.tools.settings.HTTP_AUTHOR
+        ] = settings.identity().identifier()
+        response.status = 200
+        return response
+
     @app.route("/sha256/<path:path>")
     def sha256(path):
         result = libernet.tools.contents.sha256(
@@ -140,8 +158,12 @@ def serve(port, storage, debug, key_size=4096):
 
 def handle_args(args, key_size=4096):
     """respond to the arguments passed in"""
-    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "web"))
-    libernet.plat.dirs.make_dirs(os.path.join(args.storage, "upload"))
+    libernet.plat.dirs.make_dirs(
+        os.path.join(args.storage, libernet.tools.block.WEB_SUBDIR)
+    )
+    libernet.plat.dirs.make_dirs(
+        os.path.join(args.storage, libernet.tools.block.UPLOAD_SUBDIR)
+    )
     serve(args.port, args.storage, args.debug, key_size=key_size)
 
 

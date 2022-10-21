@@ -40,7 +40,7 @@ class Connection(threading.Thread):
         if method_get:
             return self.__session.get(f"{self.__state['url']}{path}", headers=headers)
 
-        return self.__session.get(
+        return self.__session.put(
             f"{self.__state['url']}{path}",
             data=contents,
             headers=headers,
@@ -48,12 +48,13 @@ class Connection(threading.Thread):
 
     def __block_path(self, identifier):
         """Get the local path for data from the remote node"""
-        like_name = identifier[: libernet.tools.block.BLOCK_TOP_DIR_SIZE]
-        relative = os.path.join(
-            self.__identity.identifier(), "sha256", like_name, identifier + ".raw"
+        server_dir = os.path.join(
+            self.__settings.storage(), libernet.tools.block.UPLOAD_SUBDIR
         )
-        path = os.path.join(self.__settings.storage(), relative)
-        libernet.plat.dirs.make_dirs(os.path.split(path)[0])
+        path = (
+            libernet.tools.block.block_dir(server_dir, identifier, full=True) + ".raw"
+        )
+        os.makedirs(os.path.split(path)[0], exist_ok=True)
         return path
 
     def __fetch_block(self, identifier):
@@ -111,12 +112,16 @@ class Connection(threading.Thread):
         # put server list
         # get requests
 
+    def identity(self):
+        """get the identity of the remote server"""
+        return self.__identity
+
     def run(self):
         """Loop to send requests to the remote node"""
         self.__session = requests.session()
         self.__session.headers["Connection"] = "Keep-Alive"
         self.__say_hello()
 
-        while self.__messages.active():
+        while self.__messages.active() and self.__state["running"]:
             request = self.__messages.receive()
-            print(request)
+            print(f"{request}")
