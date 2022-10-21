@@ -36,10 +36,10 @@ coverage: $(COVERAGE_FILE)
 	@$(SET_ENV); $(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered --data-file=$(COVERAGE_FILE)
 
 debug: venv
-	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --debug
+	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --debug --port 4000
 
 serve: venv
-	$(SET_ENV); $(VENV_PYTHON) -m libernet.server
+	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --port 8000
 
 $(FORMAT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
 	@$(SET_ENV); $(VENV_PYTHON) -m black libernet &> $@
