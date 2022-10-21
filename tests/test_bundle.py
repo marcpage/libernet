@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from multiprocessing.sharedctypes import Value
 import tempfile
 import os
 import multiprocessing
@@ -30,7 +31,8 @@ def test_store_restore():
         args.dir = "libernet"  # directory to store
         args.previous = None  # url of previous version
         args.url = None  # the url to restore
-        url = libernet.bundle.handle_args(args)
+        exit_code, url = libernet.bundle.handle_args(args)
+        assert exit_code == 0
         
         args.action = "restore"
         args.verbose = False
@@ -39,7 +41,9 @@ def test_store_restore():
         args.dir = output  # directory to store
         args.previous = None  # url of previous version
         args.url = url  # the url to restore
-        libernet.bundle.handle_args(args)
+        exit_code, value = libernet.bundle.handle_args(args)
+        assert exit_code == 0
+        assert value == True
 
         comparison = filecmp.dircmp("libernet", output)
         assert len(comparison.diff_files) == 0, "restored files differ from source: " + ", ".join(comparison.diff_files)
@@ -497,3 +501,79 @@ def test_modified_raws():
             
             except ValueError:
                 pass
+
+
+def test_bad_args():
+    args = type('',(),{})
+    args.action = "goofy"
+    exit_code, value = libernet.bundle.handle_args(args)
+    assert exit_code != 0, exit_code
+    assert value is None
+
+    args.action = "restore"
+    args.url = None
+    exit_code, value = libernet.bundle.handle_args(args)
+    assert exit_code != 0, exit_code
+    assert value is None
+
+def test_missing_blocks():
+    args = type('',(),{})
+
+    with tempfile.TemporaryDirectory() as storage, tempfile.TemporaryDirectory() as output:
+        args.action = "store"
+        args.verbose = False
+        args.storage = storage  # the place to store data
+        args.index = None
+        args.dir = "libernet"  # directory to store
+        args.previous = None  # url of previous version
+        args.url = None  # the url to restore
+        exit_code, url = libernet.bundle.handle_args(args)
+        assert exit_code == 0
+        identifier, _, _ = libernet.tools.block.validate_url(url)
+        search_dirs = libernet.tools.block.get_search_dirs(storage)
+
+        args.action = "restore"
+        args.verbose = False
+        args.storage = storage  # the place to store data
+        args.index = None
+        args.dir = output  # directory to store
+        args.previous = None  # url of previous version
+        args.url = url  # the url to restore
+
+        # delete a non-top-level block
+        for root, _, files in os.walk(storage):
+            possibilities = [f for f in files 
+                                if os.path.splitext(f)[1] == '.raw'
+                                    and os.path.splitext(f)[0] != identifier]
+            
+            if possibilities:
+                file_path = os.path.join(root, possibilities[0])
+                dir_path = os.path.splitext(file_path)[0]
+                os.unlink(file_path)
+
+                if os.path.isdir(dir_path):
+                    shutil.rmtree(dir_path)
+                
+                break
+
+        exit_code, value = libernet.bundle.handle_args(args)
+        assert exit_code == 1, exit_code
+        assert value is None, value
+
+        # delete top-level block
+        for search_dir in search_dirs:
+            path = libernet.tools.block.block_dir(search_dir, identifier, full=True)
+            
+            if os.path.isdir(path):
+                shutil.rmtree(path)
+            
+            if os.path.isfile(path + '.raw'):
+                os.unlink(path + '.raw')
+
+        exit_code, value = libernet.bundle.handle_args(args)
+        assert exit_code == 1, exit_code
+        assert value is None, value
+
+
+if __name__ == "__main__":
+    test_missing_blocks()

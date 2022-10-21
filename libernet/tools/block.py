@@ -16,9 +16,14 @@ BLOCK_TOP_DIR_SIZE = 3  # number of characters in block grouping directory name
 MINIMUM_MATCH_FOR_LIKE = 4  # 4 is about 1 seconds, 5 is about 10 seconds to generate
 
 
-def block_dir(storage_part, identifier, key=None, full=False):
-    """Find the path to various block directories"""
-    directory = os.path.join(storage_part, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
+def block_dir(search_dir: str, identifier: str, key=None, full: bool = False):
+    """Find the path to various block directories
+    search_dir - the directory to look in (ie local or server-specific)
+    identifier - the identifier of the encrypted block
+    key - the decryption key, if given the path to the decrypted data
+    full - if False, the item's parent directory is returned
+    """
+    directory = os.path.join(search_dir, "sha256", identifier[:BLOCK_TOP_DIR_SIZE])
 
     if not full and key is None:
         return directory

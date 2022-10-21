@@ -57,40 +57,39 @@ def handle_args(args):
             verbose=args.verbose,
         )
         print(f"url: {results[0]}")
-        return results[0]
+        return (0, results[0])
 
     if args.action == "restore":
-        if not args.url:  # not tested
+        if not args.url:
             print("For restore you must specify a --url/-u")
-            sys.exit(1)
+            return (1, None)
 
         missing_blocks = libernet.tools.bundle.missing_blocks(args.url, args.storage)
 
-        if missing_blocks:  # not tested
+        if missing_blocks:
             print("The following blocks are missing and need to be loaded first")
             print("\t" + "\n\t".join(missing_blocks))
-            sys.exit(1)
+            return (1, None)
 
         bundle = libernet.tools.bundle.Path(args.url, args.storage)
         missing = bundle.missing_blocks()
 
-        if missing:  # not tested
+        if missing:  # NOT TESTED, should never happen
             print("Missing blocks:")
             print("\t" + "\n\t".join(missing))
-            sys.exit(1)
+            return (1, None)
 
         bundle.restore_file(args.dir)
-        return True
+        return (0, True)
 
-    # not tested
     print("Unknown action: " + args.action)
-    sys.exit(1)
+    return (1, None)
 
 
-def main():  # not tested
+def main():  # NOT TESTED
     """Entry point. Loop forever unless we are told not to."""
-    handle_args(get_arg_parser().parse_args())
+    sys.exit(handle_args(get_arg_parser().parse_args())[0])
 
 
-if __name__ == "__main__":  # not tested
+if __name__ == "__main__":  # NOT TESTED
     main()
