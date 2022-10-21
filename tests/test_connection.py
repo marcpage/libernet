@@ -57,11 +57,11 @@ def test_remote_identity():
         print("Sending messages")
         for i in range(0, 100):
             messages.send({'test': i})
+        with open(os.path.join(server_storage, "log.txt"), 'r') as log_file:
+            print(log_file.read())
         print(f"remote: {connection.identity().identifier()}")
         time.sleep(0.200)
         assert connection.identity() is not None
-        with open(os.path.join(server_storage, "log.txt"), 'r') as log_file:
-            print(log_file.read())
         server.terminate()
         server.join()
 

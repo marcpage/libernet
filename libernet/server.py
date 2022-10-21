@@ -50,9 +50,11 @@ def create_app(storage_path, key_size=4096):
         path = (
             libernet.tools.block.block_dir(search_dir, identifier, full=True) + ".raw"
         )
-        response.headers[
-            libernet.tools.settings.HTTP_AUTHOR
-        ] = settings.identity().identifier()
+        message_signature = settings.sign_request(f"/sha256/{identifier}")
+
+        for header in message_signature:
+            response.headers[header] = message_signature[header]
+        
         response.status = 200
         return response
 

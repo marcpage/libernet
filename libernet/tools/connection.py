@@ -67,6 +67,12 @@ class Connection(threading.Thread):
         with open(self.__block_path(identifier), "wb") as block_file:
             block_file.write(response.content)
 
+        self.__messages.send({
+            "action": "received", 
+            "block": identifier,
+            "server": None if self.__identity is None else self.__identity.identifier(),
+            "connection": self,
+        })
         return response.content
 
     def __create_identity(self, identifier):
@@ -95,7 +101,12 @@ class Connection(threading.Thread):
         )
         # If they are not responding as we expect, don't talk to them
         self.__state["running"] = response.ok and self.__state["running"]
-
+        self.__messages.send({
+            "action": "sent", 
+            "block": identifier,
+            "server": None if self.__identity is None else self.__identity.identifier(),
+            "connection": self,
+        })
         if response.ok and self.__identity is None:
             remote_node_identifier = response.headers.get(
                 libernet.tools.settings.HTTP_AUTHOR, None
