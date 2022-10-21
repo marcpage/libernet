@@ -559,7 +559,7 @@ class Path:
         )
 
         if just_bundle or path is None and self.__path is None:
-            return base  # NOT TESTED
+            return base
 
         return os.path.join(base, self.__path if path is None else path)
 

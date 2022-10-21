@@ -11,7 +11,8 @@ TESTS=$(shell find tests -type f -iname "test_*.py")
 COVERAGE_FILE=objects/coverage.bin  # must match data-file in coverage.rc
 FORMAT_FILE=$(VENV_DIR)/format.txt
 LINT_FILE=$(VENV_DIR)/lint.txt
-COVERAGE=COVERAGE_PROCESS_START=coverage.rc
+COVERAGE_SETTINGS=coverage.rc
+COVERAGE=COVERAGE_PROCESS_START=$(COVERAGE_SETTINGS)
 
 $(VENV_DIR)/touchfile: requirements.txt
 	@test -d $(VENV_DIR) || $(INITIAL_PYTHON) -m venv $(VENV_DIR)
