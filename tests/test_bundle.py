@@ -164,7 +164,7 @@ def test_empty_directories():
             ]
 
             for directory in deep_dirs:
-                libernet.plat.dirs.make_dirs(os.path.join(working, directory))
+                os.makedirs(os.path.join(working, directory), exist_ok=True)
 
             urls = libernet.tools.bundle.create(working, storage)
             assert len(set(urls)) == len(urls)
@@ -192,7 +192,7 @@ def test_symlinks():
             with open(data_path, 'w') as text_file:
                 text_file.write(data_contents)
             
-            libernet.plat.dirs.make_dirs(inner_path)
+            os.makedirs(inner_path, exist_ok=True)
             libernet.plat.files.symlink("../data.txt", copy_path)
             libernet.plat.files.symlink("inner", inner_link_path)
 
@@ -337,7 +337,7 @@ def test_index():
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
             normal_path = os.path.join(working, 'normal.txt')
-            libernet.plat.dirs.make_dirs(os.path.join(working, "empty dir"))
+            os.makedirs(os.path.join(working, "empty dir"), exist_ok=True)
 
             with open(normal_path, 'w') as text_file:
                 text_file.write(data_contents)
@@ -394,7 +394,7 @@ def test_create_large_number_of_files():
     with tempfile.TemporaryDirectory() as storage:
         storage = "/tmp/testing_bundle_stuff"
         if os.path.isdir(storage): shutil.rmtree(storage)
-        libernet.plat.dirs.make_dirs(storage)
+        os.makedirs(storage, exist_ok=True)
         with tempfile.TemporaryDirectory() as to_store:
             for file_index in range(0, file_count):
                 with open(os.path.join(to_store, f"{file_index:x}.txt"), "w") as text_file:
@@ -428,7 +428,7 @@ def test_create_large_number_of_files_reverse():
     with tempfile.TemporaryDirectory() as storage:
         storage = "/tmp/testing_bundle_stuff"
         if os.path.isdir(storage): shutil.rmtree(storage)
-        libernet.plat.dirs.make_dirs(storage)
+        os.makedirs(storage, exist_ok=True)
         with tempfile.TemporaryDirectory() as to_store:
             for file_index in range(0, file_count):
                 with open(os.path.join(to_store, f"{file_index:x}.txt"), "w") as text_file:
@@ -457,7 +457,7 @@ def test_restore_index():
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
             normal_path = os.path.join(working, 'normal.txt')
-            libernet.plat.dirs.make_dirs(os.path.join(working, "empty dir"))
+            os.makedirs(os.path.join(working, "empty dir"), exist_ok=True)
 
             with open(normal_path, 'w') as text_file:
                 text_file.write(data_contents)
@@ -478,7 +478,7 @@ def test_modified_raws():
     with tempfile.TemporaryDirectory() as storage:
         with tempfile.TemporaryDirectory() as working:
             normal_path = os.path.join(working, 'normal.txt')
-            libernet.plat.dirs.make_dirs(os.path.join(working, "empty dir"))
+            os.makedirs(os.path.join(working, "empty dir"), exist_ok=True)
 
             with open(normal_path, 'w') as text_file:
                 text_file.write(data_contents)

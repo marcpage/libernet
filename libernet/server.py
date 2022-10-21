@@ -231,11 +231,11 @@ def serve(port, storage, debug, key_size=4096):
 
 def handle_args(args, key_size=4096):
     """respond to the arguments passed in"""
-    libernet.plat.dirs.make_dirs(
-        os.path.join(args.storage, libernet.tools.block.WEB_SUBDIR)
+    os.makedirs(
+        os.path.join(args.storage, libernet.tools.block.WEB_SUBDIR), exist_ok=True
     )
-    libernet.plat.dirs.make_dirs(
-        os.path.join(args.storage, libernet.tools.block.UPLOAD_SUBDIR)
+    os.makedirs(
+        os.path.join(args.storage, libernet.tools.block.UPLOAD_SUBDIR), exist_ok=True
     )
     serve(args.port, args.storage, args.debug, key_size=key_size)
 

@@ -35,7 +35,7 @@ def block_dir(search_dir: str, identifier: str, key=None, full: bool = False):
         return os.path.join(directory, identifier)
 
     aes_dir = os.path.join(directory, identifier, "aes256")
-    libernet.plat.dirs.make_dirs(aes_dir)
+    os.makedirs(aes_dir, exist_ok=True)
 
     if not full:
         return aes_dir
@@ -78,8 +78,8 @@ def store_block(contents, storage, encrypt=True, server_identifier=None):
         )
 
     else:
-        libernet.plat.dirs.make_dirs(
-            block_dir(upload_dir, identifier, contents_identifier)
+        os.makedirs(
+            block_dir(upload_dir, identifier, contents_identifier), exist_ok=True
         )
 
     with open(data_path, "wb") as data_file:
@@ -143,7 +143,8 @@ def decrypt_block(encrypted_path, block_key):
                 contents = None
 
         if contents is not None:
-            libernet.plat.dirs.make_dirs(os.path.split(full_path)[0])
+            os.makedirs(os.path.split(full_path)[0], exist_ok=True)
+
             with open(full_path + ".raw", "wb") as data_file:
                 data_file.write(contents)
 

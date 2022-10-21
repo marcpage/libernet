@@ -11,15 +11,6 @@ APPDATA_DIR = os.environ.get("APPDATA", "")
 SYSTEM = platform.system()
 
 
-def make_dirs(path):
-    """make directories if they don't exist"""
-    try:
-        os.makedirs(path)
-
-    except FileExistsError:
-        pass
-
-
 def pref_dir(filename=None):
     """Get the preferences directory"""
     directory = APPDATA_DIR if SYSTEM == "Windows" else HOME_DIR
@@ -27,7 +18,7 @@ def pref_dir(filename=None):
     if SYSTEM == "Darwin":
         directory = os.path.join(directory, "Library", "Preferences")
 
-    make_dirs(directory)
+    os.makedirs(directory, exist_ok=True)
 
     if (not directory or SYSTEM == "Linux") and filename:
         filename = "." + filename

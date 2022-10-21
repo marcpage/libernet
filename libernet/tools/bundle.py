@@ -515,7 +515,7 @@ class Path:
         destination_path = os.path.join(destination_root, path)
         # pylint: disable=E1136
         file_description = self.__description["files"][path]
-        libernet.plat.dirs.make_dirs(os.path.split(destination_path)[0])
+        os.makedirs(os.path.split(destination_path)[0], exist_ok=True)
         link_contents = file_description.get("link", None)
         is_readonly = file_description.get("readonly", False)
         is_executable = file_description.get("executable", False)
@@ -676,6 +676,6 @@ class Path:
                 )
 
             else:
-                libernet.plat.dirs.make_dirs(os.path.join(destination_root, file))
+                os.makedirs(os.path.join(destination_root, file), exist_ok=True)
 
         return True

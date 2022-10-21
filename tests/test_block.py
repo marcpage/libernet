@@ -20,7 +20,7 @@ CONTENTS = [
 
 def test_store_retrieve():
     with tempfile.TemporaryDirectory() as storage:
-        libernet.plat.dirs.make_dirs(os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR))
+        os.makedirs(os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR), exist_ok=True)
         urls = [libernet.tools.block.store_block(c, storage) for c in CONTENTS]
         block_urls = [u.rsplit('/', 2)[0] for u in urls]
         contents = [libernet.tools.block.retrieve(u, storage) for u in urls]
@@ -91,7 +91,7 @@ def test_validate_url():
 def test_missing_block():
     identifier = '0000000000000000000000000000000000000000000000000000000000000000'
     with tempfile.TemporaryDirectory() as storage:
-        libernet.plat.dirs.make_dirs(os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR))
+        os.makedirs(os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR), exist_ok=True)
         assert libernet.tools.block.get_contents(storage, identifier) == None
 
 
@@ -117,7 +117,7 @@ def test_compressed_block():
 
     with tempfile.TemporaryDirectory() as storage:
         local_dir = os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR)
-        libernet.plat.dirs.make_dirs(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
         url = libernet.tools.block.store_block(contents, storage)
         identifier, key, _ = libernet.tools.block.validate_url(url)
         assert os.path.isdir(local_dir)
@@ -151,7 +151,7 @@ def test_bad_key():
 
     with tempfile.TemporaryDirectory() as storage:
         local_dir = os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR)
-        libernet.plat.dirs.make_dirs(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
         url = libernet.tools.block.store_block(contents, storage)
         identifier, key, _ = libernet.tools.block.validate_url(url)
         assert os.path.isdir(local_dir)
@@ -204,7 +204,7 @@ def test_compressed_unecnrypted_block():
 
     with tempfile.TemporaryDirectory() as storage:
         local_dir = os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR)
-        libernet.plat.dirs.make_dirs(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
         url = libernet.tools.block.store_block(contents, storage, encrypt=False)
         identifier, _, _ = libernet.tools.block.validate_url(url)
         assert os.path.isdir(local_dir)
@@ -219,7 +219,7 @@ def test_uncompressed_unecnrypted_block():
 
     with tempfile.TemporaryDirectory() as storage:
         local_dir = os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR)
-        libernet.plat.dirs.make_dirs(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
         url = libernet.tools.block.store_block(contents, storage, encrypt=False)
         identifier, _, _ = libernet.tools.block.validate_url(url)
         assert os.path.isdir(local_dir)
@@ -233,7 +233,7 @@ def test_removals():
 
     with tempfile.TemporaryDirectory() as storage:
         local_dir = os.path.join(storage, libernet.tools.block.LOCAL_SUBDIR)
-        libernet.plat.dirs.make_dirs(local_dir)
+        os.makedirs(local_dir, exist_ok=True)
         url = libernet.tools.block.store_block(contents, storage)
         identifier, key, _ = libernet.tools.block.validate_url(url)
 
