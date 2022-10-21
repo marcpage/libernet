@@ -101,16 +101,14 @@ def get_arg_parser():
     return parser
 
 
-def __open_browser(url, delay_in_seconds):  # NOT TESTED
+def delayed_open_browser(url, delay_in_seconds):
+    """wait and then open the url in the user's browser"""
     time.sleep(delay_in_seconds)
     libernet.plat.files.open_url(url)
 
 
-def serve(port, storage, debug, key_size=4096):
-    """Start the libernet web server"""
-    log_path = os.path.join(storage, "log.txt")
-
-    # NOT TESTED
+def rotate_log(log_path):
+    """If the log file gets too big, archive the log file"""
     if os.path.isfile(log_path) and os.path.getsize(log_path) > LOG_FILE_MAX_SIZE:
         archive_path = f"{log_path}_{time.strftime('%Y%m%d%H%M%S')}.zip"
 
@@ -121,13 +119,18 @@ def serve(port, storage, debug, key_size=4096):
 
         os.unlink(log_path)
 
+
+def serve(port, storage, debug, key_size=4096):
+    """Start the libernet web server"""
+    log_path = os.path.join(storage, "log.txt")
+    rotate_log(log_path)
     log_level = logging.DEBUG if debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
     app = create_app(storage, key_size=key_size)
 
     if debug:  # NOT TESTED
         threading.Thread(
-            target=__open_browser,
+            target=delayed_open_browser,
             args=(f"http://localhost:{port}", BROWSER_OPEN_DELAY_IN_SECONDS),
             daemon=True,
         ).start()
