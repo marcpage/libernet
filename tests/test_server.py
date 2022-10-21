@@ -91,7 +91,7 @@ def test_server_local():
         while True:
             try:
                 response = requests.get(f'http://localhost:{port_to_use}{bundle1}/')
-                #with open(os.path.join(storage, "log.txt"), 'r') as log_file: print(log_file.read())
+                with open(os.path.join(storage, "log.txt"), 'r') as log_file: print(log_file.read())
                 assert response.status_code == 200, f'http://localhost:{port_to_use}{bundle1}/ => {response.status_code}'
                 assert response.content == index_contents
 

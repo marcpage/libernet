@@ -25,6 +25,24 @@ BROWSER_OPEN_DELAY_IN_SECONDS = 21.000
 LOG_FILE_MAX_SIZE = 1024 * 1024  # 1 MiB
 
 
+def sign_message(settings, path, response_headers):
+    """adds signature to response headers"""
+    signature_headers = settings.sign_request(path)
+
+    for header in signature_headers:
+        response_headers[header] = signature_headers[header]
+
+
+def write_server_file(settings, sender, name, data):
+    """writes server stat file"""
+    parts = [settings.storage(), libernet.tools.block.UPLOAD_SUBDIR, sender]
+    contents_path = os.path.join(*parts, "server", name)
+    os.makedirs(os.path.split(contents_path)[0], exist_ok=True)
+
+    with open(contents_path, "wb") as request_file:
+        request_file.write(data)
+
+
 def create_app(storage_path, key_size=4096):
     """create the flask app"""
     app = flask.Flask(__name__)
@@ -38,23 +56,69 @@ def create_app(storage_path, key_size=4096):
             flask.request.remote_addr, flask.request.environ
         )
 
+    @app.route("/server/requests")
+    def requests():
+        all = libernet.tools.contents.gather(settings.storage(), "/server/requests.txt")
+        response = flask.Response(all, mimetype="text/plain")
+        sign_message(settings, "/server/requests", response.headers)
+        return response
+
+    @app.route("/server/searches")
+    def searches():
+        all = libernet.tools.contents.gather(settings.storage(), "/server/searches.txt")
+        response = flask.Response(all, mimetype="text/plain")
+        sign_message(settings, "/server/searches", response.headers)
+        return response
+
+    @app.route("/server/servers")
+    def servers():
+        all = libernet.tools.contents.gather(settings.storage(), "/server/servers.txt")
+        response = flask.Response(all, mimetype="text/plain")
+        sign_message(settings, "/server/servers", response.headers)
+        return response
+
+    @app.route("/server/requests", methods=["PUT"])
+    def send_requests():
+        body = "<html><body>Thank you for sending the data</body></html>"
+        response = flask.Response(body)
+        sender = flask.request.headers.get(libernet.tools.settings.HTTP_AUTHOR)
+        write_server_file(settings, sender, "requests.txt", flask.request.data)
+        sign_message(settings, "/server/requests", response.headers)
+        return response
+
+    @app.route("/server/searches", methods=["PUT"])
+    def send_searches():
+        body = "<html><body>Thank you for sending the data</body></html>"
+        response = flask.Response(body)
+        sender = flask.request.headers.get(libernet.tools.settings.HTTP_AUTHOR)
+        write_server_file(settings, sender, "searches.txt", flask.request.data)
+        sign_message(settings, "/server/searches", response.headers)
+        return response
+
+    @app.route("/server/servers", methods=["PUT"])
+    def send_servers():
+        body = "<html><body>Thank you for sending the data</body></html>"
+        response = flask.Response(body)
+        sender = flask.request.headers.get(libernet.tools.settings.HTTP_AUTHOR)
+        write_server_file(settings, sender, "servers.txt", flask.request.data)
+        sign_message(settings, "/server/servers", response.headers)
+        return response
+
     @app.route("/sha256/<identifier>", methods=["PUT"])
     def put_sha256(identifier):
-        response = flask.Response(
-            "<html><body>Thank you for sending the data</body></html>"
-        )
+        body = "<html><body>Thank you for sending the data</body></html>"
+        response = flask.Response(body)
         sender = flask.request.headers.get(libernet.tools.settings.HTTP_AUTHOR)
-        search_dir = os.path.join(
-            settings.storage(), libernet.tools.block.UPLOAD_SUBDIR, sender
-        )
-        path = (
-            libernet.tools.block.block_dir(search_dir, identifier, full=True) + ".raw"
-        )
-        message_signature = settings.sign_request(f"/sha256/{identifier}")
+        parts = [settings.storage(), libernet.tools.block.UPLOAD_SUBDIR, sender]
+        search_dir = os.path.join(*parts)
+        base_path = libernet.tools.block.block_dir(search_dir, identifier, full=True)
+        path = base_path + ".raw"
+        os.makedirs(os.path.split(path)[0], exist_ok=True)
 
-        for header in message_signature:
-            response.headers[header] = message_signature[header]
-        
+        with open(path, "wb") as block_file:
+            block_file.write(flask.request.data)
+
+        sign_message(settings, f"/sha256/{identifier}", response.headers)
         response.status = 200
         return response
 

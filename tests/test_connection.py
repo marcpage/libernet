@@ -37,7 +37,6 @@ def test_remote_identity():
     key_size = 1024
     debug = False
     fake_remote = False
-    messages = libernet.tools.message.Center()
 
     with tempfile.TemporaryDirectory() as server_storage, tempfile.TemporaryDirectory() as client_storage:
         server = multiprocessing.Process(
@@ -51,12 +50,12 @@ def test_remote_identity():
         print("Starting up client")
         client_settings = libernet.tools.settings.App(client_storage, key_size)
         print(f"client: {client_settings.identity().identifier()}")
-        connection = libernet.tools.connection.Connection('localhost', port_to_use, messages, client_settings)
+        connection = libernet.tools.connection.Connection('localhost', port_to_use, client_settings)
         print("Waiting for connection to warm up")
         time.sleep(0.200)
         print("Sending messages")
         for i in range(0, 100):
-            messages.send({'test': i})
+            client_settings.messages().send({'test': i})
         with open(os.path.join(server_storage, "log.txt"), 'r') as log_file:
             print(log_file.read())
         print(f"remote: {connection.identity().identifier()}")

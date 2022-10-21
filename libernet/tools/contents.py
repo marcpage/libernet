@@ -12,6 +12,28 @@ import libernet.plat.network
 import libernet.tools.block
 
 
+def gather(storage, path, unique_lines=True):
+    """concats the contents of a given file from all contexts"""
+    search_paths = libernet.tools.block.get_search_dirs(storage)
+    results = set()
+
+    for path in search_paths:
+        actual_path = os.path.join(storage, path.strip("/"))
+
+        if os.path.isfile(actual_path):
+            with open(actual_path, "r") as text_file:
+                file_contents = text_file.read()
+
+            if unique_lines:
+                results.update(
+                    file_contents.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+                )
+            else:
+                results.append(file_contents)
+
+    return "\n".join(results)
+
+
 def forbidden():
     """Return response for forbidden content"""
     return (

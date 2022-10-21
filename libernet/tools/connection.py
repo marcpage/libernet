@@ -5,6 +5,7 @@
 
 import threading
 import os
+import time
 
 import requests
 
@@ -13,19 +14,24 @@ import libernet.tools.block
 import libernet.tools.encrypt
 import libernet.tools.settings
 import libernet.tools.message
+import libernet.tools.contents
+
+
+UPDATE_STATE_INTERVAL_SECONDS = 30.0
 
 
 class Connection(threading.Thread):
     """a thread that communicates to another libernet node"""
 
-    def __init__(self, address, port, messages, settings):
+    def __init__(self, address, port, settings):
         """create a new connection"""
         self.__state = {
             "running": True,
             "url": f"http://{address}:{port}",
+            "default_name": f"{address}:{port}",
+            "last_check": 0,
         }
         self.__settings = settings
-        self.__messages = messages
         self.__identity = None
         self.__session = None
         self.idle = False
@@ -67,12 +73,16 @@ class Connection(threading.Thread):
         with open(self.__block_path(identifier), "wb") as block_file:
             block_file.write(response.content)
 
-        self.__messages.send({
-            "action": "received", 
-            "block": identifier,
-            "server": None if self.__identity is None else self.__identity.identifier(),
-            "connection": self,
-        })
+        self.__settings.messages().send(
+            {
+                "action": "received",
+                "block": identifier,
+                "server": None
+                if self.__identity is None
+                else self.__identity.identifier(),
+                "connection": self,
+            }
+        )
         return response.content
 
     def __create_identity(self, identifier):
@@ -101,12 +111,16 @@ class Connection(threading.Thread):
         )
         # If they are not responding as we expect, don't talk to them
         self.__state["running"] = response.ok and self.__state["running"]
-        self.__messages.send({
-            "action": "sent", 
-            "block": identifier,
-            "server": None if self.__identity is None else self.__identity.identifier(),
-            "connection": self,
-        })
+        self.__settings.messages().send(
+            {
+                "action": "sent",
+                "block": identifier,
+                "server": None
+                if self.__identity is None
+                else self.__identity.identifier(),
+                "connection": self,
+            }
+        )
         if response.ok and self.__identity is None:
             remote_node_identifier = response.headers.get(
                 libernet.tools.settings.HTTP_AUTHOR, None
@@ -115,13 +129,37 @@ class Connection(threading.Thread):
             # if we cannot determinet their identity, don't talk to them
             self.__state["running"] = created and self.__state["running"]
 
+    def __communicate_metadata(self, name):
+        if self.__identity is None:
+            server = self.__state["default_name"]
+        else:
+            server = self.__identity.identifier()
+
+        value = self.__send(f"/server/{name}")
+        assert value.ok, value.content
+        parts = [
+            self.__settings.storage(),
+            libernet.tools.block.UPLOAD_SUBDIR,
+            server,
+            "server",
+        ]
+        os.makedirs(os.path.join(*parts), exist_ok=True)
+
+        with open(os.path.join(*parts, f"{name}.txt"), "wb") as text_file:
+            text_file.write(value.content)
+
+        value = libernet.tools.contents.gather(
+            self.__settings.storage(), f"/server/{name}.txt"
+        )
+        self.__send(f"/server/{name}", method_get=False, contents=value)
+
     def __say_hello(self):
         """do the dance with the remote connection to initiate the connection"""
         # Send our public key as an introduction
         self.__send_block(self.__settings.identity().identifier())
-        # get server list
-        # put server list
-        # get requests
+        self.__communicate_metadata("requests")
+        self.__communicate_metadata("searches")
+        self.__communicate_metadata("servers")
 
     def identity(self):
         """get the identity of the remote server"""
@@ -133,6 +171,13 @@ class Connection(threading.Thread):
         self.__session.headers["Connection"] = "Keep-Alive"
         self.__say_hello()
 
-        while self.__messages.active() and self.__state["running"]:
-            request = self.__messages.receive()
+        while self.__settings.messages().active() and self.__state["running"]:
+            request = self.__settings.messages().receive()
             print(f"{request}")
+            now = time.time()
+
+            if now - self.__state["last_check"] > UPDATE_STATE_INTERVAL_SECONDS:
+                self.__communicate_metadata("requests")
+                self.__communicate_metadata("searches")
+                self.__communicate_metadata("servers")
+                self.__state["last_check"] = now

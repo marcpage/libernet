@@ -9,6 +9,7 @@ import os
 import libernet.tools.encrypt
 import libernet.tools.block
 import libernet.plat.timestamp
+import libernet.tools.message
 
 HTTP_TIMESTAMP = "X-Libernet-Timestamp"
 HTTP_PATH = "X-Libernet-Path"
@@ -22,6 +23,7 @@ class App:
     def __init__(self, storage_dir, key_size=4096):
         """create an app settings"""
         self.__dir = storage_dir
+        self.__message = libernet.tools.message.Center()
         self.__settings_path = os.path.join(storage_dir, "settings.json")
 
         try:
@@ -62,6 +64,10 @@ class App:
         """Get the storage directory"""
         assert os.path.isdir(self.__dir), self.__dir
         return self.__dir
+
+    def messages(self):
+        """get the message center"""
+        return self.__message
 
     def identity(self):
         """Get the private identity for this server"""
