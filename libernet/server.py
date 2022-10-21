@@ -43,6 +43,7 @@ def write_server_file(settings, sender, name, data):
         request_file.write(data)
 
 
+# pylint: disable=R0914  # Too many local variables
 def create_app(storage_path, key_size=4096):
     """create the flask app"""
     app = flask.Flask(__name__)
@@ -58,22 +59,28 @@ def create_app(storage_path, key_size=4096):
 
     @app.route("/server/requests")
     def requests():
-        all = libernet.tools.contents.gather(settings.storage(), "/server/requests.txt")
-        response = flask.Response(all, mimetype="text/plain")
+        gathered = libernet.tools.contents.gather(
+            settings.storage(), "/server/requests.txt"
+        )
+        response = flask.Response(gathered, mimetype="text/plain")
         sign_message(settings, "/server/requests", response.headers)
         return response
 
     @app.route("/server/searches")
     def searches():
-        all = libernet.tools.contents.gather(settings.storage(), "/server/searches.txt")
-        response = flask.Response(all, mimetype="text/plain")
+        gathered = libernet.tools.contents.gather(
+            settings.storage(), "/server/searches.txt"
+        )
+        response = flask.Response(gathered, mimetype="text/plain")
         sign_message(settings, "/server/searches", response.headers)
         return response
 
     @app.route("/server/servers")
     def servers():
-        all = libernet.tools.contents.gather(settings.storage(), "/server/servers.txt")
-        response = flask.Response(all, mimetype="text/plain")
+        gathered = libernet.tools.contents.gather(
+            settings.storage(), "/server/servers.txt"
+        )
+        response = flask.Response(gathered, mimetype="text/plain")
         sign_message(settings, "/server/servers", response.headers)
         return response
 

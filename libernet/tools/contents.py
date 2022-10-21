@@ -17,11 +17,11 @@ def gather(storage, path, unique_lines=True):
     search_paths = libernet.tools.block.get_search_dirs(storage)
     results = set()
 
-    for path in search_paths:
-        actual_path = os.path.join(storage, path.strip("/"))
+    for search_path in search_paths:
+        actual_path = os.path.join(search_path, path.strip("/"))
 
         if os.path.isfile(actual_path):
-            with open(actual_path, "r") as text_file:
+            with open(actual_path, "r", encoding="utf-8") as text_file:
                 file_contents = text_file.read()
 
             if unique_lines:
@@ -29,7 +29,7 @@ def gather(storage, path, unique_lines=True):
                     file_contents.replace("\r\n", "\n").replace("\r", "\n").split("\n")
                 )
             else:
-                results.append(file_contents)
+                results.add(file_contents)
 
     return "\n".join(results)
 
