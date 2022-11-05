@@ -34,7 +34,6 @@ class Connection(threading.Thread):
         self.__settings = settings
         self.__identity = None
         self.__session = None
-        self.idle = False
         threading.Thread.__init__(self)
         self.daemon = True
         self.start()
@@ -181,3 +180,30 @@ class Connection(threading.Thread):
                 self.__communicate_metadata("searches")
                 self.__communicate_metadata("servers")
                 self.__state["last_check"] = now
+
+class Manager(threading.Thread):
+    def __init__(self, settings):
+        """create a new connection manager"""
+        self.__connections = []
+        self.__running = True
+        self.__settings = settings
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.start()
+
+    def __read_connections(self):
+        gathered = libernet.tools.contents.gather(settings.storage(), "/server/servers.txt")
+        found = []
+
+        for line in gathered.split("\n"):
+            if line.strip() and ':' in line:
+                server, port = line.split(':', 1)
+                found.append((server, port))
+        
+        return found
+    
+    def run(self):
+        """Loop to send requests to the remote node"""
+        while self.__running:
+            pass
+        # keep a list of bad connections and filter them out
