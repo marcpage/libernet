@@ -1,110 +1,63 @@
-.PHONY:test docs
+.PHONY:clean venv test coverage debug lint serve format
+all:clean test coverage lint
 
-all:test docs lint
+MIN_TEST_COVERAGE=84
+INITIAL_PYTHON?=python3
+VENV_DIR?=.venv
+VENV_PYTHON?=$(VENV_DIR)/bin/$(INITIAL_PYTHON)
+VENV_PIP?=$(VENV_DIR)/bin/pip3
+SET_ENV?=. $(VENV_DIR)/bin/activate
+SOURCES=$(shell find libernet -type f -iname "*.py")
+TESTS=$(shell find tests -type f -iname "test_*.py")
+COVERAGE_FILE=objects/coverage.bin  # must match data-file in coverage.rc
+FORMAT_FILE=$(VENV_DIR)/format.txt
+LINT_FILE=$(VENV_DIR)/lint.txt
+COVERAGE_SETTINGS=coverage.rc
+COVERAGE=COVERAGE_PROCESS_START=$(COVERAGE_SETTINGS)
 
-test:runtests coverage
-lint:todo
+$(VENV_DIR)/touchfile: requirements.txt
+	@test -d $(VENV_DIR) || $(INITIAL_PYTHON) -m venv $(VENV_DIR)
+	@echo Ensuring pip is latest version
+	@$(SET_ENV); $(VENV_PIP) install --quiet --upgrade pip
+	@echo Fetching requirements
+	@$(SET_ENV); $(VENV_PIP) install --quiet --upgrade --requirement $^
+	@touch $@
 
-OPENSSL_PATH=$(subst openssl=,-I,$(OS_OPTIONS))/include
+venv: $(VENV_DIR)/touchfile
 
-PLATFORM = $(shell uname)
-CODE_FORMAT_TOOL = $(shell which clang-format | grep -vw not.found)
-DOCUMENTATION_TOOL = $(shell which doxygen | grep -vw not.found)
-LINT_TOOL = $(shell which cppcheck | grep -vw not.found)
+# https://stackoverflow.com/questions/28297497/python-code-coverage-and-multiprocessing
+$(COVERAGE_FILE): $(VENV_DIR)/touchfile $(SOURCES) $(TESTS)
+	mkdir -p objects
+	@$(SET_ENV); $(VENV_PIP) install -q coverage pytest
+	@$(SET_ENV); env $(COVERAGE) $(VENV_PYTHON) -m coverage run  --source libernet -m pytest
 
-ifeq ($(PLATFORM),Darwin)
-  CLANG_FORMAT_FLAGS = --verbose
-  SANITIZERS = -fsanitize=address -fsanitize-address-use-after-scope -fsanitize=undefined
-endif
+test: $(COVERAGE_FILE)
 
-ifeq ($(PLATFORM),Linux)
-  USE_OPENSSL = -DOpenSSLAvailable=1 -lcrypto
-endif
+coverage: $(COVERAGE_FILE)
+	@$(SET_ENV); $(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered --fail-under=$(MIN_TEST_COVERAGE)
 
-KNOWN_ERRORS:= --suppress=unusedFunction \
-    			--inline-suppr \
-				-U_DEBUG_FILE
+debug: venv
+	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --debug --port 4000
 
-check:format lint docs
+serve: venv
+	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --port 8000
 
-bin/logs/lint.txt: src/*/*.h
-	@echo Linting ...
-	@mkdir -p bin/logs
-	@cppcheck --enable=all --force --std=c++11 $(KNOWN_ERRORS) --language=c++ $(OPENSSL_PATH) -Isrc src/*/*.h &> $@
-	@-cat $@ | grep performance: || true
-	@-cat $@ | grep portability: || true
-	@-cat $@ | grep style: || true
-	@-cat $@ | grep warning: || true
-	@-cat $@ | grep error: || true
+$(FORMAT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
+	@$(SET_ENV); $(VENV_PYTHON) -m black libernet &> $@
 
-todo:
-	@grep -rniw todo src/*/*.h
-	@echo `grep -rniw todo src/*/*.h | wc -l` TODO items
+format: $(FORMAT_FILE)
+	@cat $^
 
-coverage:runtests
-	@cat bin/coverage/*/*.gcov | grep -E '[0-9]+:' | grep -ve -: | grep -v "#####" | grep -v "=====" > bin/logs/all_code_coverage.txt
-	@grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq  || true
-	@echo `grep // bin/logs/all_code_coverage.txt | grep -i test | grep -ivw $(PLATFORM)| grep -vw libernet | sort | uniq | wc -l` lines now tested
+$(LINT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
+	-@$(SET_ENV); $(VENV_PYTHON) -m pylint libernet &> $@
+	-@$(SET_ENV); $(VENV_PYTHON) -m black libernet --check >> $@  2>&1
 
-documentation/index.html:
-	@mkdir -p documentation
-	@$(DOCUMENTATION_TOOL) libernet.dox 2> bin/logs/doxygen.txt
-	@if [ `cat bin/logs/doxygen.txt | wc -l` -ne "0" ]; then echo `cat bin/logs/doxygen.txt | wc -l` documentation messages; fi
-
-ifneq (,$(strip $(DOCUMENTATION_TOOL)))
-docs:documentation/index.html
-	@echo Using "$(DOCUMENTATION_TOOL)" to generate documentation
-else
-docs:
-	@echo doxygen tool not found, no documentation will be generated
-endif
-
-ifneq (,$(strip $(LINT_TOOL)))
-lint:bin/logs/lint.txt
-	@echo Using "$(LINT_TOOL)" to lint the source
-else
-lint:
-	@echo cppcheck tool not found, no linting will be performed
-endif
-
-performance:bin/test
-	@bin/test $(OS_OPTIONS) $(COMPILER) $(TEST)
-
-runtests:bin/test
-	@bin/test $(OS_OPTIONS) $(COMPILER) test $(TEST)
-
-bin/test:format
-test:format
-docs:format
-lint:format
-
-ifneq (,$(strip $(CODE_FORMAT_TOOL)))
-format:bin/logs/clang-format.txt
-	@echo Using "$(CODE_FORMAT_TOOL)" to format source
-else
-format:
-	@echo clang-format tool not found, no code formatting will be performed
-endif
-
-bin/logs/clang-format.txt:tests/*.cpp src/*/*.h
-	@echo Cleaning code ...
-	@mkdir -p bin/logs/
-	@$(CODE_FORMAT_TOOL) $(CLANG_FORMAT_FLAGS) -i src/*/*.h tests/*.cpp 2> bin/logs/clang-format.txt
-
-# -fsanitize=memory
-# -fsanitize=thread
-# -flto -fsanitize=cfi
-# -fsanitize=leak
-# -fsanitize=safe-stack
-# -D_LIBCPP_DEBUG=1
-bin/test:tests/test.cpp src/*/*.h
-	@mkdir -p bin
-	@clang++ tests/test.cpp -o $@ $(USE_OPENSSL) -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
-
-bin/%:%.cpp
-	@clang++ $< -o -o $@ $(USE_OPENSSL) -std-c++11 -Isrc -std=c++11 -lsqlite3 -Wall -Weffc++ -Wextra -Wshadow -Wwrite-strings $(SANITIZERS) -fno-optimize-sibling-calls -O0 -g
+lint: $(LINT_FILE)
+	@cat $^
 
 clean:
-	@rm -Rf documentation bin/coverage bin/test bin/tests bin/logs/*.log bin/logs/*.txt
-
-# bin/coverage/DateTime_clang++_trace/DateTime.h.gcov| sed -E 's/^([^:]+:)([^:]+:)/\2\1/' | sort | uniq
+	@rm -Rf $(VENV_DIR)
+	@rm -Rf objects
+	@rm -f $(strip $(COVERAGE_FILE))*
+	@rm -Rf .pytest_cache
+	@find . -iname "*.pyc" -delete

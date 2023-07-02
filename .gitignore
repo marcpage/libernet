@@ -1,6 +1,7 @@
 # ignore documentation and bin directory
 documentation
 bin
+objects
 
 # Binaries for programs and plugins
 *.exe
@@ -66,6 +67,8 @@ Desktop.ini
 
 # Python
 *.pyc
+.coverage
+.venv
 
 # Java
 *.class
