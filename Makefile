@@ -1,6 +1,7 @@
 .PHONY:clean venv test coverage debug lint serve format
 all:clean test coverage lint
 
+MIN_TEST_COVERAGE=84
 INITIAL_PYTHON?=python3
 VENV_DIR?=.venv
 VENV_PYTHON?=$(VENV_DIR)/bin/$(INITIAL_PYTHON)
@@ -27,13 +28,13 @@ venv: $(VENV_DIR)/touchfile
 # https://stackoverflow.com/questions/28297497/python-code-coverage-and-multiprocessing
 $(COVERAGE_FILE): $(VENV_DIR)/touchfile $(SOURCES) $(TESTS)
 	mkdir -p objects
-	@$(SET_ENV); env $(COVERAGE) $(VENV_PYTHON) -m coverage run -m pytest
-	@$(SET_ENV); $(VENV_PYTHON) -m coverage combine --data-file=$(COVERAGE_FILE)
+	@$(SET_ENV); $(VENV_PIP) install -q coverage pytest
+	@$(SET_ENV); env $(COVERAGE) $(VENV_PYTHON) -m coverage run  --source libernet -m pytest
 
 test: $(COVERAGE_FILE)
 
 coverage: $(COVERAGE_FILE)
-	@$(SET_ENV); $(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered --data-file=$(COVERAGE_FILE)
+	@$(SET_ENV); $(VENV_PYTHON) -m coverage report -m --sort=cover --skip-covered --fail-under=$(MIN_TEST_COVERAGE)
 
 debug: venv
 	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --debug --port 4000
