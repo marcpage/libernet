@@ -109,7 +109,14 @@ def __file_contents(full_path: str, block_queue) -> dict:
 
 def __serialize_bundle(description):
     """compact serialize a bundle"""
-    return json.dumps(description, sort_keys=True, separators=(",", ":"))
+    return json.dumps(description, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
+
+
+def __deserialize_bundle(block):
+    """compact serialize a bundle"""
+    return json.loads(block.decode("utf-8"))
 
 
 def __file_entry(
@@ -219,8 +226,11 @@ def __thin_bundle(raw: dict, block_queue) -> str:
 
 
 def create(path: str, block_queue, previous: dict = None, **kwargs) -> str:
-    """stores a bundle in block_queue and returns url for the bundle.
-    kwargs are added to the bundle description.
+    """stores a bundle from path in block_queue and returns the url
+    block_queue - an object that can be called with put((block_url, block_data))
+                    NOTE: the block_url may have decryption key
+    previous - a bundle dictionary for optimization, see inflate()
+    kwargs - added to the bundle description
     """
     raw = __create_raw_bundle(path, block_queue, previous)
     raw.update(kwargs)
@@ -232,3 +242,29 @@ def create(path: str, block_queue, previous: dict = None, **kwargs) -> str:
     url, data = __final_block(bundle)
     block_queue.put((url, data))
     return url
+
+
+def inflate(url: str, storage) -> dict:
+    """inflates a bundle from the given url
+    storage - an object with get(url:str) -> bytes
+    returns as much as could be inflated
+    """
+    bundle_data = storage.get(url)
+
+    if bundle_data is None:
+        return None
+
+    bundle = __deserialize_bundle(bundle_data)
+    missing = []
+
+    for suburl in bundle.get("bundles", []):
+        bundle_data = storage.get(suburl)
+
+        if bundle_data is None:
+            missing.append(suburl)
+        else:
+            subbundle = __deserialize_bundle(bundle_data)
+            bundle["files"].update(subbundle["files"])
+
+    bundle["bundles"] = missing
+    return bundle
