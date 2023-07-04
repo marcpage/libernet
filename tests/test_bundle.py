@@ -46,6 +46,7 @@ def test_file_metadata():
     with tempfile.TemporaryDirectory() as working_dir:
         empty_dir_path = os.path.join(working_dir, 'empty dir')
         text_file_path = os.path.join(working_dir, 'file.txt')
+        small_file_path = os.path.join(working_dir, 'small.txt')
         readonly_path = os.path.join(working_dir, 'readonly.txt')
         execute_path = os.path.join(working_dir, 'execute.txt')
         link_path = os.path.join(working_dir, 'link.txt')
@@ -54,6 +55,9 @@ def test_file_metadata():
 
         with open(text_file_path, 'w') as file:
             file.write('some text')
+
+        with open(small_file_path, 'w') as file:
+            file.write('s')
 
         os.symlink('file.txt', link_path)
 
@@ -80,6 +84,7 @@ def test_file_metadata():
         ('readonly.txt', False, True, 9, None, '/1e5e3ce20c720a1021d8f9f5e8f7c3055a97315c79230508bbd37b08502208db'),
         ('readonly execute.txt', True, True, 17, None, '/6398f7bcf3282bf418a8c228ad15dd31ddf3a66712c82a0b10027f88507d4a2f'),
         ('file.txt', False, False, 9, None, '/b94f6f125c79e3a5ffaa826f584c10d52ada669e6762051b826b55776d05aed2'),
+        ('small.txt', False, False, 1, None, '/043a718774c572bd8a25adbeb1bfcd5c0256ae11cecf9f9c3f925d0e52beaf89'),
         ('link.txt', False, False, 9, "file.txt", '/b94f6f125c79e3a5ffaa826f584c10d52ada669e6762051b826b55776d05aed2'),
     ]
 
