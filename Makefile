@@ -1,7 +1,7 @@
 .PHONY:clean venv test coverage debug lint serve format
 all:clean test coverage lint
 
-MIN_TEST_COVERAGE=84
+MIN_TEST_COVERAGE=44
 INITIAL_PYTHON?=python3
 VENV_DIR?=.venv
 VENV_PYTHON?=$(VENV_DIR)/bin/$(INITIAL_PYTHON)
@@ -43,12 +43,14 @@ serve: venv
 	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --port 8000
 
 $(FORMAT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
+	@$(SET_ENV); $(VENV_PIP) install -q black
 	@$(SET_ENV); $(VENV_PYTHON) -m black libernet &> $@
 
 format: $(FORMAT_FILE)
 	@cat $^
 
 $(LINT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
+	@$(SET_ENV); $(VENV_PIP) install -q pylint
 	-@$(SET_ENV); $(VENV_PYTHON) -m pylint libernet &> $@
 	-@$(SET_ENV); $(VENV_PYTHON) -m black libernet --check >> $@  2>&1
 

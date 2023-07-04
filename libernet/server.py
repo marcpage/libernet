@@ -13,15 +13,16 @@ import flask
 
 DATA_MIMETYPE = "application/octet-stream"
 DEFAULT_PORT = 8042
-DEFAULT_STORAGE = os.path.join(os.environ['HOME'], '.libernet')
+DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
 
 
 def create_app(args):
+    """Creates the Flask app"""
     app = flask.Flask(__name__)
     storage_path = os.path.join(args.storage, "sha256")
 
     @app.route("/sha256/<identifier>", methods=["GET"])
-    def get_sha256(identifier:str):
+    def get_sha256(identifier: str):
         """Return the requested data"""
         assert len(identifier) == 64
         data_path = os.path.join(storage_path, identifier[:3], identifier[3:])
@@ -32,7 +33,7 @@ def create_app(args):
         return flask.send_file(data_path, DATA_MIMETYPE)
 
     @app.route("/sha256/<identifier>", methods=["PUT"])
-    def put_sha256(identifier:str):
+    def put_sha256(identifier: str):
         """Return the requested data"""
         assert len(identifier) == 64
         data_path = os.path.join(storage_path, identifier[:3], identifier[3:])
@@ -84,4 +85,3 @@ def get_arg_parser():
 
 if __name__ == "__main__":
     serve(get_arg_parser().parse_args())
-
