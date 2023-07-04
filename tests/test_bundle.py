@@ -167,8 +167,64 @@ def test_missing_blocks():
     libernet.bundle.MAX_BUNDLE_SIZE = old_bundle_max
 
 
+def test_previous():
+    storage = Storage()
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        file1_path = os.path.join(working_dir, 'file1.txt')
+        file2_path = os.path.join(working_dir, 'file2.txt')
+        file3_path = os.path.join(working_dir, 'file3.txt')
+
+        with open(file1_path, 'w') as file:
+            file.write('version 1')
+
+        with open(file3_path, 'w') as file:
+            file.write('version 3')
+
+        url1 = libernet.bundle.create(working_dir, storage)
+        previous = libernet.bundle.inflate(url1, storage)
+
+        with open(file2_path, 'w') as file:
+            file.write('version 2')
+
+        with open(file3_path, 'w') as file:
+            file.write('version 4')
+
+        url2 = libernet.bundle.create(working_dir, storage, previous)
+        current = libernet.bundle.inflate(url2, storage)
+        previous_1_url = previous['files']['file1.txt']['contents'][0]['url']
+        previous_3_url = previous['files']['file3.txt']['contents'][0]['url']
+        current_1_url = current['files']['file1.txt']['contents'][0]['url']
+        current_3_url = current['files']['file3.txt']['contents'][0]['url']
+        assert previous_1_url == current_1_url
+        assert previous_3_url != current_3_url
+        assert 'file2.txt' in current['files']
+        assert 'file2.txt' not in previous['files']
+
+
+def test_unencrypted():
+    storage = Storage()
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        file1_path = os.path.join(working_dir, 'file1.txt')
+        file2_path = os.path.join(working_dir, 'file2.txt')
+
+        with open(file1_path, 'w') as file:
+            file.write('version 1')
+
+        with open(file2_path, 'w') as file:
+            file.write('version 2')
+
+        url = libernet.bundle.create(working_dir, storage, encrypt=False)
+        assert len(url.split('/')) == 3, url
+        restored = libernet.bundle.inflate(url, storage)
+        assert len(restored['files']) == 2
+
+
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
     test_large_bundle()
     test_missing_blocks()
+    test_previous()
+    test_unencrypted()

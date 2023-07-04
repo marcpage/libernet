@@ -19,17 +19,20 @@ MAX_BLOCK_SIZE = 1024 * 1024
 MAX_BUNDLE_SIZE = MAX_BLOCK_SIZE
 UTC_TIMEZONE = datetime.timezone(datetime.timedelta(0))
 TIMESTAMP_EPOCH = datetime.datetime(2001, 1, 1, tzinfo=UTC_TIMEZONE).timestamp()
+SAME_TIME_VARIANCE_IN_SECONDS = 0.000100  # 100 microseconds
+
+# keys
+BUNDLES = "bundles"
 CONTENTS = "contents"
-SIZE = "size"
-URL = "url"
-MODIFIED = "modified"
-LINK = "link"
-READONLY = "readonly"
+DIRECTORIES = "directories"
 EXEXUTABLE = "executable"
 FILES = "files"
-DIRECTORIES = "directories"
-BUNDLES = "bundles"
+LINK = "link"
+MODIFIED = "modified"
+READONLY = "readonly"
 READ_BINARY = "rb"
+SIZE = "size"
+URL = "url"
 
 
 def __create_timestamp(py_time=None):
@@ -56,6 +59,7 @@ def __path_relative_to(path, base):
 
 
 def __file_metadata_entry(full_path: str) -> dict:
+    """Get the file metadata"""
     file_info = os.lstat(full_path)
     is_link = stat.S_ISLNK(file_info.st_mode)
 
@@ -98,7 +102,7 @@ def __final_block(data: bytes, encrypt=True) -> (str, bytes):
         url = f"/sha256/{identifier}/aes256/{contents_identifier}"
         return (url, block_contents)
 
-    return (f"/sha256/{contents_identifier}", compressed)  # NOT TESTED - no raw blocks
+    return (f"/sha256/{contents_identifier}", compressed)
 
 
 def __block_to_data(url: str, data: bytes) -> bytes:
@@ -169,7 +173,8 @@ def __file_entry(
     prexisting_contents = prexisting[CONTENTS] if prexisting else None
     entry = __file_metadata_entry(file_path)
     size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
-    unmodified = size_matches and abs(prexisting[MODIFIED] - entry[MODIFIED]) < 0.001
+    time_difference = prexisting[MODIFIED] if prexisting else 0 - entry[MODIFIED]
+    unmodified = size_matches and abs(time_difference) < SAME_TIME_VARIANCE_IN_SECONDS
     new_contents = None if unmodified else __file_contents(file_path, block_queue)
     entry.update({CONTENTS: prexisting_contents} if unmodified else new_contents)
     return relative_path, entry
@@ -228,7 +233,7 @@ def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> lis
     return bundle_names
 
 
-def __thin_bundle(raw: dict, block_queue) -> str:
+def __thin_bundle(raw: dict, block_queue, encrypt) -> str:
     raw[BUNDLES] = []
     bundle = __serialize_bundle(raw)
     files_size = len(__serialize_bundle(raw[FILES]))
@@ -262,12 +267,14 @@ def __thin_bundle(raw: dict, block_queue) -> str:
         for file in bundle_filenames:
             del files[file]
 
-    url, data = __final_block(bundle)
+    url, data = __final_block(bundle, encrypt)
     block_queue.put((__block_address(url), data))
     return url
 
 
-def create(path: str, block_queue, previous: dict = None, **kwargs) -> str:
+def create(
+    path: str, block_queue, previous: dict = None, encrypt=True, **kwargs
+) -> str:
     """stores a bundle from path in block_queue and returns the url
     block_queue - an object that can be called with put((block_url, block_data))
                     NOTE: the block_url may have decryption key
@@ -279,9 +286,9 @@ def create(path: str, block_queue, previous: dict = None, **kwargs) -> str:
     bundle = __serialize_bundle(raw)
 
     if len(bundle) > MAX_BUNDLE_SIZE:
-        return __thin_bundle(raw, block_queue)
+        return __thin_bundle(raw, block_queue, encrypt)
 
-    url, data = __final_block(bundle)
+    url, data = __final_block(bundle, encrypt)
     block_queue.put((__block_address(url), data))
     return url
 
