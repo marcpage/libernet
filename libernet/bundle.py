@@ -12,13 +12,24 @@ import os
 import time
 import datetime
 
-from libernet.encrypt import aes_encrypt
+from libernet.encrypt import aes_encrypt, aes_decrypt
 from libernet.hash import sha256_data_identifier, binary_from_identifier
 
 MAX_BLOCK_SIZE = 1024 * 1024
 MAX_BUNDLE_SIZE = MAX_BLOCK_SIZE
 UTC_TIMEZONE = datetime.timezone(datetime.timedelta(0))
 TIMESTAMP_EPOCH = datetime.datetime(2001, 1, 1, tzinfo=UTC_TIMEZONE).timestamp()
+CONTENTS = 'contents'
+SIZE = 'size'
+URL = 'url'
+MODIFIED = 'modified'
+LINK = 'link'
+READONLY = 'readonly'
+EXEXUTABLE = 'executable'
+FILES = 'files'
+DIRECTORIES = 'directories'
+BUNDLES = 'bundles'
+READ_BINARY = "rb"
 
 
 def __create_timestamp(py_time=None):
@@ -29,7 +40,7 @@ def __create_timestamp(py_time=None):
 
 def __convert_timestamp(timestamp):
     """Convert a timestamp back into python-epoch based time"""
-    return timestamp + TIMESTAMP_EPOCH
+    return timestamp + TIMESTAMP_EPOCH  # NOT TESTED
 
 
 def __path_relative_to(path, base):
@@ -49,37 +60,36 @@ def __file_metadata_entry(full_path: str) -> dict:
     is_link = stat.S_ISLNK(file_info.st_mode)
 
     if is_link:
-        file_info = os.stat(full_path)
+        file_info = os.stat(full_path)  # NOT TESTED
 
     assert not stat.S_ISDIR(file_info.st_mode), f"{full_path} is a directory"
     is_readonly = (file_info.st_mode & stat.S_IWUSR) == 0
     is_executable = (file_info.st_mode & stat.S_IXUSR) == stat.S_IXUSR
     description = {
-        "size": file_info.st_size,
-        "modified": __create_timestamp(file_info.st_mtime),
-        "parts": [],
+        SIZE: file_info.st_size,
+        MODIFIED: __create_timestamp(file_info.st_mtime),
     }
 
     if is_link:
-        description["link"] = os.readlink(full_path)
+        description[LINK] = os.readlink(full_path)  # NOT TESTED
 
     if is_readonly:
-        description["readonly"] = True
+        description[READONLY] = True  # NOT TESTED
 
     if is_executable:
-        description["executable"] = True
+        description[EXEXUTABLE] = True
 
     return description
 
 
 def __final_block(data: bytes, encrypt=True) -> (str, bytes):
     """gets the url and data for a block"""
-    assert len(data) <= MAX_BLOCK_SIZE
+    assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)}: {data}"
     compressed = zlib.compress(data, 9)
     contents_identifier = sha256_data_identifier(data)
 
     if len(data) < len(compressed):
-        compressed = data
+        compressed = data  # NOT TESTED
 
     if encrypt:
         key = binary_from_identifier(contents_identifier)
@@ -88,14 +98,40 @@ def __final_block(data: bytes, encrypt=True) -> (str, bytes):
         url = f"/sha256/{identifier}/aes256/{contents_identifier}"
         return (url, block_contents)
 
-    return (f"/sha256/{identifier}", compressed)
+    return (f"/sha256/{contents_identifier}", compressed)  # NOT TESTED
 
+
+def __block_to_data(url:str, data:bytes) -> bytes:
+    assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)}: {data}"
+    parts = url.split('/')
+    encrypted = len(parts) == 5
+    block_hash = parts[2]
+    data_hash = parts[4] if encrypted else parts[2]
+    assert len(parts) == 3 or encrypted, parts
+    assert not encrypted or block_hash == sha256_data_identifier(data)
+
+    if encrypted:
+        data = aes_decrypt(binary_from_identifier(data_hash), data)
+
+    if sha256_data_identifier(data) == data_hash:
+        return data  # not compressed  # NOT TESTED
+
+    data = zlib.decompress(data)
+    assert sha256_data_identifier(data) == data_hash
+    return data
+
+
+def __block_address(url:str) -> str:
+    parts = url.split('/')
+    assert len(parts) >= 3, parts
+    assert parts[1] == 'sha256', parts
+    return f"/sha256/{parts[2]}"
 
 def __file_contents(full_path: str, block_queue) -> dict:
     """given the path to a file, create the bundle entry"""
-    description = {"contents": []}
+    description = {CONTENTS: []}
 
-    with open(full_path, "rb") as source_file:
+    with open(full_path, READ_BINARY) as source_file:
         while True:
             block = source_file.read(MAX_BLOCK_SIZE)
 
@@ -103,8 +139,10 @@ def __file_contents(full_path: str, block_queue) -> dict:
                 break
 
             url, data = __final_block(block)
-            block_queue.put((url, data))
-            description["parts"].append({"url": url, "size": len(data)})
+            block_queue.put((__block_address(url), data))
+            description[CONTENTS].append({URL: url, SIZE: len(data)})
+
+    return description
 
 
 def __serialize_bundle(description):
@@ -123,23 +161,21 @@ def __file_entry(
     file_path: str, source_path: str, previous: dict, block_queue
 ) -> (str, dict):
     relative_path = __path_relative_to(file_path, source_path)
-    prexisting = previous["files"].get(relative_path, None) if previous else None
+    prexisting = previous[FILES].get(relative_path, None) if previous else None
+    prexisting_contents = prexisting[CONTENTS] if prexisting else None
     entry = __file_metadata_entry(file_path)
-    size_matches = prexisting and prexisting["size"] == entry["size"]
+    size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
     unmodified = (
-        size_matches and abs(prexisting["modified"] - entry["modified"]) < 0.001
+        size_matches and abs(prexisting[MODIFIED] - entry[MODIFIED]) < 0.001
     )
-    entry.update(
-        {"contents": prexisting["contents"]}
-        if unmodified
-        else __file_contents(file_path, block_queue)
-    )
+    new_contents = None if unmodified else __file_contents(file_path, block_queue)
+    entry.update({CONTENTS: prexisting_contents} if unmodified else new_contents)
     return relative_path, entry
 
 
 def __create_raw_bundle(source_path: str, block_queue, previous: dict) -> dict:
     """Given a path to a directory, create a full, raw bundle"""
-    description = {"files": {}}
+    description = {FILES: {}}
     directories = []
     empty_dirs = []
 
@@ -150,15 +186,15 @@ def __create_raw_bundle(source_path: str, block_queue, previous: dict) -> dict:
 
         for file in files:
             file_path = os.path.join(root, file)
-            description["files"].update(
+            description[FILES].update(
                 dict([__file_entry(file_path, source_path, previous, block_queue)])
             )
 
-    for directory in directories:
-        if not any((f.startswith(directory) for f in description["files"])):
+    for directory in directories:  # NOT TESTED
+        if not any((f.startswith(directory) for f in description[FILES])):
             empty_dirs.append(directory)
 
-    description["directories"] = {
+    description[DIRECTORIES] = {
         d: os.readlink(os.path.join(source_path, d))
         if os.path.islink(os.path.join(source_path, d))
         else {}
@@ -168,12 +204,12 @@ def __create_raw_bundle(source_path: str, block_queue, previous: dict) -> dict:
 
 
 def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> list:
-    filenames = sorted(files, key=lambda f: len(files["contents"]), reverse=True)
-    bundle_blocks = 0
+    filenames = sorted(files, key=lambda f: len(files[CONTENTS]), reverse=True)
+    bundle_blocks = 0  # NOT TESTED
     bundle_names = []
 
     for name in filenames:  # most blocks to least blocks
-        additional_blocks = len(files[name]["contents"])
+        additional_blocks = len(files[name][CONTENTS])
         blocks_size = (bundle_blocks + additional_blocks) * size_per_block
         new_size = blocks_size + overhead
 
@@ -187,17 +223,17 @@ def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> lis
 
 
 def __thin_bundle(raw: dict, block_queue) -> str:
-    raw["bundles"] = []
+    raw[DIRECTORIES] = []  # NOT TESTED
     bundle = __serialize_bundle(raw)
-    files_size = len(__serialize_bundle(raw["files"]))
+    files_size = len(__serialize_bundle(raw[FILES]))
     size_per_block = files_size / sum(
-        len(raw["files"][f].get("contents", []) for f in raw["files"])
+        len(raw[FILES][f].get(CONTENTS, []) for f in raw[FILES])
     )
     subbundle_count = ((len(bundle) - 1) // MAX_BUNDLE_SIZE + 1) - 1
     overhead = len(bundle) - files_size + int(subbundle_count * size_per_block)
-    files = raw["files"]
+    files = raw[FILES]
     bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
-    raw["files"] = {f: files[f] for f in bundle_filenames}
+    raw[FILES] = {f: files[f] for f in bundle_filenames}
     bundle = __serialize_bundle(raw)
     assert len(bundle) <= MAX_BUNDLE_SIZE, len(bundle)
 
@@ -205,15 +241,15 @@ def __thin_bundle(raw: dict, block_queue) -> str:
         del files[file]
 
     while len(files) > 0:
-        subraw = {"files": {}}
+        subraw = {FILES: {}}
         overhead = len(__serialize_bundle(subraw))
         bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
-        subraw["files"] = {f: files[f] for f in bundle_filenames}
+        subraw[FILES] = {f: files[f] for f in bundle_filenames}
         subbundle = __serialize_bundle(subraw)
         assert len(subbundle) <= MAX_BUNDLE_SIZE, len(subbundle)
         url, data = __final_block(subbundle)
-        block_queue.put((url, data))
-        raw["bundles"].append(url)
+        block_queue.put((__block_address(url), data))
+        raw[DIRECTORIES].append(url)
         bundle = __serialize_bundle(raw)
         assert len(bundle) <= MAX_BUNDLE_SIZE, len(bundle)
 
@@ -221,7 +257,7 @@ def __thin_bundle(raw: dict, block_queue) -> str:
             del files[file]
 
     url, data = __final_block(bundle)
-    block_queue.put((url, data))
+    block_queue.put((__block_address(url), data))
     return url
 
 
@@ -237,10 +273,10 @@ def create(path: str, block_queue, previous: dict = None, **kwargs) -> str:
     bundle = __serialize_bundle(raw)
 
     if len(bundle) > MAX_BUNDLE_SIZE:
-        return __thin_bundle(raw, block_queue)
+        return __thin_bundle(raw, block_queue)  # NOT TESTED
 
     url, data = __final_block(bundle)
-    block_queue.put((url, data))
+    block_queue.put((__block_address(url), data))
     return url
 
 
@@ -249,22 +285,22 @@ def inflate(url: str, storage) -> dict:
     storage - an object with get(url:str) -> bytes
     returns as much as could be inflated
     """
-    bundle_data = storage.get(url)
+    bundle_data = __block_to_data(url, storage.get(__block_address(url)))
 
     if bundle_data is None:
-        return None
+        return None  # NOT TESTED
 
     bundle = __deserialize_bundle(bundle_data)
     missing = []
 
-    for suburl in bundle.get("bundles", []):
-        bundle_data = storage.get(suburl)
+    for suburl in bundle.get(DIRECTORIES, []):  # NOT TESTED
+        bundle_data = __block_to_data(suburl, storage.get(suburl))
 
         if bundle_data is None:
             missing.append(suburl)
         else:
             subbundle = __deserialize_bundle(bundle_data)
-            bundle["files"].update(subbundle["files"])
+            bundle[FILES].update(subbundle[FILES])
 
-    bundle["bundles"] = missing
+    bundle[DIRECTORIES] = missing
     return bundle

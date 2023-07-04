@@ -1,7 +1,7 @@
 .PHONY:clean venv test coverage debug lint serve format
 all:clean test coverage lint
 
-MIN_TEST_COVERAGE=42
+MIN_TEST_COVERAGE=79
 INITIAL_PYTHON?=python3
 VENV_DIR?=.venv
 VENV_PYTHON?=$(VENV_DIR)/bin/$(INITIAL_PYTHON)
