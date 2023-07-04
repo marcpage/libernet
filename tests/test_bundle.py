@@ -24,6 +24,12 @@ class Storage:
         #print(f"has({key})")
         return key in self.__contents
 
+    def remove(self, key:str):
+        del self.__contents[key]
+
+    def keys(self):
+        return self.__contents.keys()
+
 
 def test_basic():
     path = os.path.realpath('tests')
@@ -106,7 +112,7 @@ def test_large_bundle():
     with tempfile.TemporaryDirectory() as working_dir:
         for file_index in range(0,100):
             with open(os.path.join(working_dir, f'file_{file_index}.txt'), 'w') as file:
-                file.write(f'file #{file_index}')
+                file.write(f'file #{file_index}'*1000)
 
         url = libernet.bundle.create(working_dir, storage)
 
@@ -118,7 +124,51 @@ def test_large_bundle():
     libernet.bundle.MAX_BUNDLE_SIZE = old_bundle_max
 
 
+def test_missing_blocks():
+    storage = Storage()
+    old_block_max = libernet.bundle.MAX_BLOCK_SIZE
+    old_bundle_max = libernet.bundle.MAX_BUNDLE_SIZE
+    libernet.bundle.MAX_BLOCK_SIZE = 4096
+    libernet.bundle.MAX_BUNDLE_SIZE = 4096
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        for file_index in range(0,100):
+            with open(os.path.join(working_dir, f'file_{file_index}.txt'), 'w') as file:
+                file.write(f'file #{file_index}')
+
+        url = libernet.bundle.create(working_dir, storage)
+
+    restored = libernet.bundle.inflate(url, storage)
+    subbundle_identifiers = {k.split('/')[2] for k in storage.keys()}
+    root_identifier = url.split('/')[2]
+    assert root_identifier in subbundle_identifiers
+    subbundle_identifiers.remove(root_identifier)
+
+    for file in restored['files']:
+        file_identifiers = {c['url'].split('/')[2] for c in restored['files'][file]['contents']}
+        assert file_identifiers.issubset(subbundle_identifiers)
+        subbundle_identifiers -= file_identifiers
+
+    assert len(subbundle_identifiers) == 6
+
+    while subbundle_identifiers:
+        subbundle_identifier = subbundle_identifiers.pop()
+        subbundle_url = f"/sha256/{subbundle_identifier}"
+        storage.remove(subbundle_url)
+        partial_restore = libernet.bundle.inflate(url, storage)
+        matches = any(u.startswith(subbundle_url) for u in partial_restore['bundles'])
+        assert matches, f"{partial_restore['bundles']} vs {subbundle_url}"
+
+    storage.remove(f'/sha256/{root_identifier}')
+    no_restore = libernet.bundle.inflate(url, storage)
+    assert no_restore is None, no_restore
+
+    libernet.bundle.MAX_BLOCK_SIZE = old_block_max
+    libernet.bundle.MAX_BUNDLE_SIZE = old_bundle_max
+
+
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
     test_large_bundle()
+    test_missing_blocks()

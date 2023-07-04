@@ -40,7 +40,7 @@ def __create_timestamp(py_time=None):
 
 def __convert_timestamp(timestamp):
     """Convert a timestamp back into python-epoch based time"""
-    return timestamp + TIMESTAMP_EPOCH  # NOT TESTED
+    return timestamp + TIMESTAMP_EPOCH  # NOT TESTED - not used
 
 
 def __path_relative_to(path, base):
@@ -98,10 +98,13 @@ def __final_block(data: bytes, encrypt=True) -> (str, bytes):
         url = f"/sha256/{identifier}/aes256/{contents_identifier}"
         return (url, block_contents)
 
-    return (f"/sha256/{contents_identifier}", compressed)  # NOT TESTED
+    return (f"/sha256/{contents_identifier}", compressed)  # NOT TESTED - no raw blocks
 
 
 def __block_to_data(url: str, data: bytes) -> bytes:
+    if data is None:
+        return None
+
     assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)}: {data}"
     parts = url.split("/")
     encrypted = len(parts) == 5
@@ -114,7 +117,7 @@ def __block_to_data(url: str, data: bytes) -> bytes:
         data = aes_decrypt(binary_from_identifier(data_hash), data)
 
     if sha256_data_identifier(data) == data_hash:
-        return data  # not compressed  # NOT TESTED
+        return data  # not compressed  # NOT TESTED - files not restored
 
     data = zlib.decompress(data)
     assert sha256_data_identifier(data) == data_hash
@@ -291,7 +294,7 @@ def inflate(url: str, storage) -> dict:
     bundle_data = __block_to_data(url, storage.get(__block_address(url)))
 
     if bundle_data is None:
-        return None  # NOT TESTED
+        return None
 
     bundle = __deserialize_bundle(bundle_data)
     missing = []
@@ -300,13 +303,13 @@ def inflate(url: str, storage) -> dict:
         bundle_data = __block_to_data(suburl, storage.get(__block_address(suburl)))
 
         if bundle_data is None:
-            missing.append(suburl)  # NOT TESTED
+            missing.append(suburl)
         else:
             subbundle = __deserialize_bundle(bundle_data)
             bundle[FILES].update(subbundle[FILES])
 
     if missing:
-        bundle[BUNDLES] = missing  # NOT TESTED
+        bundle[BUNDLES] = missing
     elif BUNDLES in bundle:
         del bundle[BUNDLES]
 
