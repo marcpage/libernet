@@ -51,7 +51,7 @@ def create_app(args):
     return app
 
 
-def serve(args):
+def serve(args):  # NOT TESTED - no running server during tests
     """Start the libernet web server"""
     log_path = os.path.join(args.storage, "log.txt")
     os.makedirs(os.path.split(log_path)[0], exist_ok=True)
@@ -84,4 +84,4 @@ def get_arg_parser():
 
 
 if __name__ == "__main__":
-    serve(get_arg_parser().parse_args())
+    serve(get_arg_parser().parse_args())  # NOT TESTED - no running server during tests

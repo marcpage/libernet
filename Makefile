@@ -27,7 +27,7 @@ venv: $(VENV_DIR)/touchfile
 
 # https://stackoverflow.com/questions/28297497/python-code-coverage-and-multiprocessing
 $(COVERAGE_FILE): $(VENV_DIR)/touchfile $(SOURCES) $(TESTS)
-	mkdir -p objects
+	@mkdir -p objects
 	@$(SET_ENV); $(VENV_PIP) install -q coverage pytest
 	@$(SET_ENV); env $(COVERAGE) $(VENV_PYTHON) -m coverage run  --source libernet -m pytest
 
