@@ -9,29 +9,6 @@ import time
 import libernet.bundle
 
 
-class Storage:
-    def __init__(self):
-        self.__contents = {}
-
-    def put(self, key_value:tuple):
-        #print(f"put({key_value})")
-        self.__contents.update(dict([key_value]))
-
-    def get(self, key:str) -> bytes:
-        #print(f"get({key})")
-        return self.__contents.get(key, None)
-
-    def has(self, key:str) -> bool:
-        #print(f"has({key})")
-        return key in self.__contents
-
-    def remove(self, key:str):
-        del self.__contents[key]
-
-    def keys(self):
-        return self.__contents.keys()
-
-
 def bundles_equal(b1, b2):
     assert len(b1.get('directories', [])) == len(b2.get('directories', [])), f"{b1.get('directories', [])} vs {b2.get('directories', [])}"
     assert len(b1.get('files', [])) == len(b2.get('files', [])), f"{b1.get('files', [])} vs {b2.get('files', [])}"
@@ -63,7 +40,7 @@ def makefile(path, contents):
 
 def test_basic():
     path = os.path.realpath('tests')
-    storage = Storage()
+    storage = dict()
     url = libernet.bundle.create(path, storage)
     restored = libernet.bundle.inflate(url, storage)
     files = os.listdir('tests')
@@ -77,7 +54,7 @@ def test_basic():
 
 
 def test_file_metadata():
-    storage = Storage()
+    storage = dict()
 
     with tempfile.TemporaryDirectory() as working_dir:
         empty_dir_path = os.path.join(working_dir, 'empty dir')
@@ -120,7 +97,7 @@ def test_file_metadata():
 
 
 def test_large_bundle():
-    storage = Storage()
+    storage = dict()
     old_block_max = libernet.bundle.MAX_BLOCK_SIZE
     old_bundle_max = libernet.bundle.MAX_BUNDLE_SIZE
     libernet.bundle.MAX_BLOCK_SIZE = 4096
@@ -141,7 +118,7 @@ def test_large_bundle():
 
 
 def test_missing_blocks():
-    storage = Storage()
+    storage = dict()
     old_block_max = libernet.bundle.MAX_BLOCK_SIZE
     old_bundle_max = libernet.bundle.MAX_BUNDLE_SIZE
     libernet.bundle.MAX_BLOCK_SIZE = 4096
@@ -169,12 +146,12 @@ def test_missing_blocks():
     while subbundle_identifiers:
         subbundle_identifier = subbundle_identifiers.pop()
         subbundle_url = f"/sha256/{subbundle_identifier}"
-        storage.remove(subbundle_url)
+        del storage[subbundle_url]
         partial_restore = libernet.bundle.inflate(url, storage)
         matches = any(u.startswith(subbundle_url) for u in partial_restore['bundles'])
         assert matches, f"{partial_restore['bundles']} vs {subbundle_url}"
 
-    storage.remove(f'/sha256/{root_identifier}')
+    del storage[f'/sha256/{root_identifier}']
     no_restore = libernet.bundle.inflate(url, storage)
     assert no_restore is None, no_restore
 
@@ -183,7 +160,7 @@ def test_missing_blocks():
 
 
 def test_previous():
-    storage = Storage()
+    storage = dict()
 
     with tempfile.TemporaryDirectory() as working_dir:
         file1_path = os.path.join(working_dir, 'file1.txt')
@@ -208,7 +185,7 @@ def test_previous():
 
 
 def test_unencrypted():
-    storage = Storage()
+    storage = dict()
 
     with tempfile.TemporaryDirectory() as working_dir:
         file1_path = os.path.join(working_dir, 'file1.txt')
@@ -222,7 +199,7 @@ def test_unencrypted():
 
 
 def test_restore():
-    storage = Storage()
+    storage = dict()
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
@@ -283,7 +260,7 @@ def test_restore():
 
 
 def test_restore_update():
-    storage = Storage()
+    storage = dict()
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
@@ -316,7 +293,7 @@ def test_restore_update():
 
 
 def test_restore_update_2():
-    storage = Storage()
+    storage = dict()
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
@@ -355,7 +332,7 @@ def test_restore_update_2():
 
 
 def test_date_modified():
-    storage = Storage()
+    storage = dict()
 
     with tempfile.TemporaryDirectory() as working_dir:
         file1_path = os.path.join(working_dir, "file1.txt")

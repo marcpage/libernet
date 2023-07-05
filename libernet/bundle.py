@@ -46,8 +46,8 @@ def __convert_timestamp(timestamp):
     return timestamp + TIMESTAMP_EPOCH
 
 
-def __set_mod_time(path:str, timestamp:float):
-    """ Sets the modification timestamp of a file """
+def __set_mod_time(path: str, timestamp: float):
+    """Sets the modification timestamp of a file"""
     file_info = os.stat(path)
     access_time_in_ns = int(file_info.st_atime * 1_000_000_000)
     mod_time_in_ns = int(__convert_timestamp(timestamp) * 1_000_000_000)
@@ -116,7 +116,7 @@ def __final_block(data: bytes, storage, encrypt=True) -> (str, bytes):
         block_contents = compressed
         url = f"/sha256/{contents_identifier}"
 
-    storage.put((__block_address(url), block_contents))
+    storage[__block_address(url)] = block_contents
     return url, block_contents
 
 
@@ -320,7 +320,7 @@ def create(path: str, storage, previous: dict = None, encrypt=True, **kwargs) ->
 
 def inflate(url: str, storage) -> dict:
     """inflates a bundle from the given url
-    storage - an object with get(url:str) -> bytes
+    storage - a dict-like object
     returns as much as could be inflated
     """
     bundle_data = __get_data(url, storage)
@@ -374,7 +374,7 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
             valid[file] = True
         else:
             urls = [__block_address(b["url"]) for b in bundle[FILES][file][CONTENTS]]
-            missing.extend(u for u in urls if not storage.has(u))
+            missing.extend(u for u in urls if u not in storage)
 
             if prexisting:
                 valid[file] = False
@@ -443,6 +443,7 @@ def restore(url_or_bundle, target_dir: str, storage) -> list:
     url_or_bundle - may be a url string from create() or bundle from inflate()
     target_dir - will be created if it doesn't exist
                 contents will be updated to match the bundle
+    storage - a dict-like object
     returns a list of missing blocks (may not be exhaustive) or None
     """
     bundle = (
