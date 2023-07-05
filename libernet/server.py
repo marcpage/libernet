@@ -28,7 +28,7 @@ def create_app(args):
         data_path = os.path.join(storage_path, identifier[:3], identifier[3:])
 
         if not os.path.isfile(data_path):
-            return "Data not currently on node", 504  # NOT TESTED
+            return "Data not currently on node", 504
 
         return flask.send_file(data_path, DATA_MIMETYPE)
 

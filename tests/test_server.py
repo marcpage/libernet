@@ -24,11 +24,15 @@ def write_and_read_data(client, data:bytes):
     identifier = hashlib.sha256(data).hexdigest()
     response = client.get(f'/sha256/{identifier}')
     assert response.status_code == 504
+    response = client.head(f'/sha256/{identifier}')
+    assert response.status_code != 404
     response = client.put(f"/sha256/{identifier}", data=data)
     assert response.status_code == 200, f"'{data}' -> localhost:{port} -> {response}"
     response = client.get(f'/sha256/{identifier}')
     assert response.status_code == 200
     assert response.data == data
+    response = client.head(f'/sha256/{identifier}')
+    assert response.status_code == 200
 
 
 def test_app():
