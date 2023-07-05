@@ -45,6 +45,7 @@ def bundles_equal(b1, b2):
         assert b1['files'][file].get('readonly', False) == b2['files'][file].get('readonly', False), f"{file}: {b1['files'][file].get('readonly', False)} vs {b2['files'][file].get('readonly', False)}"
         assert b1['files'][file].get('executable', False) == b2['files'][file].get('executable', False), f"{file}: {b1['files'][file].get('executable', False)} vs {b2['files'][file].get('executable', False)}"
         assert b1['files'][file].get('link', None) == b2['files'][file].get('link', None), f"{file}: {b1['files'][file].get('executable', False)} vs {b2['files'][file].get('executable', False)}"
+        # TODO: fix date modified
 
         for block1, block2 in zip(b1['files'][file]['contents'], b2['files'][file]['contents']):
             assert block1['size'] == block2['size'], f"{file}: {block1} vs {block2}"

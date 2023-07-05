@@ -411,6 +411,7 @@ def __restore_file(bundle: dict, file: str, target_dir: str, storage):
 
     # TODO: add xattr  # pylint: disable=fixme
     # TODO: add rsrc  # pylint: disable=fixme
+    # TODO: restore modified date  # pylint: disable=fixme
 
     if is_readonly or is_executable:
         mode = os.stat(file_path).st_mode
