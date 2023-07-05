@@ -46,8 +46,6 @@ def test_basics():
 
 def test_errors():
     with TemporaryDirectory() as working_dir:
-        import os
-        working_dir = os.path.join("/tmp", os.path.split(working_dir)[1])
         server = Process(target=serve,
                 args=(SimpleNamespace(storage=working_dir, port=SERVER_PORT, debug=False),))
         server.start()
