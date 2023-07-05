@@ -25,7 +25,7 @@ SAME_TIME_VARIANCE_IN_SECONDS = 0.000100  # 100 microseconds
 BUNDLES = "bundles"
 CONTENTS = "contents"
 DIRECTORIES = "directories"
-EXEXUTABLE = "executable"
+EXUTABLE = "executable"
 FILES = "files"
 LINK = "link"
 MODIFIED = "modified"
@@ -81,12 +81,15 @@ def __file_metadata_entry(full_path: str) -> dict:
         description[READONLY] = True
 
     if is_executable:
-        description[EXEXUTABLE] = True
+        description[EXUTABLE] = True
+
+    # TODO: add xattr  # pylint: disable=fixme
+    # TODO: add rsrc  # pylint: disable=fixme
 
     return description
 
 
-def __final_block(data: bytes, encrypt=True) -> (str, bytes):
+def __final_block(data: bytes, storage, encrypt=True) -> (str, bytes):
     """gets the url and data for a block"""
     assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)}: {data}"
     compressed = zlib.compress(data, 9)
@@ -100,12 +103,16 @@ def __final_block(data: bytes, encrypt=True) -> (str, bytes):
         block_contents = aes_encrypt(key, compressed)
         identifier = sha256_data_identifier(block_contents)
         url = f"/sha256/{identifier}/aes256/{contents_identifier}"
-        return (url, block_contents)
+    else:
+        block_contents = compressed
+        url = f"/sha256/{contents_identifier}"
 
-    return (f"/sha256/{contents_identifier}", compressed)
+    storage.put((__block_address(url), block_contents))
+    return url, block_contents
 
 
 def __block_to_data(url: str, data: bytes) -> bytes:
+    """convert a block with a given url to original data"""
     if data is None:
         return None
 
@@ -121,7 +128,7 @@ def __block_to_data(url: str, data: bytes) -> bytes:
         data = aes_decrypt(binary_from_identifier(data_hash), data)
 
     if sha256_data_identifier(data) == data_hash:
-        return data  # not compressed  # NOT TESTED - files not restored
+        return data  # not compressed
 
     data = zlib.decompress(data)
     assert sha256_data_identifier(data) == data_hash
@@ -129,13 +136,19 @@ def __block_to_data(url: str, data: bytes) -> bytes:
 
 
 def __block_address(url: str) -> str:
+    """extract just the address of the block"""
     parts = url.split("/")
     assert len(parts) >= 3, parts
     assert parts[1] == "sha256", parts
     return f"/sha256/{parts[2]}"
 
 
-def __file_contents(full_path: str, block_queue) -> dict:
+def __get_data(url: str, storage) -> bytes:
+    """request a block from storage"""
+    return __block_to_data(url, storage.get(__block_address(url)))
+
+
+def __file_contents(full_path: str, storage) -> dict:
     """given the path to a file, create the bundle entry"""
     description = {CONTENTS: []}
 
@@ -146,8 +159,7 @@ def __file_contents(full_path: str, block_queue) -> dict:
             if not block:
                 break
 
-            url, data = __final_block(block)
-            block_queue.put((__block_address(url), data))
+            url, data = __final_block(block, storage)
             description[CONTENTS].append({URL: url, SIZE: len(data)})
 
     return description
@@ -166,45 +178,52 @@ def __deserialize_bundle(block):
 
 
 def __file_entry(
-    file_path: str, source_path: str, previous: dict, block_queue
+    file_path: str, relative_path: str, previous: dict, storage
 ) -> (str, dict):
-    relative_path = __path_relative_to(file_path, source_path)
+    """returns relative_path, file_entry"""
     prexisting = previous[FILES].get(relative_path, None) if previous else None
     prexisting_contents = prexisting[CONTENTS] if prexisting else None
     entry = __file_metadata_entry(file_path)
     size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
     time_difference = prexisting[MODIFIED] if prexisting else 0 - entry[MODIFIED]
     unmodified = size_matches and abs(time_difference) < SAME_TIME_VARIANCE_IN_SECONDS
-    new_contents = None if unmodified else __file_contents(file_path, block_queue)
+    new_contents = None if unmodified else __file_contents(file_path, storage)
     entry.update({CONTENTS: prexisting_contents} if unmodified else new_contents)
     return relative_path, entry
 
 
-def __create_raw_bundle(source_path: str, block_queue, previous: dict) -> dict:
-    """Given a path to a directory, create a full, raw bundle"""
-    description = {FILES: {}}
-    directories = []
+def __list_directory(path: str) -> (list, list):
+    """get all the files and empty directories in a given directory"""
+    file_list = []
+    dir_list = []
     empty_dirs = []
 
-    for root, dirs, files in os.walk(source_path):
-        directories.extend(
-            __path_relative_to(os.path.join(root, d), source_path) for d in dirs
-        )
+    for root, dirs, files in os.walk(path):
+        dir_list.extend(__path_relative_to(os.path.join(root, d), path) for d in dirs)
+        file_list.extend(__path_relative_to(os.path.join(root, f), path) for f in files)
 
-        for file in files:
-            file_path = os.path.join(root, file)
-            description[FILES].update(
-                dict([__file_entry(file_path, source_path, previous, block_queue)])
-            )
-
-    for directory in directories:
-        if not any((f.startswith(directory + "/") for f in description[FILES])):
+    for directory in dir_list:
+        if not any((f.startswith(directory + "/") for f in file_list)):
             empty_dirs.append(directory)
+
+    return file_list, empty_dirs
+
+
+def __create_raw_bundle(source_path: str, storage, previous: dict) -> dict:
+    """Given a path to a directory, create a full, raw bundle"""
+    description = {FILES: {}}
+    file_list, empty_dirs = __list_directory(source_path)
+
+    for file in file_list:
+        file_path = os.path.join(source_path, file)
+        description[FILES].update(
+            dict([__file_entry(file_path, file, previous, storage)])
+        )
 
     description[DIRECTORIES] = {
         d: os.readlink(os.path.join(source_path, d))
         if os.path.islink(os.path.join(source_path, d))
-        else {}
+        else None
         for d in empty_dirs
     }
 
@@ -215,6 +234,7 @@ def __create_raw_bundle(source_path: str, block_queue, previous: dict) -> dict:
 
 
 def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> list:
+    """Get subset of files for the bundle to prevent being too large"""
     filenames = sorted(files, key=lambda f: len(files[f][CONTENTS]), reverse=True)
     bundle_blocks = 0
     bundle_names = []
@@ -233,7 +253,8 @@ def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> lis
     return bundle_names
 
 
-def __thin_bundle(raw: dict, block_queue, encrypt) -> str:
+def __thin_bundle(raw: dict, storage, encrypt) -> str:
+    """for bundles that are too big, create sub-bundles"""
     raw[BUNDLES] = []
     bundle = __serialize_bundle(raw)
     files_size = len(__serialize_bundle(raw[FILES]))
@@ -258,8 +279,7 @@ def __thin_bundle(raw: dict, block_queue, encrypt) -> str:
         subraw[FILES] = {f: files[f] for f in bundle_filenames}
         subbundle = __serialize_bundle(subraw)
         assert len(subbundle) <= MAX_BUNDLE_SIZE, len(subbundle)
-        url, data = __final_block(subbundle)
-        block_queue.put((__block_address(url), data))
+        url, _ = __final_block(subbundle, storage)
         raw[BUNDLES].append(url)
         bundle = __serialize_bundle(raw)
         assert len(bundle) <= MAX_BUNDLE_SIZE, len(bundle)
@@ -267,29 +287,25 @@ def __thin_bundle(raw: dict, block_queue, encrypt) -> str:
         for file in bundle_filenames:
             del files[file]
 
-    url, data = __final_block(bundle, encrypt)
-    block_queue.put((__block_address(url), data))
+    url, _ = __final_block(bundle, storage, encrypt)
     return url
 
 
-def create(
-    path: str, block_queue, previous: dict = None, encrypt=True, **kwargs
-) -> str:
-    """stores a bundle from path in block_queue and returns the url
-    block_queue - an object that can be called with put((block_url, block_data))
+def create(path: str, storage, previous: dict = None, encrypt=True, **kwargs) -> str:
+    """stores a bundle from path in storage and returns the url
+    storage - an object that can be called with put((block_url, block_data))
                     NOTE: the block_url may have decryption key
     previous - a bundle dictionary for optimization, see inflate()
     kwargs - added to the bundle description
     """
-    raw = __create_raw_bundle(path, block_queue, previous)
+    raw = __create_raw_bundle(path, storage, previous)
     raw.update(kwargs)
     bundle = __serialize_bundle(raw)
 
     if len(bundle) > MAX_BUNDLE_SIZE:
-        return __thin_bundle(raw, block_queue, encrypt)
+        return __thin_bundle(raw, storage, encrypt)
 
-    url, data = __final_block(bundle, encrypt)
-    block_queue.put((__block_address(url), data))
+    url, _ = __final_block(bundle, storage, encrypt)
     return url
 
 
@@ -298,7 +314,7 @@ def inflate(url: str, storage) -> dict:
     storage - an object with get(url:str) -> bytes
     returns as much as could be inflated
     """
-    bundle_data = __block_to_data(url, storage.get(__block_address(url)))
+    bundle_data = __get_data(url, storage)
 
     if bundle_data is None:
         return None
@@ -307,7 +323,7 @@ def inflate(url: str, storage) -> dict:
     missing = []
 
     for suburl in bundle.get(BUNDLES, []):
-        bundle_data = __block_to_data(suburl, storage.get(__block_address(suburl)))
+        bundle_data = __get_data(suburl, storage)
 
         if bundle_data is None:
             missing.append(suburl)
@@ -321,3 +337,127 @@ def inflate(url: str, storage) -> dict:
         del bundle[BUNDLES]
 
     return bundle
+
+
+def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict):
+    """returns missing blocks and existing file metadata cache"""
+    missing = [__block_address(u) for u in bundle.get(BUNDLES, [])]
+    cached_metadata = {}
+
+    for file in bundle[FILES]:
+        local_path = os.path.join(target_dir, file)
+        entry = bundle[FILES][file]
+        prexisting = None
+
+        if os.path.isfile(local_path):
+            prexisting = __file_metadata_entry(local_path)
+            cached_metadata[file] = None
+
+        size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
+        time_difference = prexisting[MODIFIED] if prexisting else 0 - entry[MODIFIED]
+        unmodified = (
+            size_matches and abs(time_difference) < SAME_TIME_VARIANCE_IN_SECONDS
+        )
+
+        if not unmodified:
+            urls = [__block_address(b["url"]) for b in bundle[FILES][file][CONTENTS]]
+            missing.extend(u for u in urls if not storage.has(u))
+
+            if prexisting is not None:
+                cached_metadata[file] = prexisting
+
+    return missing, cached_metadata
+
+
+def __remove_not_in_bundle(bundle: dict, target_dir: str):
+    """Remove files and directories in target_dir that are not in bundle"""
+    file_list, dir_list = __list_directory(target_dir) if target_dir else ([], [])
+    dir_list.sort(reverse=True)  # longer paths first
+
+    for file in file_list:
+        if file not in bundle[FILES]:  # NOT TESTED
+            os.remove(os.path.join(target_dir, file))
+
+    for directory in dir_list:
+        if directory not in bundle[DIRECTORIES]:  # NOT TESTED
+            os.rmdir(os.path.join(target_dir, directory))
+
+
+def __remove_modified_files(cached_metadata: dict, target_dir: str):
+    """remove files that have been modified in target_dir since bundle was created"""
+    modified = [f for f in cached_metadata if cached_metadata[f] is None]
+
+    for file in modified:  # NOT TESTED
+        os.remove(os.path.join(target_dir, file))
+
+
+def __restore_file(bundle: dict, file: str, target_dir: str, storage):
+    """restore a given file from a bundle to disk"""
+    entry = bundle[FILES][file]
+    file_path = os.path.join(target_dir, file)
+    is_readonly = entry.get(READONLY, False)
+    is_executable = entry.get(EXUTABLE, False)
+    os.makedirs(os.path.split(file_path)[0], exist_ok=True)
+    link_contents = entry.get("link", None)
+
+    if link_contents is not None:
+        os.symlink(link_contents, file_path)
+        return
+
+    with open(file_path, "wb") as file_contents:
+        for block_info in entry[CONTENTS]:
+            data = __get_data(block_info["url"], storage)
+            file_contents.write(data)
+
+    # TODO: add xattr  # pylint: disable=fixme
+    # TODO: add rsrc  # pylint: disable=fixme
+
+    if is_readonly or is_executable:
+        mode = os.stat(file_path).st_mode
+        mode = (mode & ~stat.S_IWUSR) if is_readonly else mode
+        mode = mode | (stat.S_IXUSR if is_executable else 0)
+        os.chmod(file_path, mode)
+
+
+def restore(url_or_bundle, target_dir: str, storage) -> list:
+    """restores a bundle to a target directory if all data is available
+    If not all blocks are available to restore, nothing is done
+        and a list of (some) missing blocks is returned
+    url_or_bundle - may be a url string from create() or bundle from inflate()
+    target_dir - will be created if it doesn't exist
+                contents will be updated to match the bundle
+    returns a list of missing blocks (may not be exhaustive) or None
+    """
+    bundle = (
+        inflate(url_or_bundle, storage)
+        if isinstance(url_or_bundle, str)
+        else url_or_bundle
+    )
+
+    if bundle is None:  # NOT TESTED
+        return [__block_address(url_or_bundle)]
+
+    missing, cached_metadata = __find_missing_blocks(bundle, target_dir, storage)
+
+    if missing:  # there are blocks missing so do not restore
+        return missing  # NOT TESTED
+
+    __remove_not_in_bundle(bundle, target_dir)
+    __remove_modified_files(cached_metadata, target_dir)
+    files_to_restore = [
+        f for f in bundle[FILES] if cached_metadata.get(f, None) is None
+    ]
+
+    for file in files_to_restore:
+        __restore_file(bundle, file, target_dir, storage)
+
+    for directory in bundle.get(DIRECTORIES, []):
+        directory_path = os.path.join(target_dir, directory)
+
+        if bundle[DIRECTORIES][directory] is None:
+            os.makedirs(directory_path, exist_ok=True)
+            continue
+
+        os.symlink(bundle[DIRECTORIES][directory], directory_path)
+
+    return None

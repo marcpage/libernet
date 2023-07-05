@@ -96,7 +96,7 @@ class RsaIdentity:
     def verify(self, hasher, signature):
         """use the public key to verify the signature of the data"""
         validater = Crypto.Signature.PKCS1_v1_5.new(self.__public)
-        # pylint: disable=E1102
+        # pylint: disable=not-callable
         return validater.verify(hasher, base64.b64decode(signature))
 
     def verify_utf8(self, text, signature):
