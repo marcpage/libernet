@@ -5,15 +5,14 @@
 """
 
 
-import zlib
 import json
 import stat
 import os
 import time
 import datetime
 
-from libernet.encrypt import aes_encrypt, aes_decrypt
-from libernet.hash import sha256_data_identifier, binary_from_identifier
+import libernet.block
+
 
 MAX_BLOCK_SIZE = 1024 * 1024
 MAX_BUNDLE_SIZE = MAX_BLOCK_SIZE
@@ -98,65 +97,6 @@ def __file_metadata_entry(full_path: str) -> dict:
     return description
 
 
-def __final_block(data: bytes, storage, encrypt=True) -> (str, bytes):
-    """gets the url and data for a block"""
-    assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)}: {data}"
-    compressed = zlib.compress(data, 9)
-    contents_identifier = sha256_data_identifier(data)
-
-    if len(data) < len(compressed):
-        compressed = data
-
-    if encrypt:
-        key = binary_from_identifier(contents_identifier)
-        block_contents = aes_encrypt(key, compressed)
-        identifier = sha256_data_identifier(block_contents)
-        url = f"/sha256/{identifier}/aes256/{contents_identifier}"
-    else:
-        block_contents = compressed
-        url = f"/sha256/{contents_identifier}"
-
-    storage[__block_address(url)] = block_contents
-    return url, block_contents
-
-
-def __block_to_data(url: str, data: bytes) -> bytes:
-    """convert a block with a given url to original data"""
-    if data is None:
-        return None
-
-    assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)}: {data}"
-    parts = url.split("/")
-    encrypted = len(parts) == 5
-    block_hash = parts[2]
-    data_hash = parts[4] if encrypted else parts[2]
-    assert len(parts) == 3 or encrypted, parts
-    assert not encrypted or block_hash == sha256_data_identifier(data)
-
-    if encrypted:
-        data = aes_decrypt(binary_from_identifier(data_hash), data)
-
-    if sha256_data_identifier(data) == data_hash:
-        return data  # not compressed
-
-    data = zlib.decompress(data)
-    assert sha256_data_identifier(data) == data_hash
-    return data
-
-
-def __block_address(url: str) -> str:
-    """extract just the address of the block"""
-    parts = url.split("/")
-    assert len(parts) >= 3, parts
-    assert parts[1] == "sha256", parts
-    return f"/sha256/{parts[2]}"
-
-
-def __get_data(url: str, storage) -> bytes:
-    """request a block from storage"""
-    return __block_to_data(url, storage.get(__block_address(url)))
-
-
 def __file_contents(full_path: str, storage) -> dict:
     """given the path to a file, create the bundle entry"""
     description = {CONTENTS: []}
@@ -168,7 +108,7 @@ def __file_contents(full_path: str, storage) -> dict:
             if not block:
                 break
 
-            url, data = __final_block(block, storage)
+            url, data = libernet.block.store(block, storage)
             description[CONTENTS].append({URL: url, SIZE: len(data)})
 
     return description
@@ -288,7 +228,7 @@ def __thin_bundle(raw: dict, storage, encrypt) -> str:
         subraw[FILES] = {f: files[f] for f in bundle_filenames}
         subbundle = __serialize_bundle(subraw)
         assert len(subbundle) <= MAX_BUNDLE_SIZE, len(subbundle)
-        url, _ = __final_block(subbundle, storage)
+        url, _ = libernet.block.store(subbundle, storage)
         raw[BUNDLES].append(url)
         bundle = __serialize_bundle(raw)
         assert len(bundle) <= MAX_BUNDLE_SIZE, len(bundle)
@@ -296,14 +236,13 @@ def __thin_bundle(raw: dict, storage, encrypt) -> str:
         for file in bundle_filenames:
             del files[file]
 
-    url, _ = __final_block(bundle, storage, encrypt)
+    url, _ = libernet.block.store(bundle, storage, encrypt)
     return url
 
 
 def create(path: str, storage, previous: dict = None, encrypt=True, **kwargs) -> str:
     """stores a bundle from path in storage and returns the url
     storage - an object that can be called with put((block_url, block_data))
-                    NOTE: the block_url may have decryption key
     previous - a bundle dictionary for optimization, see inflate()
     kwargs - added to the bundle description
     """
@@ -314,7 +253,7 @@ def create(path: str, storage, previous: dict = None, encrypt=True, **kwargs) ->
     if len(bundle) > MAX_BUNDLE_SIZE:
         return __thin_bundle(raw, storage, encrypt)
 
-    url, _ = __final_block(bundle, storage, encrypt)
+    url, _ = libernet.block.store(bundle, storage, encrypt)
     return url
 
 
@@ -323,7 +262,7 @@ def inflate(url: str, storage) -> dict:
     storage - a dict-like object
     returns as much as could be inflated
     """
-    bundle_data = __get_data(url, storage)
+    bundle_data = libernet.block.fetch(url, storage)
 
     if bundle_data is None:
         return None
@@ -332,7 +271,7 @@ def inflate(url: str, storage) -> dict:
     missing = []
 
     for suburl in bundle.get(BUNDLES, []):
-        bundle_data = __get_data(suburl, storage)
+        bundle_data = libernet.block.fetch(suburl, storage)
 
         if bundle_data is None:
             missing.append(suburl)
@@ -353,7 +292,7 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
     valid[file] == None => existing file is good
     valid[file] == {metadata} => file was modified (should not exist)
     """
-    missing = [__block_address(u) for u in bundle.get(BUNDLES, [])]
+    missing = [libernet.block.address(u) for u in bundle.get(BUNDLES, [])]
     valid = {}
 
     for file in bundle[FILES]:
@@ -373,7 +312,9 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
         if unmodified:
             valid[file] = True
         else:
-            urls = [__block_address(b["url"]) for b in bundle[FILES][file][CONTENTS]]
+            urls = [
+                libernet.block.address(b["url"]) for b in bundle[FILES][file][CONTENTS]
+            ]
             missing.extend(u for u in urls if u not in storage)
 
             if prexisting:
@@ -421,7 +362,7 @@ def __restore_file(bundle: dict, file: str, target_dir: str, storage):
 
     with open(file_path, "wb") as file_contents:
         for block_info in entry[CONTENTS]:
-            data = __get_data(block_info["url"], storage)
+            data = libernet.block.fetch(block_info["url"], storage)
             file_contents.write(data)
 
     # TODO: add xattr  # pylint: disable=fixme
@@ -453,7 +394,7 @@ def restore(url_or_bundle, target_dir: str, storage) -> list:
     )
 
     if bundle is None:  # NOT TESTED
-        return [__block_address(url_or_bundle)]
+        return [libernet.block.address(url_or_bundle)]
 
     missing, files_valid = __find_missing_blocks(bundle, target_dir, storage)
 

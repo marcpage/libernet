@@ -395,8 +395,6 @@ def test_restore_missing_blocks():
         assert root_url in missing, missing
 
 
-
-
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
