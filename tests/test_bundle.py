@@ -311,8 +311,7 @@ def test_restore_update():
     restored4 = libernet.bundle.inflate(url4, storage)
 
     bundles_equal(restored1, restored2)
-    #bundles_equal(restored3, restored4)  # TODO: fix file3
-
+    bundles_equal(restored3, restored4)
 
 
 if __name__ == "__main__":

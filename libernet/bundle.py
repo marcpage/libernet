@@ -340,9 +340,12 @@ def inflate(url: str, storage) -> dict:
 
 
 def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict):
-    """returns missing blocks and existing file metadata cache"""
+    """returns missing blocks and existing file metadata cache
+    valid[file] == None => existing file is good
+    valid[file] == {metadata} => file was modified (should not exist)
+    """
     missing = [__block_address(u) for u in bundle.get(BUNDLES, [])]
-    cached_metadata = {}
+    valid = {}
 
     for file in bundle[FILES]:
         local_path = os.path.join(target_dir, file)
@@ -351,22 +354,23 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
 
         if os.path.isfile(local_path):
             prexisting = __file_metadata_entry(local_path)
-            cached_metadata[file] = None
 
         size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
-        time_difference = prexisting[MODIFIED] if prexisting else 0 - entry[MODIFIED]
+        time_difference = (prexisting[MODIFIED] if prexisting else 0) - entry[MODIFIED]
         unmodified = (
             size_matches and abs(time_difference) < SAME_TIME_VARIANCE_IN_SECONDS
         )
 
-        if not unmodified:
+        if unmodified:
+            valid[file] = True  # NOT TESTED
+        else:
             urls = [__block_address(b["url"]) for b in bundle[FILES][file][CONTENTS]]
             missing.extend(u for u in urls if not storage.has(u))
 
-            if prexisting is not None:
-                cached_metadata[file] = prexisting
+            if prexisting:
+                valid[file] = False
 
-    return missing, cached_metadata
+    return missing, valid
 
 
 def __remove_not_in_bundle(bundle: dict, target_dir: str):
@@ -383,11 +387,11 @@ def __remove_not_in_bundle(bundle: dict, target_dir: str):
             os.rmdir(os.path.join(target_dir, directory))
 
 
-def __remove_modified_files(cached_metadata: dict, target_dir: str):
+def __remove_modified_files(files_valid: dict, target_dir: str):
     """remove files that have been modified in target_dir since bundle was created"""
-    modified = [f for f in cached_metadata if cached_metadata[f] is None]
+    modified = [f for f in files_valid if not files_valid[f]]
 
-    for file in modified:  # NOT TESTED
+    for file in modified:
         os.remove(os.path.join(target_dir, file))
 
 
@@ -438,16 +442,14 @@ def restore(url_or_bundle, target_dir: str, storage) -> list:
     if bundle is None:  # NOT TESTED
         return [__block_address(url_or_bundle)]
 
-    missing, cached_metadata = __find_missing_blocks(bundle, target_dir, storage)
+    missing, files_valid = __find_missing_blocks(bundle, target_dir, storage)
 
     if missing:  # there are blocks missing so do not restore
         return missing  # NOT TESTED
 
     __remove_not_in_bundle(bundle, target_dir)
-    __remove_modified_files(cached_metadata, target_dir)
-    files_to_restore = [
-        f for f in bundle[FILES] if cached_metadata.get(f, None) is None
-    ]
+    __remove_modified_files(files_valid, target_dir)
+    files_to_restore = [f for f in bundle[FILES] if not files_valid.get(f, False)]
 
     for file in files_to_restore:
         __restore_file(bundle, file, target_dir, storage)
