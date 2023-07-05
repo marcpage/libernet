@@ -314,6 +314,46 @@ def test_restore_update():
     bundles_equal(restored3, restored4)
 
 
+def test_restore_update_2():
+    storage = Storage()
+
+    with (tempfile.TemporaryDirectory() as working_dir,
+            tempfile.TemporaryDirectory() as destination_dir):
+        working_dir, destination_dir = "/tmp/src", "/tmp/dst"
+        file1_path = os.path.join(working_dir, "file1.txt")
+        file2_path = os.path.join(working_dir, "dirA/file2.txt")
+        dir1_path = os.path.join(working_dir, "dir1")
+        dir2_path = os.path.join(working_dir, "dir2")
+
+        makefile(file1_path, "file 1")
+        os.makedirs(dir1_path, exist_ok=True)
+        os.makedirs(os.path.join(destination_dir, "dirZ"), exist_ok=True)
+        makefile(os.path.join(destination_dir, "dirY", "fileZ.txt"), "file Z")
+
+        url1 = libernet.bundle.create(working_dir, storage)
+        missing = libernet.bundle.restore(url1, destination_dir, storage)
+        assert not missing, missing
+        url2 = libernet.bundle.create(destination_dir, storage)
+
+        os.rmdir(dir1_path)
+        os.remove(file1_path)
+        os.makedirs(dir2_path, exist_ok=True)
+        makefile(file2_path, "file 2")
+
+        url3 = libernet.bundle.create(working_dir, storage)
+        missing = libernet.bundle.restore(url3, destination_dir, storage)
+        assert not missing, missing
+        url4 = libernet.bundle.create(destination_dir, storage)
+
+    restored1 = libernet.bundle.inflate(url1, storage)
+    restored2 = libernet.bundle.inflate(url2, storage)
+    restored3 = libernet.bundle.inflate(url3, storage)
+    restored4 = libernet.bundle.inflate(url4, storage)
+
+    bundles_equal(restored1, restored2)
+    bundles_equal(restored3, restored4)
+
+
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
@@ -323,4 +363,5 @@ if __name__ == "__main__":
     test_unencrypted()
     test_restore()
     test_restore_update()
+    test_restore_update_2()
 

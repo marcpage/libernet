@@ -375,15 +375,17 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
 
 def __remove_not_in_bundle(bundle: dict, target_dir: str):
     """Remove files and directories in target_dir that are not in bundle"""
-    file_list, dir_list = __list_directory(target_dir) if target_dir else ([], [])
-    dir_list.sort(reverse=True)  # longer paths first
+    file_list, _ = __list_directory(target_dir) if target_dir else ([], [])
 
     for file in file_list:
-        if file not in bundle[FILES]:  # NOT TESTED
+        if file not in bundle[FILES]:
             os.remove(os.path.join(target_dir, file))
 
+    _, dir_list = __list_directory(target_dir) if target_dir else ([], [])
+    dir_list.sort(reverse=True)  # longer paths first
+
     for directory in dir_list:
-        if directory not in bundle[DIRECTORIES]:  # NOT TESTED
+        if directory not in bundle.get(DIRECTORIES, []):
             os.rmdir(os.path.join(target_dir, directory))
 
 
