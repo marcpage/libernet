@@ -108,7 +108,7 @@ def __file_contents(full_path: str, storage) -> dict:
             if not block:
                 break
 
-            url, data = libernet.block.store(block, storage)
+            url, _ = libernet.block.store(block, storage)
             description[CONTENTS].append({URL: url, SIZE: len(block)})
 
     return description
