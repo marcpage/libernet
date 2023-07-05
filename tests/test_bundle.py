@@ -286,7 +286,7 @@ def test_restore_update():
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
-        file1_path = os.path.join(working_dir, "file1.txt")
+        file1_path = os.path.join(working_dir, "file1 not changed.txt")
         file2_path = os.path.join(working_dir, "dir2/file2.txt")
         file3_path = os.path.join(working_dir, "file3.txt")
         file4_path = os.path.join(working_dir, "dir3/dir4/file4.txt")
@@ -319,7 +319,6 @@ def test_restore_update_2():
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
-        working_dir, destination_dir = "/tmp/src", "/tmp/dst"
         file1_path = os.path.join(working_dir, "file1.txt")
         file2_path = os.path.join(working_dir, "dirA/file2.txt")
         dir1_path = os.path.join(working_dir, "dir1")
