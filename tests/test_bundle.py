@@ -40,7 +40,7 @@ def makefile(path, contents):
 
 def test_basic():
     path = os.path.realpath('tests')
-    storage = dict()
+    storage = {}
     url = libernet.bundle.create(path, storage)
     restored = libernet.bundle.inflate(url, storage)
     files = os.listdir('tests')
@@ -54,7 +54,7 @@ def test_basic():
 
 
 def test_file_metadata():
-    storage = dict()
+    storage = {}
 
     with tempfile.TemporaryDirectory() as working_dir:
         empty_dir_path = os.path.join(working_dir, 'empty dir')
@@ -97,7 +97,7 @@ def test_file_metadata():
 
 
 def test_large_bundle():
-    storage = dict()
+    storage = {}
     old_block_max = libernet.bundle.MAX_BLOCK_SIZE
     old_bundle_max = libernet.bundle.MAX_BUNDLE_SIZE
     libernet.bundle.MAX_BLOCK_SIZE = 4096
@@ -118,7 +118,7 @@ def test_large_bundle():
 
 
 def test_missing_blocks():
-    storage = dict()
+    storage = {}
     old_block_max = libernet.bundle.MAX_BLOCK_SIZE
     old_bundle_max = libernet.bundle.MAX_BUNDLE_SIZE
     libernet.bundle.MAX_BLOCK_SIZE = 4096
@@ -131,7 +131,7 @@ def test_missing_blocks():
         url = libernet.bundle.create(working_dir, storage)
 
     restored = libernet.bundle.inflate(url, storage)
-    subbundle_identifiers = {k.split('/')[2] for k in storage.keys()}
+    subbundle_identifiers = {k.split('/')[2] for k in storage}
     root_identifier = url.split('/')[2]
     assert root_identifier in subbundle_identifiers
     subbundle_identifiers.remove(root_identifier)
@@ -160,7 +160,7 @@ def test_missing_blocks():
 
 
 def test_previous():
-    storage = dict()
+    storage = {}
 
     with tempfile.TemporaryDirectory() as working_dir:
         file1_path = os.path.join(working_dir, 'file1.txt')
@@ -185,7 +185,7 @@ def test_previous():
 
 
 def test_unencrypted():
-    storage = dict()
+    storage = {}
 
     with tempfile.TemporaryDirectory() as working_dir:
         file1_path = os.path.join(working_dir, 'file1.txt')
@@ -199,7 +199,7 @@ def test_unencrypted():
 
 
 def test_restore():
-    storage = dict()
+    storage = {}
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
@@ -260,7 +260,7 @@ def test_restore():
 
 
 def test_restore_update():
-    storage = dict()
+    storage = {}
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
@@ -293,7 +293,7 @@ def test_restore_update():
 
 
 def test_restore_update_2():
-    storage = dict()
+    storage = {}
 
     with (tempfile.TemporaryDirectory() as working_dir,
             tempfile.TemporaryDirectory() as destination_dir):
@@ -332,7 +332,7 @@ def test_restore_update_2():
 
 
 def test_date_modified():
-    storage = dict()
+    storage = {}
 
     with tempfile.TemporaryDirectory() as working_dir:
         file1_path = os.path.join(working_dir, "file1.txt")
@@ -357,6 +357,46 @@ def test_date_modified():
     bundles_equal(bundle1, bundle3)
 
 
+def test_restore_missing_blocks():
+    storage = {}
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        file1_path = os.path.join(working_dir, "file1.txt")
+        file2_path = os.path.join(working_dir, "file2.txt")
+        file3_path = os.path.join(working_dir, "file3.txt")
+        file4_path = os.path.join(working_dir, "file4.txt")
+        file5_path = os.path.join(working_dir, "file5.txt")
+        makefile(file1_path, "file #1")
+        makefile(file2_path, "file #2")
+        makefile(file3_path, "file #3")
+        makefile(file4_path, "file #4")
+        makefile(file5_path, "file #5")
+        url = libernet.bundle.create(working_dir, storage)
+
+    info = libernet.bundle.inflate(url, storage)
+    root_identifier = url.split('/')[2]
+    content_identifiers = {b['url'].split('/')[2] for f in info['files'] for b in info['files'][f]['contents']}
+
+    for deleted_count in range(1, len(content_identifiers)+1):
+        to_remove = f'/sha256/{content_identifiers.pop()}'
+        del storage[to_remove]
+
+        with tempfile.TemporaryDirectory() as working_dir:
+            missing = libernet.bundle.restore(url, working_dir, storage)
+            assert len(missing) == deleted_count, missing
+            assert to_remove in missing, missing
+
+    root_url = f'/sha256/{root_identifier}'
+    del storage[root_url]
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        missing = libernet.bundle.restore(url, working_dir, storage)
+        assert len(missing) == 1, missing
+        assert root_url in missing, missing
+
+
+
+
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
@@ -368,4 +408,5 @@ if __name__ == "__main__":
     test_restore_update()
     test_restore_update_2()
     test_date_modified()
+    test_restore_missing_blocks()
 
