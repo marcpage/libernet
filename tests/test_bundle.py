@@ -4,6 +4,7 @@
 import os
 import stat
 import tempfile
+import time
 
 import libernet.bundle
 
@@ -353,6 +354,32 @@ def test_restore_update_2():
     bundles_equal(restored3, restored4)
 
 
+def test_date_modified():
+    storage = Storage()
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        file1_path = os.path.join(working_dir, "file1.txt")
+        file2_path = os.path.join(working_dir, "file2.txt")
+        file3_path = os.path.join(working_dir, "file3.txt")
+        file4_path = os.path.join(working_dir, "file4.txt")
+        file5_path = os.path.join(working_dir, "file5.txt")
+        makefile(file1_path, "file #1")
+        makefile(file2_path, "file #2")
+        makefile(file3_path, "file #3")
+        makefile(file4_path, "file #4")
+        makefile(file5_path, "file #5")
+        url1 = libernet.bundle.create(working_dir, storage)
+        url2 = libernet.bundle.create(working_dir, storage)
+        time.sleep(0.500)
+        url3 = libernet.bundle.create(working_dir, storage)
+
+    bundle1 = libernet.bundle.inflate(url1, storage)
+    bundle2 = libernet.bundle.inflate(url2, storage)
+    bundle3 = libernet.bundle.inflate(url3, storage)
+    bundles_equal(bundle1, bundle2)
+    bundles_equal(bundle1, bundle3)
+
+
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
@@ -363,4 +390,5 @@ if __name__ == "__main__":
     test_restore()
     test_restore_update()
     test_restore_update_2()
+    test_date_modified()
 

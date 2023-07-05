@@ -43,7 +43,16 @@ def __create_timestamp(py_time=None):
 
 def __convert_timestamp(timestamp):
     """Convert a timestamp back into python-epoch based time"""
-    return timestamp + TIMESTAMP_EPOCH  # NOT TESTED - not used
+    return timestamp + TIMESTAMP_EPOCH
+
+
+def __set_mod_time(path:str, timestamp:float):
+    """ Sets the modification timestamp of a file """
+    file_info = os.stat(path)
+    access_time_in_ns = int(file_info.st_atime * 1_000_000_000)
+    mod_time_in_ns = int(__convert_timestamp(timestamp) * 1_000_000_000)
+    os.utime(path, ns=(access_time_in_ns, mod_time_in_ns))
+    file_info = os.stat(path)
 
 
 def __path_relative_to(path, base):
@@ -362,7 +371,7 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
         )
 
         if unmodified:
-            valid[file] = True  # NOT TESTED
+            valid[file] = True
         else:
             urls = [__block_address(b["url"]) for b in bundle[FILES][file][CONTENTS]]
             missing.extend(u for u in urls if not storage.has(u))
@@ -417,7 +426,8 @@ def __restore_file(bundle: dict, file: str, target_dir: str, storage):
 
     # TODO: add xattr  # pylint: disable=fixme
     # TODO: add rsrc  # pylint: disable=fixme
-    # TODO: restore modified date  # pylint: disable=fixme
+
+    __set_mod_time(file_path, entry[MODIFIED])
 
     if is_readonly or is_executable:
         mode = os.stat(file_path).st_mode
