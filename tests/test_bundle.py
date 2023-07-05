@@ -395,6 +395,29 @@ def test_restore_missing_blocks():
         assert root_url in missing, missing
 
 
+def test_extra_keys():
+    storage = {}
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        file1_path = os.path.join(working_dir, "file1.txt")
+        file2_path = os.path.join(working_dir, "file2.txt")
+        file3_path = os.path.join(working_dir, "file3.txt")
+        file4_path = os.path.join(working_dir, "file4.txt")
+        file5_path = os.path.join(working_dir, "file5.txt")
+        makefile(file1_path, "file #1")
+        makefile(file2_path, "file #2")
+        makefile(file3_path, "file #3")
+        makefile(file4_path, "file #4")
+        makefile(file5_path, "file #5")
+        url = libernet.bundle.create(working_dir, storage,
+                    index='file1.txt', mime_txt='text/plain', mime='text/plain')
+
+    info = libernet.bundle.inflate(url, storage)
+    assert info['index'] == 'file1.txt'
+    assert info['mime_txt'] == 'text/plain'
+    assert info['mime'] == 'text/plain'
+
+
 if __name__ == "__main__":
     test_basic()
     test_file_metadata()
@@ -407,4 +430,4 @@ if __name__ == "__main__":
     test_restore_update_2()
     test_date_modified()
     test_restore_missing_blocks()
-
+    test_extra_keys()
