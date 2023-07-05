@@ -109,7 +109,7 @@ def __file_contents(full_path: str, storage) -> dict:
                 break
 
             url, data = libernet.block.store(block, storage)
-            description[CONTENTS].append({URL: url, SIZE: len(data)})
+            description[CONTENTS].append({URL: url, SIZE: len(block)})
 
     return description
 
@@ -246,6 +246,7 @@ def create(path: str, storage, previous: dict = None, encrypt=True, **kwargs) ->
     previous - a bundle dictionary for optimization, see inflate()
     kwargs - added to the bundle description
     """
+    # TODO: support providing mime types  # pylint: disable=fixme
     raw = __create_raw_bundle(path, storage, previous)
     raw.update(kwargs)
     bundle = __serialize_bundle(raw)
@@ -387,6 +388,7 @@ def restore(url_or_bundle, target_dir: str, storage) -> list:
     storage - a dict-like object
     returns a list of missing blocks (may not be exhaustive) or None
     """
+    # TODO: support URLs that have the path in the bundle  # pylint: disable=fixme
     bundle = (
         inflate(url_or_bundle, storage)
         if isinstance(url_or_bundle, str)
