@@ -22,7 +22,7 @@ class Storage(threading.Thread):
         self.__input = queue.Queue()
         self.__event = threading.Event()
         threading.Thread.__init__(self)
-        self.daemon = True
+        self.daemon = False  # make sure we can send all data before shutting down
         self.start()
 
     def __setitem__(self, key, item):
