@@ -23,3 +23,4 @@ Similar data can be found via `/sha256/like/{identifier}`
 # Milestones
 
 1. Blocks can be uploaded and downloaded via URL
+2. Similar blocks can be found via URL
