@@ -7,13 +7,18 @@
 import os
 import logging
 import argparse
+import json
 
 import flask
 
+from libernet.hash import identifier_match_score
+
 
 DATA_MIMETYPE = "application/octet-stream"
+JSON_MIMETYPE = "application/json"
 DEFAULT_PORT = 8042
 DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
+MAX_LIKE = 100
 
 
 def create_app(args):
@@ -21,16 +26,43 @@ def create_app(args):
     app = flask.Flask(__name__)
     storage_path = os.path.join(args.storage, "sha256")
 
-    @app.route("/sha256/<identifier>", methods=["GET"])
-    def get_sha256(identifier: str):
+    @app.route("/sha256/<path:path>", methods=["GET"])
+    def get_sha256(path: str):
         """Return the requested data"""
+        parts = path.split("/")
+        assert len(parts) in [1, 2]
+        similar = len(parts) == 2 and parts[0] == "like"
+        assert len(parts) == 1 or similar
+        identifier = parts[-1]
         assert len(identifier) == 64
-        data_path = os.path.join(storage_path, identifier[:3], identifier[3:])
+        data_dir = os.path.join(storage_path, identifier[:3])
 
-        if not os.path.isfile(data_path):
-            return "Data not currently on node", 504
+        if not similar:
+            data_path = os.path.join(data_dir, identifier[3:])
 
-        return flask.send_file(data_path, DATA_MIMETYPE)
+            if not os.path.isfile(data_path):
+                return "Data not currently on node", 504
+
+            return flask.send_file(data_path, DATA_MIMETYPE)
+
+        if not os.path.isdir(data_dir):
+            return "{}", 404
+
+        potential = [
+            identifier[:3] + n for n in os.listdir(data_dir) if len(n) == 64 - 3
+        ]
+        potential.sort(
+            key=lambda i: identifier_match_score(i, identifier), reverse=True
+        )
+        body = json.dumps(
+            {
+                i: os.path.getsize(os.path.join(data_dir, i[3:]))
+                for i in potential[:MAX_LIKE]
+            }
+        )
+        response = flask.Response(body)
+        response.status = 200 if len(potential) > 0 else 404
+        return response
 
     @app.route("/sha256/<identifier>", methods=["PUT"])
     def put_sha256(identifier: str):
