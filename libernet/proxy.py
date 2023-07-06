@@ -7,6 +7,7 @@
 import threading
 import queue
 import logging
+import json
 
 import requests
 
@@ -25,13 +26,13 @@ class Storage(threading.Thread):
         self.daemon = False  # make sure we can send all data before shutting down
         self.start()
 
-    def __setitem__(self, key, item):
+    def __setitem__(self, key: str, item: bytes):
         """Queues data to be sent"""
         assert self.__running, "Proxy has been shutdown()"
         self.__input.put((key, item))
         self.__event.clear()
 
-    def get(self, key, default=None):
+    def get(self, key, default=None) -> bytes:
         """Waits for all sent items to be flushed then requests data"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
@@ -44,7 +45,23 @@ class Storage(threading.Thread):
 
         return response.content
 
-    def __getitem__(self, key):
+    def like(self, key: str) -> list:
+        """gets a list of keys that are best-matches to given key"""
+        assert self.__running, "Proxy has been shutdown()"
+        self.__event.wait()  # wait for all sent items to be flushed
+        parts = key.split('/')
+        assert parts[0] == ''
+        assert parts[1] == 'sha256'
+
+        with self.__session_lock:
+            response = self.__session.get(f"{self.__base_url}/{parts[1]}/like/{parts[2]}")
+
+        if response.status_code != 200:
+            return {}
+
+        return json.loads(response.content.decode('utf-8'))
+
+    def __getitem__(self, key: str) -> bytes:
         """Just calls get() to get data from server, after send queue is flushed"""
         assert self.__running, "Proxy has been shutdown()"
         result = self.get(key)
@@ -54,24 +71,24 @@ class Storage(threading.Thread):
 
         return result
 
-    def __contains__(self, item):
+    def __contains__(self, key: str) -> bool:
         """Does the block exist in the server"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
 
         with self.__session_lock:
-            response = self.__session.head(self.__base_url + item)
+            response = self.__session.head(self.__base_url + key)
 
         return response.status_code == 200
 
-    def __fetch_message(self, block=False):
+    def __fetch_message(self, block=False) -> (bytes, str):
         """Get a message from the queue and return None if not blocking"""
         try:
             return self.__input.get(block=block)
         except queue.Empty:
             return None
 
-    def __fetch_messages(self):
+    def __fetch_messages(self) -> [(bytes, str)]:
         """Get all pending messages in the queue"""
         self.__event.set()
         first_message = self.__fetch_message(block=True)
@@ -88,7 +105,7 @@ class Storage(threading.Thread):
 
         return messages
 
-    def active(self):
+    def active(self) -> bool:
         """Are we still processing"""
         if self.__running:
             return True

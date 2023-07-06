@@ -26,7 +26,7 @@ You can also find *similar* data accessing `/sha256/like/{data identifier}`:
 
 ```http://localhost:8000/sha256/like/4ed222c87d82dfbd2d97c4d3c21507acf0f4aa0276d6a36b7d520c54478abb0a```
 
-This will return a JSON array object listing some of the top-matching identifiers.
+This will return a JSON object mapping some of the top-matching identifiers to their block size.
 An identifier matches the most characters at the beginning match.
 
 

@@ -56,7 +56,7 @@ def create_app(args):
         )
         body = json.dumps(
             {
-                i: os.path.getsize(os.path.join(data_dir, i[3:]))
+                f"/sha256/{i}": os.path.getsize(os.path.join(data_dir, i[3:]))
                 for i in potential[:MAX_LIKE]
             }
         )

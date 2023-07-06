@@ -95,7 +95,7 @@ def test_app():
                 response = test_client.get(f'/sha256/like/{identifier}')
                 assert response.status_code == 200, f"{response.status_code} {response.data}"
                 found = json.loads(response.data.decode('utf-8'))
-                assert identifier in found
+                assert f"/sha256/{identifier}" in found
                 assert len(found) <= libernet.server.MAX_LIKE
                 found_at_max = found_at_max or len(found) == libernet.server.MAX_LIKE
 
