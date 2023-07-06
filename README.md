@@ -17,6 +17,7 @@ Libernet is a free, open, and secure platform for backups.
 
 Libernet uses http protocol to send and receive data.
 Data is accessed via `/sha256/{identifier}`.
+Similar data can be found via `/sha256/like/{identifier}`
 
 
 # Milestones
