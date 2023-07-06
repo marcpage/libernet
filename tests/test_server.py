@@ -51,8 +51,6 @@ def test_app():
     args = SimpleNamespace(storage=None, debug=debug, port=port_to_use)
 
     with tempfile.TemporaryDirectory() as storage:
-        import os
-        storage = os.path.join("/tmp", os.path.split(storage)[1])
         args.storage = storage
         instance = libernet.server.create_app(args)
         test_set = [

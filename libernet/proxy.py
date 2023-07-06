@@ -49,17 +49,19 @@ class Storage(threading.Thread):
         """gets a list of keys that are best-matches to given key"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
-        parts = key.split('/')
-        assert parts[0] == ''
-        assert parts[1] == 'sha256'
+        parts = key.split("/")
+        assert parts[0] == ""
+        assert parts[1] == "sha256"
 
         with self.__session_lock:
-            response = self.__session.get(f"{self.__base_url}/{parts[1]}/like/{parts[2]}")
+            response = self.__session.get(
+                f"{self.__base_url}/{parts[1]}/like/{parts[2]}"
+            )
 
         if response.status_code != 200:
             return {}
 
-        return json.loads(response.content.decode('utf-8'))
+        return json.loads(response.content.decode("utf-8"))
 
     def __getitem__(self, key: str) -> bytes:
         """Just calls get() to get data from server, after send queue is flushed"""
