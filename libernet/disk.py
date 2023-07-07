@@ -33,8 +33,8 @@ class Storage:
         assert len(parts) in [3, 4]
         assert parts[0] == ""
         assert parts[1] == "sha256"
-        similar = len(parts) == 4 and parts[0] == "like"
-        assert len(parts) == 3 or similar
+        similar = len(parts) == 4 and parts[2] == "like"
+        assert len(parts) == 3 or similar, f"{similar} {parts}"
         identifier = parts[-1]
         assert len(identifier) == IDENTIFIER_SIZE
         return identifier

@@ -16,6 +16,7 @@ from types import SimpleNamespace
 import requests
 
 import libernet.server
+import libernet.disk
 
 from libernet.hash import sha256_data_identifier, identifier_match_score
 
@@ -44,8 +45,8 @@ def write_and_read_data(client, data:bytes):
 
 
 def test_app():
-    max_like = libernet.server.MAX_LIKE
-    libernet.server.MAX_LIKE = 5
+    max_like = libernet.disk.MAX_LIKE
+    libernet.disk.MAX_LIKE = 5
     port_to_use = 8086
     debug = False
     args = SimpleNamespace(storage=None, debug=debug, port=port_to_use)
@@ -94,15 +95,15 @@ def test_app():
                 assert response.status_code == 200, f"{response.status_code} {response.data}"
                 found = json.loads(response.data.decode('utf-8'))
                 assert f"/sha256/{identifier}" in found
-                assert len(found) <= libernet.server.MAX_LIKE
-                found_at_max = found_at_max or len(found) == libernet.server.MAX_LIKE
+                assert len(found) <= libernet.disk.MAX_LIKE
+                found_at_max = found_at_max or len(found) == libernet.disk.MAX_LIKE
 
                 for matching in found:
                     if matching in identifiers:
                         identifiers.remove(matching)
 
     assert found_at_max
-    libernet.server.MAX_LIKE = max_like
+    libernet.disk.MAX_LIKE = max_like
 
 
 if __name__ == "__main__":

@@ -12,75 +12,44 @@ import json
 import flask
 
 from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
+from libernet.disk import Storage
 
 
 DATA_MIMETYPE = "application/octet-stream"
 JSON_MIMETYPE = "application/json"
 DEFAULT_PORT = 8042
 DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
-MAX_LIKE = 100
 
 
 def create_app(args):
     """Creates the Flask app"""
     app = flask.Flask(__name__)
-    storage_path = os.path.join(args.storage, "sha256")
+    storage = Storage(args.storage)
 
     @app.route("/sha256/<path:path>", methods=["GET"])
     def get_sha256(path: str):
         """Return the requested data"""
-        parts = path.split("/")
-        assert len(parts) in [1, 2]
-        similar = len(parts) == 2 and parts[0] == "like"
-        assert len(parts) == 1 or similar
-        identifier = parts[-1]
-        assert len(identifier) == IDENTIFIER_SIZE
-        data_dir = os.path.join(storage_path, identifier[:3])
+        if not path.startswith('like/'):
+            contents = storage.get(f"/sha256/{path}")
 
-        if not similar:
-            data_path = os.path.join(data_dir, identifier[3:])
-
-            if not os.path.isfile(data_path):
+            if contents is None:
                 return "Data not currently on node", 504
 
-            return flask.send_file(data_path, DATA_MIMETYPE)
+            response = flask.Response(contents, mimetype=DATA_MIMETYPE)
+            response.status = 200
+            return response
 
-        if not os.path.isdir(data_dir):
-            return "{}", 404
+        found = storage.like(f"/sha256/{path}")
 
-        potential = [
-            identifier[:3] + n
-            for n in os.listdir(data_dir)
-            if len(n) == IDENTIFIER_SIZE - 3
-        ]
-        potential.sort(
-            key=lambda i: identifier_match_score(i, identifier), reverse=True
-        )
-        body = json.dumps(
-            {
-                f"/sha256/{i}": os.path.getsize(os.path.join(data_dir, i[3:]))
-                for i in potential[:MAX_LIKE]
-            }
-        )
-        response = flask.Response(body)
-        response.status = 200 if len(potential) > 0 else 404
+        response = flask.Response(json.dumps(found), mimetype=JSON_MIMETYPE)
+        response.status = 200 if len(found) > 0 else 404
         return response
 
     @app.route("/sha256/<identifier>", methods=["PUT"])
     def put_sha256(identifier: str):
         """Return the requested data"""
-        assert len(identifier) == IDENTIFIER_SIZE
-        data_path = os.path.join(storage_path, identifier[:3], identifier[3:])
-
-        body = "data received"
-        response = flask.Response(body)
-        os.makedirs(os.path.split(data_path)[0], exist_ok=True)
-
-        with open(data_path, "wb") as block_file:
-            block_file.write(flask.request.data)
-
-        response.status = 200
-        return response
+        storage[f"/sha256/{identifier}"] = flask.request.data
+        return "data received", 200
 
     return app
 
