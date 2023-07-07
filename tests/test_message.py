@@ -3,6 +3,7 @@
 
 import threading
 import time
+import queue
 
 from libernet.message import Center
 
@@ -67,6 +68,23 @@ def test_high_threading():
     except AssertionError:
         pass
 
+def test_channel_close():
+    message_center = Center()
+    main_channel = message_center.new_channel()
+    message_center.send("hello")
+    assert main_channel.get() == "hello"
+    message_center.close_channel(main_channel)
+    message_center.send("goodbye")
+
+    try:
+        message = main_channel.get(timeout=0.001)
+        assert False, "We should have had an empty queue"
+
+    except queue.Empty:
+        pass
+
+
 
 if __name__ == "__main__":
+    test_channel_close()
     test_high_threading()

@@ -11,6 +11,8 @@ import json
 
 import requests
 
+from libernet.hash import IDENTIFIER_SIZE
+
 
 class Storage(threading.Thread):
     """Proxy storage class to remote server"""
@@ -26,13 +28,13 @@ class Storage(threading.Thread):
         self.daemon = False  # make sure we can send all data before shutting down
         self.start()
 
-    def __setitem__(self, key: str, item: bytes):
+    def __setitem__(self, key: str, value: bytes):
         """Queues data to be sent"""
         assert self.__running, "Proxy has been shutdown()"
-        self.__input.put((key, item))
+        self.__input.put((key, value))
         self.__event.clear()
 
-    def get(self, key, default=None) -> bytes:
+    def get(self, key: str, default: bytes = None) -> bytes:
         """Waits for all sent items to be flushed then requests data"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
@@ -45,17 +47,20 @@ class Storage(threading.Thread):
 
         return response.content
 
-    def like(self, key: str) -> list:
+    def like(self, key: str) -> dict:
         """gets a list of keys that are best-matches to given key"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
         parts = key.split("/")
         assert parts[0] == ""
         assert parts[1] == "sha256"
+        assert len(parts) == 3 or len(parts) == 4
+        assert len(parts) == 3 or parts[2] == "like"
+        assert len(parts[-1]) == IDENTIFIER_SIZE
 
         with self.__session_lock:
             response = self.__session.get(
-                f"{self.__base_url}/{parts[1]}/like/{parts[2]}"
+                f"{self.__base_url}/{parts[1]}/like/{parts[-1]}"
             )
 
         if response.status_code != 200:
