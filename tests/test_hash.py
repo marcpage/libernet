@@ -26,12 +26,27 @@ def test_identifier_match_score():
 
 
 def test_binary_from_identifier_first_nibble_zero():
+    old_validate = libernet.hash.VALIDATE_IDENTIFIER_SIZE
+    libernet.hash.VALIDATE_IDENTIFIER_SIZE = False
     libernet.hash.binary_from_identifier('16019dc1e2ba3d35e462012d4481cc165dd0a77a095f9123ffeeab0f5a5ad98')
-
+    libernet.hash.VALIDATE_IDENTIFIER_SIZE = old_validate
 
 def test_identifier_match_score_first_nibble_zero():
+    old_validate = libernet.hash.VALIDATE_IDENTIFIER_SIZE
+    libernet.hash.VALIDATE_IDENTIFIER_SIZE = False
     assert libernet.hash.identifier_match_score('f', 'f0') == 0
+    libernet.hash.VALIDATE_IDENTIFIER_SIZE = old_validate
 
 
 def test_identifier_match_score_first_byte_zero():
+    old_validate = libernet.hash.VALIDATE_IDENTIFIER_SIZE
+    libernet.hash.VALIDATE_IDENTIFIER_SIZE = False
     assert libernet.hash.identifier_match_score('ff', 'ff00') == 0
+    libernet.hash.VALIDATE_IDENTIFIER_SIZE = old_validate
+
+
+if __name__ == "__main__":
+    test_identifier_match_score()
+    test_binary_from_identifier_first_nibble_zero()
+    test_identifier_match_score_first_nibble_zero()
+    test_identifier_match_score_first_byte_zero()

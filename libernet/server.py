@@ -11,7 +11,7 @@ import json
 
 import flask
 
-from libernet.hash import identifier_match_score
+from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
 
 
 DATA_MIMETYPE = "application/octet-stream"
@@ -34,7 +34,7 @@ def create_app(args):
         similar = len(parts) == 2 and parts[0] == "like"
         assert len(parts) == 1 or similar
         identifier = parts[-1]
-        assert len(identifier) == 64
+        assert len(identifier) == IDENTIFIER_SIZE
         data_dir = os.path.join(storage_path, identifier[:3])
 
         if not similar:
@@ -49,7 +49,9 @@ def create_app(args):
             return "{}", 404
 
         potential = [
-            identifier[:3] + n for n in os.listdir(data_dir) if len(n) == 64 - 3
+            identifier[:3] + n
+            for n in os.listdir(data_dir)
+            if len(n) == IDENTIFIER_SIZE - 3
         ]
         potential.sort(
             key=lambda i: identifier_match_score(i, identifier), reverse=True
@@ -67,7 +69,7 @@ def create_app(args):
     @app.route("/sha256/<identifier>", methods=["PUT"])
     def put_sha256(identifier: str):
         """Return the requested data"""
-        assert len(identifier) == 64
+        assert len(identifier) == IDENTIFIER_SIZE
         data_path = os.path.join(storage_path, identifier[:3], identifier[3:])
 
         body = "data received"

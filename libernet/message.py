@@ -66,6 +66,11 @@ class Center(threading.Thread):
 
         return channel
 
+    def close_channel(self, channel:queue.Queue):
+        with self.__lock:
+            if channel in self.__output:
+                self.__output.remove(channel)
+
     def send(self, message):
         """Send a message to all recipients"""
         assert self.__running, "Message center shutdown, cannot send message"
