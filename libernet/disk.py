@@ -7,7 +7,7 @@
 import os
 import json
 
-from libernet.hash import IDENTIFIER_SIZE
+from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
 
 
 GROUP_NIBBLES = 3
@@ -15,24 +15,24 @@ MAX_LIKE = 100
 
 
 class Storage:
-    def __init__(self, path):
-        self.__path = os.path.join(path, 'data')
+    """data storage on disk as a dict-like object"""
 
-    @staticmethod
+    def __init__(self, path):
+        self.__path = os.path.join(path, "data")
+
     def __dir_of(self, identifier):
         directory = os.path.join(self.__path, identifier[:GROUP_NIBBLES])
         return directory
 
-    @staticmethod
     def __path_of(self, identifier):
-        return os.path.join(Storage.__dir_of(identifier), identifier[GROUP_NIBBLES:])
+        return os.path.join(self.__dir_of(identifier), identifier[GROUP_NIBBLES:])
 
     @staticmethod
-    def __parse_identifier(self, url):
+    def __parse_identifier(url):
         parts = url.split("/")
         assert len(parts) in [3, 4]
-        assert parts[0] == ''
-        assert parts[1] == 'sha256'
+        assert parts[0] == ""
+        assert parts[1] == "sha256"
         similar = len(parts) == 4 and parts[0] == "like"
         assert len(parts) == 3 or similar
         identifier = parts[-1]
@@ -40,32 +40,36 @@ class Storage:
         return identifier
 
     @staticmethod
-    def __like_file_path(self, identifier:str, data_dir:str):
-        return os.path.join(data_dir, identifier[GROUP_NIBBLES:] + '.like.json')
+    def __like_file_path(identifier: str, data_dir: str):
+        return os.path.join(data_dir, identifier[GROUP_NIBBLES:] + ".like.json")
 
-    def __load_like_cache(self, like_file:str):
-        if not os.path.isfile(like_file):
+    def __load_like_cache(self, like_path: str):
+        if not os.path.isfile(like_path):
             return {}
 
-        with open(like_file, 'r') as like_file:
+        with open(like_path, "r", encoding="utf-8") as like_file:
             return json.load(like_file)
 
-    def __save_like_cache(self, identifier:str, like_file:str, *likes:dict):
-        os.makedirs(os.path.split(like_file)[0], exist_ok=True)
-        merged = {k:v for l in likes for k,v in l.items()}
+    def __save_like_cache(self, identifier: str, like_path: str, *likes: dict):
+        os.makedirs(os.path.split(like_path)[0], exist_ok=True)
+        merged = {k: v for l in likes for k, v in l.items()}
         top = list(merged)
         top.sort(
-            key=lambda u:identifier_match_score(Storage.__parse_identifier(u), identifier),
-            reverse=True
+            key=lambda u: identifier_match_score(
+                Storage.__parse_identifier(u), identifier
+            ),
+            reverse=True,
         )
 
         for url in top[MAX_LIKE:]:
             del merged[url]  # remove everything after the top
 
-        with open(like_file, 'w') as like_file:
+        with open(like_path, "w", encoding="utf-8") as like_file:
             json.dump(merged, like_file)
 
-    def __find_like_files(self, identifier:str, data_dir:str):
+        return merged
+
+    def __find_like_files(self, identifier: str, data_dir: str):
         if not os.path.isdir(data_dir):
             return {}
 
@@ -74,37 +78,40 @@ class Storage:
             for n in os.listdir(data_dir)
             if len(n) == IDENTIFIER_SIZE - GROUP_NIBBLES
         ]
-        return {f"/sha256/{i}": os.path.getsize(Storage.__path_of(i))
-                for i in potential}
+        return {f"/sha256/{i}": os.path.getsize(self.__path_of(i)) for i in potential}
 
     def __setitem__(self, key: str, value: bytes):
-        assert not key.startswith('/sha256/like/')
+        assert not key.startswith("/sha256/like/")
         identifier = Storage.__parse_identifier(key)
-        path = Storage.__path_of(identifier)
-        os.makedirs(Storage.__dir_of(identifier), exist_ok=True)
+        path = self.__path_of(identifier)
+        os.makedirs(self.__dir_of(identifier), exist_ok=True)
 
         with open(path, "wb") as block_file:
             block_file.write(value)
 
-    def get(self, key:str, default:bytes=None) -> bytes:
-        assert not key.startswith('/sha256/like/')
-        path = Storage.__path_of(key)
+    def get(self, key: str, default: bytes = None) -> bytes:
+        """Get the data for a given path"""
+        assert not key.startswith("/sha256/like/")
+        path = self.__path_of(Storage.__parse_identifier(key))
 
         if not os.path.isfile(path):
-            return None
+            return default
 
-        with open(path, 'rb') as block_file:
+        with open(path, "rb") as block_file:
             return block_file.read()
 
-    def like(self, key: str, initial:dict=None) -> dict:
+    def like(self, key: str, initial: dict = None) -> dict:
+        """Gets list of identifiers that best match this one
+        initial - values to add to the cache
+        returns dictionary of urls to size of data on disk
+        """
         initial = {} if initial is None else initial
         identifier = Storage.__parse_identifier(key)
-        data_dir = Storage.__dir_of(identifier)
+        data_dir = self.__dir_of(identifier)
         like_path = Storage.__like_file_path(identifier, data_dir)
-        cached = self.__load_like_cache(like_file)
-        return self.__save_like_cache(identifier, like_file, initial, cached)
-
-
+        cached = self.__load_like_cache(like_path)
+        on_disk = self.__find_like_files(identifier, data_dir)
+        return self.__save_like_cache(identifier, like_path, initial, cached, on_disk)
 
     def __getitem__(self, key: str) -> bytes:
         """Just calls get() to get data from server, after send queue is flushed"""
@@ -116,4 +123,4 @@ class Storage:
         return result
 
     def __contains__(self, key: str) -> bool:
-        return os.path.isfile(Storage.__path_of(Storage.parse_identifier(key)))
+        return os.path.isfile(self.__path_of(Storage.__parse_identifier(key)))

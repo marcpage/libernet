@@ -9,6 +9,7 @@ import Crypto.Hash.SHA256
 IDENTIFIER_SIZE = 64
 VALIDATE_IDENTIFIER_SIZE = True
 
+
 def sha256_hasher(data):
     """sha256 hasher of data"""
     return Crypto.Hash.SHA256.new(data)
@@ -24,7 +25,9 @@ def sha256_data_identifier(data):
 
 def binary_from_identifier(identifier):
     """get the binary form of an identifier"""
-    assert not VALIDATE_IDENTIFIER_SIZE or len(identifier) == IDENTIFIER_SIZE, len(identifier)
+    assert not VALIDATE_IDENTIFIER_SIZE or len(identifier) == IDENTIFIER_SIZE, len(
+        identifier
+    )
     return bytes.fromhex(("" if len(identifier) % 2 == 0 else "0") + identifier)
 
 

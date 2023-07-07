@@ -34,7 +34,7 @@ class Storage(threading.Thread):
         self.__input.put((key, value))
         self.__event.clear()
 
-    def get(self, key:str, default:bytes=None) -> bytes:
+    def get(self, key: str, default: bytes = None) -> bytes:
         """Waits for all sent items to be flushed then requests data"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
