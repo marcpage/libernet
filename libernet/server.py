@@ -11,7 +11,6 @@ import json
 
 import flask
 
-from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
 from libernet.disk import Storage
 
 
@@ -21,15 +20,14 @@ DEFAULT_PORT = 8042
 DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
 
 
-def create_app(args):
+def create_app(storage: Storage):
     """Creates the Flask app"""
     app = flask.Flask(__name__)
-    storage = Storage(args.storage)
 
     @app.route("/sha256/<path:path>", methods=["GET"])
     def get_sha256(path: str):
         """Return the requested data"""
-        if not path.startswith('like/'):
+        if not path.startswith("like/"):
             contents = storage.get(f"/sha256/{path}")
 
             if contents is None:
@@ -40,7 +38,6 @@ def create_app(args):
             return response
 
         found = storage.like(f"/sha256/{path}")
-
         response = flask.Response(json.dumps(found), mimetype=JSON_MIMETYPE)
         response.status = 200 if len(found) > 0 else 404
         return response
@@ -60,7 +57,8 @@ def serve(args):  # NOT TESTED - no running server during tests
     os.makedirs(os.path.split(log_path)[0], exist_ok=True)
     log_level = logging.DEBUG if args.debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
-    app = create_app(args)
+    storage = Storage(args.storage)
+    app = create_app(storage)
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
 

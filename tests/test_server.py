@@ -18,6 +18,7 @@ import requests
 import libernet.server
 import libernet.disk
 
+from libernet.disk import Storage
 from libernet.hash import sha256_data_identifier, identifier_match_score
 
 
@@ -49,11 +50,9 @@ def test_app():
     libernet.disk.MAX_LIKE = 5
     port_to_use = 8086
     debug = False
-    args = SimpleNamespace(storage=None, debug=debug, port=port_to_use)
 
     with tempfile.TemporaryDirectory() as storage:
-        args.storage = storage
-        instance = libernet.server.create_app(args)
+        instance = libernet.server.create_app(Storage(storage))
         test_set = [
             b'',
             b'hello',
