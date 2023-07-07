@@ -6,6 +6,8 @@
 
 import os
 import json
+import random
+import threading
 
 from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
 
@@ -19,6 +21,7 @@ class Storage:
 
     def __init__(self, path):
         self.__path = os.path.join(path, "data")
+        self.__lock = threading.Lock()
 
     def __dir_of(self, identifier):
         directory = os.path.join(self.__path, identifier[:GROUP_NIBBLES])
@@ -26,6 +29,49 @@ class Storage:
 
     def __path_of(self, identifier):
         return os.path.join(self.__dir_of(identifier), identifier[GROUP_NIBBLES:])
+
+    def __safe_save(self, path: str, data, binary: bool):
+        """returns the contents of a temp file and then moves the temp file into place
+        if not binary it is assumed to be json
+        """
+        mode = "wb" if binary else "w"
+        encoding = None if binary else "utf-8"
+        basename, extension = os.path.splitext(path)
+
+        with self.__lock:
+            while True:
+                temp_path = basename + f"{random.randrange(0xffffffff):08x}" + extension
+
+                if not os.path.exists(temp_path):
+                    break
+
+            with open(temp_path, mode, encoding=encoding) as data_file:
+                if binary:
+                    data_file.write(data)
+                else:
+                    json.dump(data, data_file)
+
+            if os.path.isfile(path):
+                os.remove(path)
+
+            os.rename(temp_path, path)
+
+    def __read_file(self, path: str, binary: bool):
+        """returns the contents of a file
+        if not binary it is assumed to be json
+        """
+        mode = "rb" if binary else "r"
+        encoding = None if binary else "utf-8"
+
+        with self.__lock:
+            if not os.path.isfile(path):
+                return None
+
+            with open(path, mode, encoding=encoding) as data_file:
+                if binary:
+                    return data_file.read()
+
+                return json.load(data_file)
 
     @staticmethod
     def __parse_identifier(url):
@@ -44,11 +90,8 @@ class Storage:
         return os.path.join(data_dir, identifier[GROUP_NIBBLES:] + ".like.json")
 
     def __load_like_cache(self, like_path: str):
-        if not os.path.isfile(like_path):
-            return {}
-
-        with open(like_path, "r", encoding="utf-8") as like_file:
-            return json.load(like_file)
+        contents = self.__read_file(like_path, binary=False)
+        return {} if contents is None else contents
 
     def __save_like_cache(self, identifier: str, like_path: str, *likes: dict):
         os.makedirs(os.path.split(like_path)[0], exist_ok=True)
@@ -64,9 +107,7 @@ class Storage:
         for url in top[MAX_LIKE:]:
             del merged[url]  # remove everything after the top
 
-        with open(like_path, "w", encoding="utf-8") as like_file:
-            json.dump(merged, like_file)
-
+        self.__safe_save(like_path, merged, binary=False)
         return merged
 
     def __find_like_files(self, identifier: str, data_dir: str):
@@ -85,20 +126,14 @@ class Storage:
         identifier = Storage.__parse_identifier(key)
         path = self.__path_of(identifier)
         os.makedirs(self.__dir_of(identifier), exist_ok=True)
-
-        with open(path, "wb") as block_file:
-            block_file.write(value)
+        self.__safe_save(path, value, binary=True)
 
     def get(self, key: str, default: bytes = None) -> bytes:
         """Get the data for a given path"""
         assert not key.startswith("/sha256/like/")
         path = self.__path_of(Storage.__parse_identifier(key))
-
-        if not os.path.isfile(path):
-            return default
-
-        with open(path, "rb") as block_file:
-            return block_file.read()
+        contents = self.__read_file(path, binary=True)
+        return default if contents is None else contents
 
     def like(self, key: str, initial: dict = None) -> dict:
         """Gets list of identifiers that best match this one
