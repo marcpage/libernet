@@ -14,10 +14,13 @@ import Crypto.Signature.PKCS1_v1_5
 import libernet.hash
 
 
+BLOCK_SIZE = Crypto.Cipher.AES.block_size
+
+
 def aes_encrypt(key, data, init_vector=b"0" * Crypto.Cipher.AES.block_size):
     """encrypt"""
     cipher = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, init_vector)
-    padding_length = 16 - (len(data) % 16)
+    padding_length = BLOCK_SIZE - (len(data) % BLOCK_SIZE)
     padded = data + bytes([padding_length]) * padding_length
     return cipher.encrypt(padded)
 

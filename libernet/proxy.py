@@ -52,7 +52,7 @@ class Storage(threading.Thread):
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
         parts = key.split("/")
-        assert parts[0] == ""
+        assert parts[0] == "", parts
         assert parts[1] == "sha256"
         assert len(parts) == 3 or len(parts) == 4
         assert len(parts) == 3 or parts[2] == "like"

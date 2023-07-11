@@ -14,6 +14,8 @@ from libernet.hash import identifier_match_score
 
 
 MAX_BLOCK_SIZE = 1024 * 1024
+MATCH = 12
+COMPRESS_LEVEL = 9
 
 
 def address(url: str) -> str:
@@ -47,7 +49,7 @@ def __maybe_compress(data: bytes, encrypt) -> bytes:
     if encrypt and encrypt is not True:
         return data
 
-    compressed = zlib.compress(data, 9)
+    compressed = zlib.compress(data, COMPRESS_LEVEL)
     return compressed if len(compressed) <= len(data) else data
 
 
@@ -87,7 +89,9 @@ def __maybe_encrypt(
     )
 
 
-def store(data: bytes, storage, encrypt=True, similar=None, score=12) -> (str, bytes):
+def store(
+    data: bytes, storage, encrypt=True, similar=None, score=MATCH
+) -> (str, bytes):
     """prepares data, stores it, and returns url and processed data
     data - raw data to store
     storage - a dict-like object
@@ -98,7 +102,7 @@ def store(data: bytes, storage, encrypt=True, similar=None, score=12) -> (str, b
     similar - An identifier to make this similar to (padding to match)
     score - The number of bits that need to match the similar identifier
     """
-    assert len(data) <= MAX_BLOCK_SIZE, f"{len(data)} > {MAX_BLOCK_SIZE}: {data}"
+    assert len(data) <= MAX_BLOCK_SIZE, f"{len(data) - MAX_BLOCK_SIZE} bytes too big"
 
     while True:
         start_suffix, end_suffix = __padding_suffixes(similar, encrypt, score)
@@ -187,6 +191,14 @@ def unpack(url: str, data: bytes, was_similar=False) -> bytes:
     return uncompressed
 
 
-def fetch(url: str, storage, was_similar=False) -> bytes:
+def fetch(url: str, storage, was_similar=False, password=None) -> bytes:
     """request a block from storage"""
+
+    if password is not None:
+        parts = url.split("/")
+        assert len(parts) == 3
+        assert parts[0] == ""
+        assert parts[1] == "sha256"
+        url += f"/password/{sha256_data_identifier(password.encode('utf-8'))}"
+
     return unpack(url, storage.get(address(url)), was_similar)

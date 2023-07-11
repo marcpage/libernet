@@ -125,8 +125,11 @@ class Storage:
         assert not key.startswith("/sha256/like/")
         identifier = Storage.__parse_identifier(key)
         path = self.__path_of(identifier)
-        os.makedirs(self.__dir_of(identifier), exist_ok=True)
-        self.__safe_save(path, value, binary=True)
+
+        # if it already exists, don't rewrite it
+        if not os.path.isfile(path):  # ASSUME: contents are the same
+            os.makedirs(self.__dir_of(identifier), exist_ok=True)
+            self.__safe_save(path, value, binary=True)
 
     def get(self, key: str, default: bytes = None) -> bytes:
         """Get the data for a given path"""

@@ -12,10 +12,11 @@ import time
 import datetime
 
 import libernet.block
-
+from libernet.encrypt import BLOCK_SIZE
 
 MAX_BLOCK_SIZE = 1024 * 1024
-MAX_BUNDLE_SIZE = MAX_BLOCK_SIZE
+MAX_RAW_BLOCK_SIZE = MAX_BLOCK_SIZE - BLOCK_SIZE  # allow for encryption padding
+MAX_BUNDLE_SIZE = MAX_RAW_BLOCK_SIZE
 UTC_TIMEZONE = datetime.timezone(datetime.timedelta(0))
 TIMESTAMP_EPOCH = datetime.datetime(2001, 1, 1, tzinfo=UTC_TIMEZONE).timestamp()
 SAME_TIME_VARIANCE_IN_SECONDS = 0.000100  # 100 microseconds
@@ -34,13 +35,13 @@ SIZE = "size"
 URL = "url"
 
 
-def __create_timestamp(py_time=None):
+def create_timestamp(py_time=None):
     """Creates a timestamp (optionally from a python-epoch based time"""
     py_time = time.time() if py_time is None else py_time
     return py_time - TIMESTAMP_EPOCH
 
 
-def __convert_timestamp(timestamp):
+def convert_timestamp(timestamp):
     """Convert a timestamp back into python-epoch based time"""
     return timestamp + TIMESTAMP_EPOCH
 
@@ -49,7 +50,7 @@ def __set_mod_time(path: str, timestamp: float):
     """Sets the modification timestamp of a file"""
     file_info = os.stat(path)
     access_time_in_ns = int(file_info.st_atime * 1_000_000_000)
-    mod_time_in_ns = int(__convert_timestamp(timestamp) * 1_000_000_000)
+    mod_time_in_ns = int(convert_timestamp(timestamp) * 1_000_000_000)
     os.utime(path, ns=(access_time_in_ns, mod_time_in_ns))
     file_info = os.stat(path)
 
@@ -79,7 +80,7 @@ def __file_metadata_entry(full_path: str) -> dict:
     is_executable = (file_info.st_mode & stat.S_IXUSR) == stat.S_IXUSR
     description = {
         SIZE: file_info.st_size,
-        MODIFIED: __create_timestamp(file_info.st_mtime),
+        MODIFIED: create_timestamp(file_info.st_mtime),
     }
 
     if is_link:
@@ -103,7 +104,7 @@ def __file_contents(full_path: str, storage) -> dict:
 
     with open(full_path, READ_BINARY) as source_file:
         while True:
-            block = source_file.read(MAX_BLOCK_SIZE)
+            block = source_file.read(MAX_RAW_BLOCK_SIZE)
 
             if not block:
                 break
@@ -216,7 +217,7 @@ def __thin_bundle(raw: dict, storage, encrypt) -> str:
     bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
     raw[FILES] = {f: files[f] for f in bundle_filenames}
     bundle = __serialize_bundle(raw)
-    assert len(bundle) <= MAX_BUNDLE_SIZE, len(bundle)
+    assert len(bundle) <= MAX_BUNDLE_SIZE, f"{len(bundle) - MAX_BUNDLE_SIZE} too big"
 
     for file in bundle_filenames:
         del files[file]

@@ -3,6 +3,7 @@
 
 import libernet.block
 from libernet.hash import sha256_data_identifier, identifier_match_score
+from libernet.block import address
 
 
 def test_basic():
@@ -48,7 +49,7 @@ def test_password():
         assert duplicate == data.encode('utf-8'), f"{duplicate} vs {data.encode('utf-8')}"
 
         url, _ = libernet.block.store(data.encode('utf-8'), storage, encrypt=password, similar=similar, score=12)
-        duplicate = libernet.block.fetch(url, storage, was_similar=True)
+        duplicate = libernet.block.fetch(address(url), storage, was_similar=True, password=password)
         assert duplicate == data.encode('utf-8'), f"{duplicate} vs {data.encode('utf-8')}"
         assert identifier_match_score(url.split('/')[2], similar) >= 12, (url.split('/')[2], similar)
 
