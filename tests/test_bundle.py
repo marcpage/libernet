@@ -8,6 +8,13 @@ import time
 
 import libernet.bundle
 
+class FakeMessages:
+    def __init__(self):
+        self.messages = []
+
+    def send(self, message):
+        self.messages.append(message)
+
 
 def bundles_equal(b1, b2):
     assert len(b1.get('directories', [])) == len(b2.get('directories', [])), f"{b1.get('directories', [])} vs {b2.get('directories', [])}"
@@ -41,7 +48,9 @@ def makefile(path, contents):
 def test_basic():
     path = os.path.realpath('tests')
     storage = {}
-    url = libernet.bundle.create(path, storage)
+    messages=FakeMessages()
+    url = libernet.bundle.create(path, storage, messages=messages)
+    assert 'test_bundle.py' in [e[1] for e in messages.messages], messages.messages
     restored = libernet.bundle.inflate(url, storage)
     files = os.listdir('tests')
 
@@ -75,7 +84,9 @@ def test_file_metadata():
         os.chmod(execute_path, 0o777)
         makefile(readonly_execute_path, 'read only execute')
         os.chmod(readonly_execute_path, 0o555)
-        url = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'execute.txt' in [e[1] for e in messages.messages], messages.messages
 
     restored = libernet.bundle.inflate(url, storage)
     assert restored['directories']['empty dir'] is None
@@ -107,7 +118,9 @@ def test_large_bundle():
         for file_index in range(0,100):
             makefile(os.path.join(working_dir, f'file_{file_index}.txt'), f'file #{file_index}'*1000)
 
-        url = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file_7.txt' in [e[1] for e in messages.messages], messages.messages
 
     restored = libernet.bundle.inflate(url, storage)
     assert len(restored['files']) == 100, f"{len(restored['files'])} {', '.join(restored['files'])}"
@@ -128,7 +141,9 @@ def test_missing_blocks():
         for file_index in range(0,100):
             makefile(os.path.join(working_dir, f'file_{file_index}.txt'), f'file #{file_index}')
 
-        url = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file_7.txt' in [e[1] for e in messages.messages], messages.messages
 
     restored = libernet.bundle.inflate(url, storage)
     subbundle_identifiers = {k.split('/')[2] for k in storage}
@@ -168,11 +183,15 @@ def test_previous():
         file3_path = os.path.join(working_dir, 'file3.txt')
         makefile(file1_path, 'version 1')
         makefile(file3_path, 'version 3')
-        url1 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url1 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
         previous = libernet.bundle.inflate(url1, storage)
         makefile(file2_path, 'version 2')
         makefile(file3_path, 'version 4')
-        url2 = libernet.bundle.create(working_dir, storage, previous)
+        messages=FakeMessages()
+        url2 = libernet.bundle.create(working_dir, storage, previous, messages=messages)
+        assert 'file2.txt' in [e[1] for e in messages.messages], messages.messages
         current = libernet.bundle.inflate(url2, storage)
         previous_1_url = previous['files']['file1.txt']['contents'][0]['url']
         previous_3_url = previous['files']['file3.txt']['contents'][0]['url']
@@ -192,7 +211,9 @@ def test_unencrypted():
         file2_path = os.path.join(working_dir, 'file2.txt')
         makefile(file1_path, 'version 1')
         makefile(file2_path, 'version 2')
-        url = libernet.bundle.create(working_dir, storage, encrypt=False)
+        messages=FakeMessages()
+        url = libernet.bundle.create(working_dir, storage, encrypt=False, messages=messages)
+        assert 'file1.txt' in [e[1] for e in messages.messages], messages.messages
         assert len(url.split('/')) == 3, url
         restored = libernet.bundle.inflate(url, storage)
         assert len(restored['files']) == 2
@@ -230,10 +251,14 @@ def test_restore():
         os.chmod(file2_path, 0o444)  # readonly
         os.chmod(file3_path, 0o777)  # execute
         os.chmod(file4_path, 0o555)  # read only execute
-        url1 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url1 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
         missing = libernet.bundle.restore(url1, destination_dir, storage)
         assert not missing, missing
-        url2 = libernet.bundle.create(destination_dir, storage)
+        messages=FakeMessages()
+        url2 = libernet.bundle.create(destination_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
 
     restored1 = libernet.bundle.inflate(url1, storage)
     restored2 = libernet.bundle.inflate(url2, storage)
@@ -271,17 +296,25 @@ def test_restore_update():
         makefile(file1_path, "file 1")
         makefile(file2_path, "file 2")
         makefile(file3_path, "file 3")
-        url1 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url1 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
         missing = libernet.bundle.restore(url1, destination_dir, storage)
         assert not missing, missing
-        url2 = libernet.bundle.create(destination_dir, storage)
+        messages=FakeMessages()
+        url2 = libernet.bundle.create(destination_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
         makefile(file4_path, "file 4")
         os.remove(file3_path)
         makefile(file3_path, "file 5")
-        url3 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url3 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
         missing = libernet.bundle.restore(url3, destination_dir, storage)
         assert not missing, missing
-        url4 = libernet.bundle.create(destination_dir, storage)
+        messages=FakeMessages()
+        url4 = libernet.bundle.create(destination_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
 
     restored1 = libernet.bundle.inflate(url1, storage)
     restored2 = libernet.bundle.inflate(url2, storage)
@@ -307,17 +340,23 @@ def test_restore_update_2():
         os.makedirs(os.path.join(destination_dir, "dirZ"), exist_ok=True)
         makefile(os.path.join(destination_dir, "dirY", "fileZ.txt"), "file Z")
 
-        url1 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url1 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file1.txt' in [e[1] for e in messages.messages], messages.messages
         missing = libernet.bundle.restore(url1, destination_dir, storage)
         assert not missing, missing
-        url2 = libernet.bundle.create(destination_dir, storage)
+        messages=FakeMessages()
+        url2 = libernet.bundle.create(destination_dir, storage, messages=messages)
+        assert 'file1.txt' in [e[1] for e in messages.messages], messages.messages
 
         os.rmdir(dir1_path)
         os.remove(file1_path)
         os.makedirs(dir2_path, exist_ok=True)
         makefile(file2_path, "file 2")
 
-        url3 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url3 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'dirA/file2.txt' in [e[1] for e in messages.messages], messages.messages
         missing = libernet.bundle.restore(url3, destination_dir, storage)
         assert not missing, missing
         url4 = libernet.bundle.create(destination_dir, storage)
@@ -345,10 +384,16 @@ def test_date_modified():
         makefile(file3_path, "file #3")
         makefile(file4_path, "file #4")
         makefile(file5_path, "file #5")
-        url1 = libernet.bundle.create(working_dir, storage)
-        url2 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url1 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
+        messages=FakeMessages()
+        url2 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
         time.sleep(0.500)
-        url3 = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url3 = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
 
     bundle1 = libernet.bundle.inflate(url1, storage)
     bundle2 = libernet.bundle.inflate(url2, storage)
@@ -371,7 +416,9 @@ def test_restore_missing_blocks():
         makefile(file3_path, "file #3")
         makefile(file4_path, "file #4")
         makefile(file5_path, "file #5")
-        url = libernet.bundle.create(working_dir, storage)
+        messages=FakeMessages()
+        url = libernet.bundle.create(working_dir, storage, messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
 
     info = libernet.bundle.inflate(url, storage)
     root_identifier = url.split('/')[2]
@@ -409,8 +456,10 @@ def test_extra_keys():
         makefile(file3_path, "file #3")
         makefile(file4_path, "file #4")
         makefile(file5_path, "file #5")
+        messages=FakeMessages()
         url = libernet.bundle.create(working_dir, storage,
-                    index='file1.txt', mime_txt='text/plain', mime='text/plain')
+                    index='file1.txt', mime_txt='text/plain', mime='text/plain', messages=messages)
+        assert 'file3.txt' in [e[1] for e in messages.messages], messages.messages
 
     info = libernet.bundle.inflate(url, storage)
     assert info['index'] == 'file1.txt'

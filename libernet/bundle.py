@@ -22,7 +22,7 @@ from queue import Queue
 import libernet.block
 from libernet.encrypt import BLOCK_SIZE
 
-FILE_THREADS = 4
+FILE_THREADS = 1  # 4
 MAX_BLOCK_SIZE = 1024 * 1024
 MAX_RAW_BLOCK_SIZE = MAX_BLOCK_SIZE - BLOCK_SIZE  # allow for encryption padding
 MAX_BUNDLE_SIZE = MAX_RAW_BLOCK_SIZE
@@ -147,10 +147,15 @@ def __file_entry(
     prexisting_contents = prexisting[CONTENTS] if prexisting else None
     entry = __file_metadata_entry(file_path)
     size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
-    time_difference = prexisting[MODIFIED] if prexisting else 0 - entry[MODIFIED]
+    prexisting_modified = prexisting[MODIFIED] if prexisting else 0
+    time_difference = prexisting_modified - entry[MODIFIED]
     unmodified = size_matches and abs(time_difference) < SAME_TIME_VARIANCE_IN_SECONDS
     new_contents = None if unmodified else __file_contents(file_path, storage, messages)
     entry.update({CONTENTS: prexisting_contents} if unmodified else new_contents)
+
+    if messages and not unmodified:
+        messages.send(("file", relative_path))
+
     return relative_path, entry
 
 
@@ -171,6 +176,7 @@ def __list_directory(path: str) -> (list, list):
     return file_list, empty_dirs
 
 
+# pylint: disable=too-many-arguments
 def __file_processing_thread(
     source_path: str,
     previous: dict,
@@ -185,9 +191,6 @@ def __file_processing_thread(
         if file is None:
             in_queue.put(None)
             break
-
-        if messages:
-            messages.send(("file", file))
 
         file_path = os.path.join(source_path, file)
         out_queue.put(__file_entry(file_path, file, previous, storage, messages))
@@ -233,35 +236,9 @@ def __create_raw_bundle(source_path: str, storage, previous: dict, messages) -> 
     return description
 
 
-def old__create_raw_bundle(source_path: str, storage, previous: dict, messages) -> dict:
-    """Given a path to a directory, create a full, raw bundle"""
-    description = {FILES: {}}
-    file_list, empty_dirs = __list_directory(source_path)
-
-    for file in file_list:
-        if messages:
-            messages.send(("file", file))
-
-        file_path = os.path.join(source_path, file)
-        description[FILES].update(
-            dict([__file_entry(file_path, file, previous, storage, messages)])
-        )
-
-    description[DIRECTORIES] = {
-        d: os.readlink(os.path.join(source_path, d))
-        if os.path.islink(os.path.join(source_path, d))
-        else None
-        for d in empty_dirs
-    }
-
-    if not description[DIRECTORIES]:
-        del description[DIRECTORIES]
-
-    return description
-
-
 def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> list:
     """Get subset of files for the bundle to prevent being too large"""
+    # reverse=True - put the big rocks on first
     filenames = sorted(files, key=lambda f: len(files[f][CONTENTS]), reverse=True)
     bundle_blocks = 0
     bundle_names = []
@@ -280,7 +257,6 @@ def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> lis
 
 def __thin_bundle(raw: dict, storage, encrypt) -> str:
     """for bundles that are too big, create sub-bundles"""
-    # TODO: Consider filling sub-bundles first so we get more files in top-level bundle
     raw[BUNDLES] = []  # prep for sub-bundles
     bundle = __serialize_bundle(raw)
     files_size = len(__serialize_bundle(raw[FILES]))
@@ -291,31 +267,21 @@ def __thin_bundle(raw: dict, storage, encrypt) -> str:
     subbundle_count = bundle_count - 1  # main bundle should have some files
     bundles_estimate = int(subbundle_count * size_per_block)  # bundle id ~ block size
     overhead = len(bundle) - files_size + bundles_estimate
-    print(f"size_per_block = {size_per_block}")
-    print(
-        f"estimated maximum file size = {(MAX_BUNDLE_SIZE - overhead) / size_per_block / 1024} GiB"
-    )
-    print(f"size_per_block = {size_per_block}")
-    print(f"estimated maximum sub-bundle count = {MAX_BUNDLE_SIZE / size_per_block}")
     files = raw[FILES]  # store off the original list of files and their contents
     bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
     raw[FILES] = {
         f: files[f] for f in bundle_filenames
     }  # put files in top-level bundle
-    print(f"top-level bundle has {len(bundle_filenames)} files")
     bundle = __serialize_bundle(raw)
     assert len(bundle) <= MAX_BUNDLE_SIZE, f"{len(bundle) - MAX_BUNDLE_SIZE} too big"
+    overhead = len(__serialize_bundle({FILES: {}}))
 
     for file in bundle_filenames:
         del files[file]  # we've put these files in the top-level bundle
 
     while len(files) > 0:  # put the rest of the files in sub-bundles
-        subraw = {FILES: {}}
-        overhead = len(__serialize_bundle(subraw))
         bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
-        print(f"sub-bundle has {len(bundle_filenames)} files")
-        subraw[FILES] = {f: files[f] for f in bundle_filenames}
-        subbundle = __serialize_bundle(subraw)
+        subbundle = __serialize_bundle({FILES: {f: files[f] for f in bundle_filenames}})
         assert (
             len(subbundle) <= MAX_BUNDLE_SIZE
         ), f"{len(subbundle) - MAX_BUNDLE_SIZE} too big"
