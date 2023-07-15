@@ -2,6 +2,12 @@
 
 
 """ Bundle of files
+
+size_per_block = 226.42722101388657
+estimated maximum file size = 4.520250736271807 GiB
+size_per_block = 226.42722101388657
+estimated maximum sub-bundle count = 4630.891971843318
+
 """
 
 
@@ -10,10 +16,13 @@ import stat
 import os
 import time
 import datetime
+import threading
+from queue import Queue
 
 import libernet.block
 from libernet.encrypt import BLOCK_SIZE
 
+FILE_THREADS = 4
 MAX_BLOCK_SIZE = 1024 * 1024
 MAX_RAW_BLOCK_SIZE = MAX_BLOCK_SIZE - BLOCK_SIZE  # allow for encryption padding
 MAX_BUNDLE_SIZE = MAX_RAW_BLOCK_SIZE
@@ -98,7 +107,7 @@ def __file_metadata_entry(full_path: str) -> dict:
     return description
 
 
-def __file_contents(full_path: str, storage) -> dict:
+def __file_contents(full_path: str, storage, messages) -> dict:
     """given the path to a file, create the bundle entry"""
     description = {CONTENTS: []}
 
@@ -108,6 +117,9 @@ def __file_contents(full_path: str, storage) -> dict:
 
             if not block:
                 break
+
+            if messages:
+                messages.send(("data", len(block)))
 
             url, _ = libernet.block.store(block, storage)
             description[CONTENTS].append({URL: url, SIZE: len(block)})
@@ -128,7 +140,7 @@ def __deserialize_bundle(block):
 
 
 def __file_entry(
-    file_path: str, relative_path: str, previous: dict, storage
+    file_path: str, relative_path: str, previous: dict, storage, messages
 ) -> (str, dict):
     """returns relative_path, file_entry"""
     prexisting = previous[FILES].get(relative_path, None) if previous else None
@@ -137,7 +149,7 @@ def __file_entry(
     size_matches = prexisting and prexisting[SIZE] == entry[SIZE]
     time_difference = prexisting[MODIFIED] if prexisting else 0 - entry[MODIFIED]
     unmodified = size_matches and abs(time_difference) < SAME_TIME_VARIANCE_IN_SECONDS
-    new_contents = None if unmodified else __file_contents(file_path, storage)
+    new_contents = None if unmodified else __file_contents(file_path, storage, messages)
     entry.update({CONTENTS: prexisting_contents} if unmodified else new_contents)
     return relative_path, entry
 
@@ -159,15 +171,80 @@ def __list_directory(path: str) -> (list, list):
     return file_list, empty_dirs
 
 
-def __create_raw_bundle(source_path: str, storage, previous: dict) -> dict:
+def __file_processing_thread(
+    source_path: str,
+    previous: dict,
+    storage,
+    messages,
+    in_queue: Queue,
+    out_queue: Queue,
+):
+    while True:
+        file = in_queue.get()
+
+        if file is None:
+            in_queue.put(None)
+            break
+
+        if messages:
+            messages.send(("file", file))
+
+        file_path = os.path.join(source_path, file)
+        out_queue.put(__file_entry(file_path, file, previous, storage, messages))
+
+
+def __create_raw_bundle(source_path: str, storage, previous: dict, messages) -> dict:
+    """Given a path to a directory, create a full, raw bundle"""
+    description = {FILES: {}}
+    file_list, empty_dirs = __list_directory(source_path)
+    path_queue = Queue()
+    info_queue = Queue()
+
+    threads = [
+        threading.Thread(
+            target=__file_processing_thread,
+            args=(source_path, previous, storage, messages, path_queue, info_queue),
+        )
+        for _ in range(0, FILE_THREADS)
+    ]
+
+    for thread in threads:
+        thread.start()
+
+    for file in file_list:
+        path_queue.put(file)
+
+    path_queue.put(None)
+
+    for _ in file_list:
+        entry = info_queue.get()
+        description[FILES].update(dict([entry]))
+
+    description[DIRECTORIES] = {
+        d: os.readlink(os.path.join(source_path, d))
+        if os.path.islink(os.path.join(source_path, d))
+        else None
+        for d in empty_dirs
+    }
+
+    if not description[DIRECTORIES]:
+        del description[DIRECTORIES]
+
+    return description
+
+
+def old__create_raw_bundle(source_path: str, storage, previous: dict, messages) -> dict:
     """Given a path to a directory, create a full, raw bundle"""
     description = {FILES: {}}
     file_list, empty_dirs = __list_directory(source_path)
 
     for file in file_list:
+        if messages:
+            messages.send(("file", file))
+
         file_path = os.path.join(source_path, file)
         description[FILES].update(
-            dict([__file_entry(file_path, file, previous, storage)])
+            dict([__file_entry(file_path, file, previous, storage, messages)])
         )
 
     description[DIRECTORIES] = {
@@ -192,43 +269,56 @@ def __files_for_bundle(overhead: int, size_per_block: float, files: dict) -> lis
     for name in filenames:  # most blocks to least blocks
         additional_blocks = len(files[name][CONTENTS])
         blocks_size = (bundle_blocks + additional_blocks) * size_per_block
-        new_size = blocks_size + overhead
+        new_size = blocks_size + overhead + sum(len(n) for n in bundle_names)
 
-        if new_size >= MAX_BUNDLE_SIZE:
-            break
-
-        bundle_blocks += additional_blocks
-        bundle_names.append(name)
+        if new_size < MAX_BUNDLE_SIZE:  # add files that will fit in a sub-bundle
+            bundle_blocks += additional_blocks
+            bundle_names.append(name)
 
     return bundle_names
 
 
 def __thin_bundle(raw: dict, storage, encrypt) -> str:
     """for bundles that are too big, create sub-bundles"""
-    raw[BUNDLES] = []
+    # TODO: Consider filling sub-bundles first so we get more files in top-level bundle
+    raw[BUNDLES] = []  # prep for sub-bundles
     bundle = __serialize_bundle(raw)
     files_size = len(__serialize_bundle(raw[FILES]))
     size_per_block = files_size / sum(
         len(raw[FILES][f].get(CONTENTS, [])) for f in raw[FILES]
+    )  # how big are each of the file blocks (conservative)
+    bundle_count = (len(bundle) - 1) // MAX_BUNDLE_SIZE + 1
+    subbundle_count = bundle_count - 1  # main bundle should have some files
+    bundles_estimate = int(subbundle_count * size_per_block)  # bundle id ~ block size
+    overhead = len(bundle) - files_size + bundles_estimate
+    print(f"size_per_block = {size_per_block}")
+    print(
+        f"estimated maximum file size = {(MAX_BUNDLE_SIZE - overhead) / size_per_block / 1024} GiB"
     )
-    subbundle_count = ((len(bundle) - 1) // MAX_BUNDLE_SIZE + 1) - 1
-    overhead = len(bundle) - files_size + int(subbundle_count * size_per_block)
-    files = raw[FILES]
+    print(f"size_per_block = {size_per_block}")
+    print(f"estimated maximum sub-bundle count = {MAX_BUNDLE_SIZE / size_per_block}")
+    files = raw[FILES]  # store off the original list of files and their contents
     bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
-    raw[FILES] = {f: files[f] for f in bundle_filenames}
+    raw[FILES] = {
+        f: files[f] for f in bundle_filenames
+    }  # put files in top-level bundle
+    print(f"top-level bundle has {len(bundle_filenames)} files")
     bundle = __serialize_bundle(raw)
     assert len(bundle) <= MAX_BUNDLE_SIZE, f"{len(bundle) - MAX_BUNDLE_SIZE} too big"
 
     for file in bundle_filenames:
-        del files[file]
+        del files[file]  # we've put these files in the top-level bundle
 
-    while len(files) > 0:
+    while len(files) > 0:  # put the rest of the files in sub-bundles
         subraw = {FILES: {}}
         overhead = len(__serialize_bundle(subraw))
         bundle_filenames = __files_for_bundle(overhead, size_per_block, files)
+        print(f"sub-bundle has {len(bundle_filenames)} files")
         subraw[FILES] = {f: files[f] for f in bundle_filenames}
         subbundle = __serialize_bundle(subraw)
-        assert len(subbundle) <= MAX_BUNDLE_SIZE, len(subbundle)
+        assert (
+            len(subbundle) <= MAX_BUNDLE_SIZE
+        ), f"{len(subbundle) - MAX_BUNDLE_SIZE} too big"
         url, _ = libernet.block.store(subbundle, storage)
         raw[BUNDLES].append(url)
         bundle = __serialize_bundle(raw)
@@ -241,15 +331,17 @@ def __thin_bundle(raw: dict, storage, encrypt) -> str:
     return url
 
 
-def create(path: str, storage, previous: dict = None, encrypt=True, **kwargs) -> str:
+def create(
+    path: str, storage, previous: dict = None, encrypt=True, messages=None, **args
+) -> str:
     """stores a bundle from path in storage and returns the url
     storage - an object that can be called with put((block_url, block_data))
     previous - a bundle dictionary for optimization, see inflate()
-    kwargs - added to the bundle description
+    args - added to the bundle description
     """
     # TODO: support providing mime types  # pylint: disable=fixme
-    raw = __create_raw_bundle(path, storage, previous)
-    raw.update(kwargs)
+    raw = __create_raw_bundle(path, storage, previous, messages)
+    raw.update(args)
     bundle = __serialize_bundle(raw)
 
     if len(bundle) > MAX_BUNDLE_SIZE:

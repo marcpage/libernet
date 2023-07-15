@@ -40,7 +40,9 @@ class Storage:
 
         with self.__lock:
             while True:
-                temp_path = basename + f"{random.randrange(0xffffffff):08x}" + extension
+                temp_path = (
+                    basename + f"_{random.randrange(0xffffffff):08x}" + extension
+                )
 
                 if not os.path.exists(temp_path):
                     break
@@ -126,10 +128,9 @@ class Storage:
         identifier = Storage.__parse_identifier(key)
         path = self.__path_of(identifier)
 
-        # if it already exists, don't rewrite it
-        if not os.path.isfile(path):  # ASSUME: contents are the same
-            os.makedirs(self.__dir_of(identifier), exist_ok=True)
-            self.__safe_save(path, value, binary=True)
+        # we must overwrite every time because previous copy may be corrupt
+        os.makedirs(self.__dir_of(identifier), exist_ok=True)
+        self.__safe_save(path, value, binary=True)
 
     def get(self, key: str, default: bytes = None) -> bytes:
         """Get the data for a given path"""
