@@ -42,6 +42,7 @@ KEY_USER = "username"
 ONE_MONTH_IN_SECONDS = 365 * 24 * 60 * 60 / 12
 USER_INPUT = input
 PASSWORD_INPUT = getpass
+PROGRESS_UPDATE_PERIOD_IN_SECONDS = 0.500  # 500 milliseconds
 
 # keys
 TYPE = "type"
@@ -241,13 +242,13 @@ def __save_backup(args, settings: dict, proxy):
 def __list(settings: dict, args):
     sources = settings.get(BACKUP, {}).get(args.machine, {})
 
-    if not sources:  # NOT TESTED
+    if not sources:
         print("No sources set to backup")
         print("Try `add --source ...`")
         return
 
     for path in sources:
-        if sources[path] is None:  # NOT TESTED
+        if sources[path] is None:
             print(f"NOT BACKED UP: {path}")
         else:
             print(f"{path}")  # TODO: print backup timestamp  # pylint: disable=fixme
@@ -260,7 +261,7 @@ def __backup(settings: dict, proxy, args, message_center) -> bool:
     for source in sources:
         message_center.send(("source", source))
 
-        if not os.path.isdir(source):  # NOT TESTED
+        if not os.path.isdir(source):
             print(f"Directory not found: {source}")
             continue
 
@@ -290,18 +291,16 @@ def __progress(message_center):
 
     while message_center.active():
         try:
-            message = channel.get(timeout=0.500)
+            message = channel.get(timeout=PROGRESS_UPDATE_PERIOD_IN_SECONDS)
 
-        except queue.Empty:  # NOT TESTED
+        except queue.Empty:
             continue
 
         if message is None:
             continue
 
         if message[0] == "source":
-            if need_newline:  # NOT TESTED
-                sys.stderr.write("\n")
-
+            sys.stderr.write("\n" if need_newline else "")
             sys.stderr.write(message[1] + "\n")
             need_newline = False
             last_file = None
@@ -311,19 +310,15 @@ def __progress(message_center):
             total_bytes += message[1]
 
         elif message[0] == "file":
-            if need_newline:  # NOT TESTED
-                sys.stderr.write("\n")
-
+            sys.stderr.write("\n" if need_newline else "")
             file_count += 1
             last_file = message[1]
             need_newline = False
 
-        if time.time() - last_update > 0.500:  # NOT TESTED
-            if last_file != last_printed_file:
-                if need_newline:
-                    sys.stderr.write("\n")
-                    need_newline = False
-
+        if time.time() - last_update > PROGRESS_UPDATE_PERIOD_IN_SECONDS:
+            if last_file != last_printed_file:  # NOT TESTED
+                sys.stderr.write("\n" if need_newline else "")
+                need_newline = False
                 sys.stderr.write(f"\t {last_file}\n")
                 last_printed_file = last_file
 
@@ -338,8 +333,7 @@ def __progress(message_center):
             sys.stderr.write(f"\t {file_info} {data_info}")
             need_newline = True
 
-    if need_newline:  # NOT TESTED
-        sys.stderr.write("\n")
+    sys.stderr.write("\n" if need_newline else "")
 
 
 def main(args, proxy=None):

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 
 
+import os
 import time
 import pprint
+
 from types import SimpleNamespace
 from random import randbytes
+from tempfile import TemporaryDirectory
 
 import libernet.block
 import libernet.backup
 import libernet.disk
+
 from libernet.backup import ENV_USER, ENV_PASS, KEY_SERVICE, KEY_USER
 from libernet.hash import sha256_data_identifier
 
@@ -75,7 +79,7 @@ def test_arg_processor():
     environment={}
     keychain = Keyring()
 
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=['libernet', 'tests'], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
     assert args.user == 'John'
     assert args.passphrase == 'Setec Astronomy'
     args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
@@ -235,29 +239,30 @@ def test_arg_processor():
 
 
 def test_main():
+    update_period = libernet.backup.PROGRESS_UPDATE_PERIOD_IN_SECONDS
+    libernet.backup.PROGRESS_UPDATE_PERIOD_IN_SECONDS = 0.100
+
     proxy = Store()
     other = Store()
-    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
-    print(f"{'='*40} adding first time {'='*40}")
-    libernet.backup.main(add_args, proxy)
-    print(f"{'='*40} adding second time {'='*40}")
-    libernet.backup.main(add_args, proxy)
-    print(f"{'='*40} done {'='*40}")
-    libernet.backup.main(add_args, other)
-    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
-    print(f"{'='*40} backup B1 {'='*40}")
-    libernet.backup.main(backup_args, other)
-    print(f"{'='*40} backup A1 {'='*40}")
-    libernet.backup.main(backup_args, proxy)
-    print(f"{'='*40} backup B2 {'='*40}")
-    libernet.backup.main(backup_args, other)
-    print(f"{'='*40} backup A2 {'='*40}")
-    libernet.backup.main(backup_args, proxy)
-    print(f"{'='*40} merging {'='*40}")
-    proxy.data.update(other.data)  # simulate backing up multiple machines and merging them
-    print(f"{'='*40} backup A3 {'='*40}")
-    libernet.backup.main(add_args, proxy)
-    print(f"{'='*40} Done {'='*40}")
+
+    with TemporaryDirectory() as working_dir:
+        for file_index in range(1, 10):
+            with open(os.path.join(working_dir, f'big{file_index}.bin'), 'wb') as big_file:
+                big_file.write(randbytes(2 * 1024 * 1024))  # 2 MiB file of random data
+
+        add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet', 'tests', working_dir], yes=True)
+        libernet.backup.main(add_args, proxy)
+        libernet.backup.main(add_args, proxy)
+        libernet.backup.main(add_args, other)
+        backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+        libernet.backup.main(backup_args, other)
+        libernet.backup.main(backup_args, proxy)
+        libernet.backup.main(backup_args, other)
+        libernet.backup.main(backup_args, proxy)
+        proxy.data.update(other.data)  # simulate backing up multiple machines and merging them
+        libernet.backup.main(add_args, proxy)
+
+    libernet.backup.PROGRESS_UPDATE_PERIOD_IN_SECONDS = update_period
 
 
 def test_random_data():
@@ -281,7 +286,6 @@ def test_random_data():
 
     # make a "similar" block to every block (including the backup settings) with bad data
     for testset in test_data:
-        print(f"testset = {testset}")
         libernet.block.store(testset, proxy, encrypt='Setec Astronomy', similar=match_identifier)
         libernet.block.store(testset, proxy, encrypt='bad password', similar=match_identifier)
 
@@ -301,11 +305,13 @@ def test_add_remove():
 
 def test_list():
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
-    libernet.backup.main(add_args, proxy)
-    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
-    libernet.backup.main(backup_args, proxy)
     list_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='list', source=[], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    libernet.backup.main(list_args, proxy)
+    libernet.backup.main(add_args, proxy)
+    libernet.backup.main(list_args, proxy)
+    libernet.backup.main(backup_args, proxy)
     libernet.backup.main(list_args, proxy)
 
 
@@ -356,15 +362,28 @@ def test_max_like():
     libernet.disk.MAX_LIKE = max_like
 
 
+def test_no_dir():
+    proxy = Store()
+    list_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='list', source=[], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['xyz_does-not-exist-xyz'], yes=True)
+    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    libernet.backup.main(list_args, proxy)
+    libernet.backup.main(add_args, proxy)
+    libernet.backup.main(list_args, proxy)
+    libernet.backup.main(backup_args, proxy)
+    libernet.backup.main(list_args, proxy)
+
+
 if __name__ == "__main__":
-    test_max_like()
-    """
     test_main()
+    """
+    test_arg_parser()
     test_arg_processor()
     test_random_data()
     test_add_remove()
     test_list()
-    test_input()
     test_no()
-    test_arg_parser()
-    """
+    test_input()
+    test_max_like()
+    test_no_dir()
+"""
