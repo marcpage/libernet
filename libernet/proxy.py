@@ -11,6 +11,7 @@ import json
 
 import requests
 
+import libernet.url
 from libernet.hash import IDENTIFIER_SIZE
 
 
@@ -51,16 +52,11 @@ class Storage(threading.Thread):
         """gets a list of keys that are best-matches to given key"""
         assert self.__running, "Proxy has been shutdown()"
         self.__event.wait()  # wait for all sent items to be flushed
-        parts = key.split("/")
-        assert parts[0] == "", parts
-        assert parts[1] == "sha256"
-        assert len(parts) == 3 or len(parts) == 4
-        assert len(parts) == 3 or parts[2] == "like"
-        assert len(parts[-1]) == IDENTIFIER_SIZE
+        identifier, _, _, _ = libernet.url.parse(key)
 
         with self.__session_lock:
             response = self.__session.get(
-                f"{self.__base_url}/{parts[1]}/like/{parts[-1]}"
+                f"{self.__base_url}{libernet.url.for_data_block(identifier, like=True)}"
             )
 
         if response.status_code != 200:
