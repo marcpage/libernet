@@ -22,12 +22,12 @@ import libernet.proxy
 import libernet.bundle
 import libernet.block
 import libernet.message
+import libernet.disk
 
 from libernet.server import DEFAULT_PORT
-from libernet.disk import MAX_LIKE
 from libernet.hash import sha256_data_identifier, identifier_match_score
 from libernet.bundle import create_timestamp
-from libernet.block import MATCH, COMPRESS_LEVEL
+from libernet.block import address, MATCH, COMPRESS_LEVEL
 
 
 DEFAULT_SERVER = "localhost"
@@ -230,23 +230,25 @@ def __remove(settings: dict, args) -> bool:
     return changed
 
 
-def __target_match_score(similar_identifier: str, proxy) -> int:
+def target_match_score(similar_identifier: str, proxy) -> int:
+    print(f"target_match_score({similar_identifier}, proxy)")
     existing = proxy.like((f"/sha256/{similar_identifier}"))
+    print(f"\t existing #{len(existing)} = {existing} vs {libernet.disk.MAX_LIKE}")
 
-    if len(existing) < MAX_LIKE:
+    if len(existing) < libernet.disk.MAX_LIKE:
         return MATCH
 
     # NOT TESTED
-    print(f"__target_match_score({similar_identifier}, proxy)")
-    print(f"\t EXISTING (#{len(existing)} vs {MAX_LIKE}): {', '.join(existing)}")
+    print(f"target_match_score({similar_identifier}, proxy)")
+    print(f"\t EXISTING (#{len(existing)} vs {libernet.disk.MAX_LIKE}): {', '.join(existing)}")
     print(
         "\t matches = "
-        + f"""{','.join(sorted(identifier_match_score(i, similar_identifier)
+        + f"""{','.join(sorted(identifier_match_score(address(i), similar_identifier)
                         for i in existing))}"""
     )
     print(
         "\t min = "
-        + f"""{min(identifier_match_score(i, similar_identifier)
+        + f"""{min(identifier_match_score(address(i), similar_identifier)
                         for i in existing) + 1}"""
     )
     return min(identifier_match_score(i, similar_identifier) for i in existing) + 1
@@ -259,7 +261,7 @@ def __save_backup(args, settings: dict, proxy):
         raw, COMPRESS_LEVEL
     )  # password, so no natural compression
     similar = get_similar_identifier(args)
-    score = __target_match_score(similar, proxy)
+    score = target_match_score(similar, proxy)
     libernet.block.store(
         compressed, proxy, encrypt=args.password, similar=similar, score=score
     )

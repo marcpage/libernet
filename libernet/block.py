@@ -10,7 +10,7 @@ from random import randbytes
 
 from libernet.encrypt import aes_encrypt, aes_decrypt
 from libernet.hash import sha256_data_identifier, binary_from_identifier
-from libernet.hash import identifier_match_score
+from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
 
 
 MAX_BLOCK_SIZE = 1024 * 1024
@@ -24,6 +24,21 @@ def address(url: str) -> str:
     assert len(parts) >= 3, parts
     assert parts[1] == "sha256", parts
     return f"/sha256/{parts[2]}"
+
+
+def parse_identifier(url:str) -> (str, str, str):
+    parts = url.split("/")
+    assert len(parts) in [3, 5]
+    assert parts[0] == ""
+    assert parts[1] == "sha256"
+    identifier = parts[2]
+    assert len(identifier) == IDENTIFIER_SIZE
+    encrypted = len(parts) == 5 and parts[3] in ("like", "aes256")
+    similar = len(parts) == 5 and parts[3] == "like"
+    assert len(parts) == 3 or encrypted, f"{encrypted} {parts}"
+    key = parts[4] if encrypted else None
+    assert key is None or len(key) == IDENTIFIER_SIZE
+    return (identifier, key, identifier if key is None else key if not similar else None)
 
 
 def __padding_suffixes(similar: str, encrypt, score: int) -> str:

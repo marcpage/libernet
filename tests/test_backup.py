@@ -4,10 +4,14 @@
 import time
 import pprint
 from types import SimpleNamespace
+from random import randbytes
 
 import libernet.block
 import libernet.backup
+import libernet.disk
 from libernet.backup import ENV_USER, ENV_PASS, KEY_SERVICE, KEY_USER
+from libernet.hash import sha256_data_identifier
+
 
 class Keyring:
     def __init__(self):
@@ -332,7 +336,27 @@ def test_input():
     libernet.backup.USER_INPUT = user_input
 
 
+def test_max_like():
+    max_like = libernet.disk.MAX_LIKE
+    libernet.disk.MAX_LIKE = 5
+
+    proxy = Store()
+    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    libernet.backup.main(add_args, proxy)
+    backup_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    match_identifier = libernet.backup.get_similar_identifier(add_args)
+    start_match_score = libernet.backup.target_match_score(match_identifier, proxy)
+
+    for _ in range(0, libernet.disk.MAX_LIKE * 4):
+        libernet.backup.main(backup_args, proxy)
+
+    end_match_score = libernet.backup.target_match_score(match_identifier, proxy)
+    assert start_match_score < end_match_score, f"{start_match_score} vs {end_match_score}"
+
+    libernet.disk.MAX_LIKE = max_like
+
 if __name__ == "__main__":
+    test_max_like()
     test_main()
     test_arg_processor()
     test_random_data()
