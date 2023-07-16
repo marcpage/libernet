@@ -110,7 +110,10 @@ class Storage:
             for n in os.listdir(data_dir)
             if len(n) == IDENTIFIER_SIZE - GROUP_NIBBLES
         ]
-        return {f"/sha256/{i}": os.path.getsize(self.__path_of(i)) for i in potential}
+        return {
+            libernet.url.for_data_block(i): os.path.getsize(self.__path_of(i))
+            for i in potential
+        }
 
     def __setitem__(self, key: str, value: bytes):
         identifier, _, _, kind = libernet.url.parse(key)
