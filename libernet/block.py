@@ -14,7 +14,7 @@ import libernet.url
 from libernet.encrypt import aes_encrypt, aes_decrypt
 from libernet.hash import sha256_data_identifier, binary_from_identifier
 from libernet.hash import identifier_match_score
-from libernet.url import address_of, AES256, PASSWORD
+from libernet.url import address_of, SHA256, AES256, PASSWORD
 
 
 MAX_BLOCK_SIZE = 1024 * 1024
@@ -187,10 +187,9 @@ def fetch(url: str, storage, was_similar=False, password=None) -> bytes:
     """request a block from storage"""
 
     if password is not None:
-        parts = url.split("/")
-        assert len(parts) == 3
-        assert parts[0] == ""
-        assert parts[1] == "sha256"
-        url += f"/password/{sha256_data_identifier(password.encode('utf-8'))}"
+        identifier, _, _, kind = libernet.url.parse(url)
+        assert kind == SHA256
+        encryption_key = sha256_data_identifier(password.encode("utf-8"))
+        url = libernet.url.for_encrypted(identifier, encryption_key, PASSWORD)
 
     return unpack(url, storage.get(address_of(url)), was_similar)
