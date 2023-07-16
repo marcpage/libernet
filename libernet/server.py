@@ -11,8 +11,10 @@ import json
 
 import flask
 
-from libernet.disk import Storage
+import libernet.url
 
+from libernet.disk import Storage
+from libernet.url import SHA256, LIKE
 
 DATA_MIMETYPE = "application/octet-stream"
 JSON_MIMETYPE = "application/json"
@@ -24,28 +26,33 @@ def create_app(storage: Storage):
     """Creates the Flask app"""
     app = flask.Flask(__name__)
 
-    @app.route("/sha256/<path:path>", methods=["GET"])
+    @app.route(f"/{SHA256}/<path:path>", methods=["GET"])
     def get_sha256(path: str):
         """Return the requested data"""
-        if not path.startswith("like/"):
-            contents = storage.get(f"/sha256/{path}")
+        assert path in flask.request.path, f"{path} vs {flask.request.path}"
+        identifier, key, _, kind = libernet.url.parse(flask.request.path)
+        assert key is None, flask.request.path
+        data_block_url = libernet.url.for_data_block(identifier, kind == LIKE)
 
-            if contents is None:
-                return "Data not currently on node", 504
-
-            response = flask.Response(contents, mimetype=DATA_MIMETYPE)
-            response.status = 200
+        if kind == LIKE:
+            found = storage.like(data_block_url)
+            response = flask.Response(json.dumps(found), mimetype=JSON_MIMETYPE)
+            response.status = 200 if len(found) > 0 else 404
             return response
 
-        found = storage.like(f"/sha256/{path}")
-        response = flask.Response(json.dumps(found), mimetype=JSON_MIMETYPE)
-        response.status = 200 if len(found) > 0 else 404
+        contents = storage.get(data_block_url)
+
+        if contents is None:
+            return "Data not currently on node", 504
+
+        response = flask.Response(contents, mimetype=DATA_MIMETYPE)
+        response.status = 200
         return response
 
-    @app.route("/sha256/<identifier>", methods=["PUT"])
+    @app.route(f"/{SHA256}/<identifier>", methods=["PUT"])
     def put_sha256(identifier: str):
         """Return the requested data"""
-        storage[f"/sha256/{identifier}"] = flask.request.data
+        storage[libernet.url.for_data_block(identifier)] = flask.request.data
         return "data received", 200
 
     return app

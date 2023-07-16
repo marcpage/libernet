@@ -12,7 +12,6 @@ import json
 import requests
 
 import libernet.url
-from libernet.hash import IDENTIFIER_SIZE
 
 
 class Storage(threading.Thread):

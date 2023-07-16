@@ -17,6 +17,7 @@ from libernet.url import LIKE
 
 GROUP_NIBBLES = 3
 MAX_LIKE = 100
+LIKE_CACHE_EXT = ".like.json"
 
 
 class Storage:
@@ -80,7 +81,7 @@ class Storage:
 
     @staticmethod
     def __like_file_path(identifier: str, data_dir: str):
-        return os.path.join(data_dir, identifier[GROUP_NIBBLES:] + ".like.json")
+        return os.path.join(data_dir, identifier[GROUP_NIBBLES:] + LIKE_CACHE_EXT)
 
     def __load_like_cache(self, like_path: str):
         contents = self.__read_file(like_path, binary=False)
