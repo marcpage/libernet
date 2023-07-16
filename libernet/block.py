@@ -127,43 +127,42 @@ def __maybe_unpad(data: bytes, was_similar: bool) -> bytes:
     return data
 
 
-def __maybe_decrypt(parts: [str], data: bytes, was_similar: bool) -> bytes:
+def __maybe_decrypt(url_info: [str], data: bytes, was_similar: bool) -> bytes:
     """determine if the contents are encrypted and decrypt them
     parts - the parts of the url
     data - raw data block
     was_similar - was the data saved to a known location?
     """
-    if len(parts) == 3:
+    if url_info[1] is None:
         return data
 
-    assert parts[3] in [PASSWORD, AES256], parts
     unpadded = __maybe_unpad(data, was_similar)
-    block_contents = aes_decrypt(binary_from_identifier(parts[4]), unpadded)
+    block_contents = aes_decrypt(binary_from_identifier(url_info[1]), unpadded)
     return block_contents
 
 
-def __maybe_uncompress(parts: [str], data: bytes, was_similar: bool) -> (bytes, str):
+def __maybe_uncompress(url_info: [str], data: bytes, was_similar: bool) -> (bytes, str):
     """determine if the contents are compressed and uncompress them
     parts - the parts of the url
     data - the data to uncompress (not encrypted)
     was_similar - was the data saved to a known location?
     """
-    encrypted = len(parts) == 5
+    encrypted = url_info[1] is not None
 
     if was_similar and not encrypted:
         data_identifier = sha256_data_identifier(data)
 
-        if data_identifier == parts[-1]:
+        if data_identifier == url_info[2]:
             return __maybe_unpad(data, was_similar), sha256_data_identifier(data)
 
-    if encrypted and parts[-2] == PASSWORD:
+    if encrypted and url_info[3] == PASSWORD:
         return data, sha256_data_identifier(data)
 
-    if sha256_data_identifier(data) == parts[-1]:
+    if sha256_data_identifier(data) == url_info[2]:
         return data, sha256_data_identifier(data)
 
     uncompressed = zlib.decompress(data)
-    assert sha256_data_identifier(uncompressed) == parts[-1]
+    assert sha256_data_identifier(uncompressed) == url_info[2]
     unpadded = uncompressed if encrypted else __maybe_unpad(uncompressed, was_similar)
     return unpadded, sha256_data_identifier(uncompressed)
 
@@ -177,13 +176,10 @@ def unpack(url: str, data: bytes, was_similar=False) -> bytes:
     if data is None:
         return None
 
-    parts = url.split("/")
-    assert len(parts) in [3, 5], parts
-    assert parts[0] == "", parts
-    assert parts[1] == "sha256", parts
-    decrypted = __maybe_decrypt(parts, data, was_similar)
-    uncompressed, identifier = __maybe_uncompress(parts, decrypted, was_similar)
-    assert parts[-2] == PASSWORD or identifier == parts[-1]
+    url_info = libernet.url.parse(url)
+    decrypted = __maybe_decrypt(url_info, data, was_similar)
+    uncompressed, identifier = __maybe_uncompress(url_info, decrypted, was_similar)
+    assert url_info[3] == PASSWORD or identifier == url_info[2]
     return uncompressed
 
 
