@@ -27,7 +27,8 @@ import libernet.disk
 from libernet.server import DEFAULT_PORT
 from libernet.hash import sha256_data_identifier, identifier_match_score
 from libernet.bundle import create_timestamp
-from libernet.block import address, MATCH, COMPRESS_LEVEL
+from libernet.block import MATCH, COMPRESS_LEVEL
+from libernet.url import for_data_block
 
 
 DEFAULT_SERVER = "localhost"
@@ -89,39 +90,27 @@ def __merge_backups(identifiers: dict) -> dict:
     """take the latest backup for each path on each machine
     and take the latest of all keys (not including 'backup')
     """
-    print(f"__merge_backups({identifiers})")
     timeline = sorted(identifiers, key=lambda i: identifiers[i][TIMESTAMP])
-    print(f"\t timeline = {timeline}")
     merged = {BACKUP: {}, PREVIOUS: list(identifiers)}
-    print(f"\t merged = {merged}")
 
     for identifier in timeline:  # oldest to most recent
-        print(f"\t identifier = {identifier} @ {identifiers[identifier][TIMESTAMP]}")
         fields = [k for k in identifiers[identifier] if k not in (BACKUP, PREVIOUS)]
-        print(f"\t\t fields = {fields}")
 
         for field in fields:  # get latest version of all fields
             merged[field] = identifiers[identifier][field]
 
-        print(f"\t\t merged = {merged}")
         machine_paths = [
             (m, p)
             for m in identifiers[identifier].get(BACKUP, {})
             for p in identifiers[identifier][BACKUP][m]
         ]
-        print(f"\t\t machine_paths = {machine_paths}")
 
         for machine, path in machine_paths:
-            print(f"\t\t\t machine = {machine} path = {path}")
             merged[BACKUP][machine] = merged[BACKUP].get(machine, {})
             previous_info = merged[BACKUP][machine].get(path, {})
-            print(f"\t\t\t previous_info = {previous_info}")
             previous_time = previous_info.get(TIMESTAMP, 0) if previous_info else 0
-            print(f"\t\t\t previous_time = {previous_time}")
             this_info = identifiers[identifier][BACKUP][machine].get(path, {})
-            print(f"\t\t\t this_info = {this_info}")
             this_time = this_info.get(TIMESTAMP, 0) if this_info else 0
-            print(f"\t\t\t this_time = {this_time}")
 
             # if this is the latest version of this path, use it
             if this_time >= previous_time:
@@ -133,7 +122,6 @@ def __merge_backups(identifiers: dict) -> dict:
 
 
 def __load_settings(args, proxy) -> dict:
-    print(f"__load_settings({args}, {proxy.data})")
     check = time.time()
     prompt = f"Unable to find backups in the last {args.months} months, create new? "
     possibilities = {}
@@ -141,7 +129,9 @@ def __load_settings(args, proxy) -> dict:
     for months_ago in range(0, args.months):
         check = time.time() - months_ago * ONE_MONTH_IN_SECONDS
         similar_identifier = get_similar_identifier(args, check)  # check given month
-        candidate_identifiers = proxy.like(f"/sha256/{similar_identifier}")
+        candidate_identifiers = proxy.like(
+            for_data_block(similar_identifier, like=True)
+        )
         possibilities.update(
             {
                 i: __load_settings_data(i, proxy, args)
@@ -150,16 +140,13 @@ def __load_settings(args, proxy) -> dict:
             }
         )
 
-    print(f"\t possibilities = {json.dumps(possibilities)}")
     bye = [c for c, p in possibilities.items() if not p]
     bye.extend(i for c, p in possibilities.items() if p for i in p.get(PREVIOUS, []))
 
     for identifier in bye:
         del possibilities[identifier]
 
-    print(f"\t cleaned possibilities = {json.dumps(possibilities, indent=2)}")
     found = __merge_backups(possibilities)
-    print(f"\t found = {json.dumps(found, indent=2)}")
 
     if found.get(BACKUP, {}):
         return found
@@ -186,20 +173,13 @@ def __load_settings(args, proxy) -> dict:
 
 
 def __add(args, settings: dict) -> bool:
-    print(f"__add({args}, {settings})")
-    print(f"\t settings = {settings}")
     settings[BACKUP] = settings.get(BACKUP, {})
     settings[BACKUP][args.machine] = settings[BACKUP].get(args.machine, {})
-    print(f"\t args.machine = {args.machine}")
-    print(f"\t settings[BACKUP][args.machine] = {settings[BACKUP][args.machine]}")
     machine = settings[BACKUP][args.machine]
-    print(f"\t machine = {machine}")
     changed = False
 
     for source in args.source:
-        print(f"\t source = {source}")
         real_source = os.path.realpath(source)
-        print(f"\t\t real_source = {real_source}")
 
         if real_source in machine:
             print(f"WARNING: we already have {real_source}")
@@ -207,7 +187,6 @@ def __add(args, settings: dict) -> bool:
             machine[real_source] = None
             changed = True
 
-    print(f"\t settings = {settings}")
     return changed
 
 
@@ -231,27 +210,19 @@ def __remove(settings: dict, args) -> bool:
 
 
 def target_match_score(similar_identifier: str, proxy) -> int:
-    print(f"target_match_score({similar_identifier}, proxy)")
-    existing = proxy.like((f"/sha256/{similar_identifier}"))
-    print(f"\t existing #{len(existing)} = {existing} vs {libernet.disk.MAX_LIKE}")
+    """Get the match score we need to beat to stay relevant"""
+    existing = proxy.like(for_data_block(similar_identifier))
 
     if len(existing) < libernet.disk.MAX_LIKE:
         return MATCH
 
-    # NOT TESTED
-    print(f"target_match_score({similar_identifier}, proxy)")
-    print(f"\t EXISTING (#{len(existing)} vs {libernet.disk.MAX_LIKE}): {', '.join(existing)}")
-    print(
-        "\t matches = "
-        + f"""{','.join(sorted(identifier_match_score(address(i), similar_identifier)
-                        for i in existing))}"""
+    return (
+        min(
+            identifier_match_score(libernet.url.parse(i)[0], similar_identifier)
+            for i in existing
+        )
+        + 1
     )
-    print(
-        "\t min = "
-        + f"""{min(identifier_match_score(address(i), similar_identifier)
-                        for i in existing) + 1}"""
-    )
-    return min(identifier_match_score(i, similar_identifier) for i in existing) + 1
 
 
 def __save_backup(args, settings: dict, proxy):
@@ -327,8 +298,8 @@ def __progress(message_center):
         if message is None:
             continue
 
-        if message[0] == "source":  # NOT TESTED
-            if need_newline:
+        if message[0] == "source":
+            if need_newline:  # NOT TESTED
                 sys.stderr.write("\n")
 
             sys.stderr.write(message[1] + "\n")
@@ -339,8 +310,8 @@ def __progress(message_center):
         if message[0] == "data":
             total_bytes += message[1]
 
-        elif message[0] == "file":  # NOT TESTED
-            if need_newline:
+        elif message[0] == "file":
+            if need_newline:  # NOT TESTED
                 sys.stderr.write("\n")
 
             file_count += 1
@@ -373,13 +344,9 @@ def __progress(message_center):
 
 def main(args, proxy=None):
     """main backup entry point"""
-    print(f"main({args}, {proxy.data})")
     proxy = libernet.proxy.Storage(args.server, args.port) if proxy is None else proxy
     message_center = libernet.message.Center()
-    print(f"{'='*40} Loading settings {'='*40}")
     settings = __load_settings(args, proxy)
-    print(f"{'='*40} Done loading settings {'='*40}")
-    print(f"settings = {json.dumps(settings, indent=2)}")
     changed = False
     rpt = threading.Thread(target=__progress, args=[message_center], daemon=True)
     rpt.start()
@@ -397,10 +364,7 @@ def main(args, proxy=None):
         changed = __backup(settings, proxy, args, message_center)
 
     if changed:
-        print(f"{'='*40} Saving settings {'='*40}")
-        print(json.dumps(settings, indent=2))
         __save_backup(args, settings, proxy)
-        print(f"{'='*40} Done saving settings {'='*40}")
 
     proxy.shutdown()
     message_center.shutdown()

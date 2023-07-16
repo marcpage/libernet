@@ -347,7 +347,7 @@ def test_max_like():
     match_identifier = libernet.backup.get_similar_identifier(add_args)
     start_match_score = libernet.backup.target_match_score(match_identifier, proxy)
 
-    for _ in range(0, libernet.disk.MAX_LIKE * 4):
+    for _ in range(0, libernet.disk.MAX_LIKE * 6):
         libernet.backup.main(backup_args, proxy)
 
     end_match_score = libernet.backup.target_match_score(match_identifier, proxy)
@@ -355,8 +355,10 @@ def test_max_like():
 
     libernet.disk.MAX_LIKE = max_like
 
+
 if __name__ == "__main__":
     test_max_like()
+    """
     test_main()
     test_arg_processor()
     test_random_data()
@@ -365,3 +367,4 @@ if __name__ == "__main__":
     test_input()
     test_no()
     test_arg_parser()
+    """

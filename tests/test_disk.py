@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 import libernet.disk
 
 from libernet.disk import Storage
-from libernet.block import store, fetch, address
+from libernet.block import store, fetch, address_of
 from libernet.hash import sha256_data_identifier
 
 
@@ -31,18 +31,18 @@ def test_basics():
             expected[key] = store(key, storage, encrypt=False)
 
         for key in expected:
-            assert address(expected[key][0]) in storage
+            assert address_of(expected[key][0]) in storage
 
         for key in expected:
-            assert storage[address(expected[key][0])] == expected[key][1]
+            assert storage[address_of(expected[key][0])] == expected[key][1]
 
         for key in expected:
             found_value = fetch(expected[key][0], storage)
             assert key == found_value, f"{key} vs {found_value}"
 
         for key in expected:
-            found = storage.like(address(expected[key][0]))
-            assert address(expected[key][0]) in found, f"{address(expected[key][0])} vs {found}"
+            found = storage.like(address_of(expected[key][0]))
+            assert address_of(expected[key][0]) in found, f"{address_of(expected[key][0])} vs {found}"
             assert len(found) <= 7, found
             max_found = max(max_found, len(found))
 

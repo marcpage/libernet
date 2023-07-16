@@ -9,7 +9,10 @@ import json
 import random
 import threading
 
+import libernet.url
+
 from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
+from libernet.url import LIKE
 
 
 GROUP_NIBBLES = 3
@@ -76,18 +79,6 @@ class Storage:
                 return json.load(data_file)
 
     @staticmethod
-    def __parse_identifier(url):
-        parts = url.split("/")
-        assert len(parts) in [3, 4]
-        assert parts[0] == ""
-        assert parts[1] == "sha256"
-        similar = len(parts) == 4 and parts[2] == "like"
-        assert len(parts) == 3 or similar, f"{similar} {parts}"
-        identifier = parts[-1]
-        assert len(identifier) == IDENTIFIER_SIZE
-        return identifier
-
-    @staticmethod
     def __like_file_path(identifier: str, data_dir: str):
         return os.path.join(data_dir, identifier[GROUP_NIBBLES:] + ".like.json")
 
@@ -100,9 +91,7 @@ class Storage:
         merged = {k: v for l in likes for k, v in l.items()}
         top = list(merged)
         top.sort(
-            key=lambda u: identifier_match_score(
-                Storage.__parse_identifier(u), identifier
-            ),
+            key=lambda u: identifier_match_score(libernet.url.parse(u)[0], identifier),
             reverse=True,
         )
 
@@ -124,8 +113,10 @@ class Storage:
         return {f"/sha256/{i}": os.path.getsize(self.__path_of(i)) for i in potential}
 
     def __setitem__(self, key: str, value: bytes):
-        assert not key.startswith("/sha256/like/")
-        identifier = Storage.__parse_identifier(key)
+        identifier, _, _, kind = libernet.url.parse(key)
+        assert len(identifier) == IDENTIFIER_SIZE, f"{len(identifier)} {identifier}"
+        assert kind != LIKE
+        identifier = libernet.url.parse(key)[0]
         path = self.__path_of(identifier)
 
         # we must overwrite every time because previous copy may be corrupt
@@ -134,8 +125,9 @@ class Storage:
 
     def get(self, key: str, default: bytes = None) -> bytes:
         """Get the data for a given path"""
-        assert not key.startswith("/sha256/like/")
-        path = self.__path_of(Storage.__parse_identifier(key))
+        identifier, _, _, _ = libernet.url.parse(key)
+        assert len(identifier) == IDENTIFIER_SIZE, f"{len(identifier)} {identifier}"
+        path = self.__path_of(identifier)
         contents = self.__read_file(path, binary=True)
         return default if contents is None else contents
 
@@ -145,7 +137,7 @@ class Storage:
         returns dictionary of urls to size of data on disk
         """
         initial = {} if initial is None else initial
-        identifier = Storage.__parse_identifier(key)
+        identifier = libernet.url.parse(key)[0]
         data_dir = self.__dir_of(identifier)
         like_path = Storage.__like_file_path(identifier, data_dir)
         cached = self.__load_like_cache(like_path)
@@ -162,4 +154,4 @@ class Storage:
         return result
 
     def __contains__(self, key: str) -> bool:
-        return os.path.isfile(self.__path_of(Storage.__parse_identifier(key)))
+        return os.path.isfile(self.__path_of(libernet.url.parse(key)[0]))

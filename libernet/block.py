@@ -6,39 +6,20 @@
 
 
 import zlib
+
 from random import randbytes
+
+import libernet.url
 
 from libernet.encrypt import aes_encrypt, aes_decrypt
 from libernet.hash import sha256_data_identifier, binary_from_identifier
-from libernet.hash import identifier_match_score, IDENTIFIER_SIZE
+from libernet.hash import identifier_match_score
+from libernet.url import address_of, AES256, PASSWORD
 
 
 MAX_BLOCK_SIZE = 1024 * 1024
 MATCH = 12
 COMPRESS_LEVEL = 9
-
-
-def address(url: str) -> str:
-    """extract just the address of the block"""
-    parts = url.split("/")
-    assert len(parts) >= 3, parts
-    assert parts[1] == "sha256", parts
-    return f"/sha256/{parts[2]}"
-
-
-def parse_identifier(url:str) -> (str, str, str):
-    parts = url.split("/")
-    assert len(parts) in [3, 5]
-    assert parts[0] == ""
-    assert parts[1] == "sha256"
-    identifier = parts[2]
-    assert len(identifier) == IDENTIFIER_SIZE
-    encrypted = len(parts) == 5 and parts[3] in ("like", "aes256")
-    similar = len(parts) == 5 and parts[3] == "like"
-    assert len(parts) == 3 or encrypted, f"{encrypted} {parts}"
-    key = parts[4] if encrypted else None
-    assert key is None or len(key) == IDENTIFIER_SIZE
-    return (identifier, key, identifier if key is None else key if not similar else None)
 
 
 def __padding_suffixes(similar: str, encrypt, score: int) -> str:
@@ -77,9 +58,9 @@ def __key_and_kind(data: bytes, encrypt) -> (str, str):
         return None, None
 
     if encrypt is True:
-        return sha256_data_identifier(data), "aes256"
+        return sha256_data_identifier(data), AES256
 
-    return sha256_data_identifier(encrypt.encode("utf-8")), "password"
+    return sha256_data_identifier(encrypt.encode("utf-8")), PASSWORD
 
 
 def __maybe_encrypt(
@@ -92,14 +73,14 @@ def __maybe_encrypt(
     """
     if key_identifier is None:
         data_identifier = sha256_data_identifier(padded)
-        return data, f"/sha256/{data_identifier}", data_identifier
+        return data, libernet.url.for_data_block(data_identifier), data_identifier
 
     key_value = binary_from_identifier(key_identifier)
     encrypted = aes_encrypt(key_value, data) + end_suffix
     encrypted_identifier = sha256_data_identifier(encrypted)
     return (
         encrypted,
-        f"/sha256/{encrypted_identifier}/{kind}/{key_identifier}",
+        libernet.url.for_encrypted(encrypted_identifier, key_identifier, kind),
         encrypted_identifier,
     )
 
@@ -130,7 +111,7 @@ def store(
             break
 
     assert len(block) <= MAX_BLOCK_SIZE, f"{len(block)} > {MAX_BLOCK_SIZE}: {block}"
-    storage[address(url)] = block
+    storage[address_of(url)] = block
     return url, block
 
 
@@ -155,7 +136,7 @@ def __maybe_decrypt(parts: [str], data: bytes, was_similar: bool) -> bytes:
     if len(parts) == 3:
         return data
 
-    assert parts[3] in ["password", "aes256"], parts
+    assert parts[3] in [PASSWORD, AES256], parts
     unpadded = __maybe_unpad(data, was_similar)
     block_contents = aes_decrypt(binary_from_identifier(parts[4]), unpadded)
     return block_contents
@@ -175,7 +156,7 @@ def __maybe_uncompress(parts: [str], data: bytes, was_similar: bool) -> (bytes, 
         if data_identifier == parts[-1]:
             return __maybe_unpad(data, was_similar), sha256_data_identifier(data)
 
-    if encrypted and parts[-2] == "password":
+    if encrypted and parts[-2] == PASSWORD:
         return data, sha256_data_identifier(data)
 
     if sha256_data_identifier(data) == parts[-1]:
@@ -202,7 +183,7 @@ def unpack(url: str, data: bytes, was_similar=False) -> bytes:
     assert parts[1] == "sha256", parts
     decrypted = __maybe_decrypt(parts, data, was_similar)
     uncompressed, identifier = __maybe_uncompress(parts, decrypted, was_similar)
-    assert parts[-2] == "password" or identifier == parts[-1]
+    assert parts[-2] == PASSWORD or identifier == parts[-1]
     return uncompressed
 
 
@@ -216,4 +197,4 @@ def fetch(url: str, storage, was_similar=False, password=None) -> bytes:
         assert parts[1] == "sha256"
         url += f"/password/{sha256_data_identifier(password.encode('utf-8'))}"
 
-    return unpack(url, storage.get(address(url)), was_similar)
+    return unpack(url, storage.get(address_of(url)), was_similar)

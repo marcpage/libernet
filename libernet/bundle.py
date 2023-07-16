@@ -20,6 +20,7 @@ import threading
 from queue import Queue
 
 import libernet.block
+import libernet.url
 from libernet.encrypt import BLOCK_SIZE
 
 FILE_THREADS = 1  # 4
@@ -352,7 +353,7 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
     valid[file] == None => existing file is good
     valid[file] == {metadata} => file was modified (should not exist)
     """
-    missing = [libernet.block.address(u) for u in bundle.get(BUNDLES, [])]
+    missing = [libernet.url.address_of(u) for u in bundle.get(BUNDLES, [])]
     valid = {}
 
     for file in bundle[FILES]:
@@ -373,7 +374,7 @@ def __find_missing_blocks(bundle: dict, target_dir: str, storage) -> (list, dict
             valid[file] = True
         else:
             urls = [
-                libernet.block.address(b["url"]) for b in bundle[FILES][file][CONTENTS]
+                libernet.url.address_of(b["url"]) for b in bundle[FILES][file][CONTENTS]
             ]
             missing.extend(u for u in urls if u not in storage)
 
@@ -455,7 +456,7 @@ def restore(url_or_bundle, target_dir: str, storage) -> list:
     )
 
     if bundle is None:  # NOT TESTED
-        return [libernet.block.address(url_or_bundle)]
+        return [libernet.url.address_of(url_or_bundle)]
 
     missing, files_valid = __find_missing_blocks(bundle, target_dir, storage)
 

@@ -25,7 +25,9 @@ def sha256_data_identifier(data):
 
 def binary_from_identifier(identifier):
     """get the binary form of an identifier"""
-    assert not VALIDATE_IDENTIFIER_SIZE or len(identifier) == IDENTIFIER_SIZE, f"{len(identifier)} vs {IDENTIFIER_SIZE} {identifier}"
+    assert (
+        not VALIDATE_IDENTIFIER_SIZE or len(identifier) == IDENTIFIER_SIZE
+    ), f"{len(identifier)} vs {IDENTIFIER_SIZE} {identifier}"
     return bytes.fromhex(("" if len(identifier) % 2 == 0 else "0") + identifier)
 
 

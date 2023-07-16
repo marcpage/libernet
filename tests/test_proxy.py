@@ -8,10 +8,10 @@ from types import SimpleNamespace
 from multiprocessing import Process
 
 from libernet.server import serve
-from libernet.block import store, fetch, address
+from libernet.block import store, fetch
 from libernet.proxy import Storage
 from libernet.hash import sha256_data_identifier
-
+from libernet.url import address_of
 
 SERVER_PORT = 4242
 STARTUP_WAIT = 0.200  # seconds
@@ -30,6 +30,7 @@ def test_basics():
     ]
 
     with TemporaryDirectory() as working_dir:
+        working_dir = "/tmp/testing_server"
         server = Process(target=serve,
                 args=(SimpleNamespace(storage=working_dir, port=SERVER_PORT, debug=False),))
         server.start()
@@ -43,18 +44,18 @@ def test_basics():
             expected[key] = store(key, proxy, encrypt=False)
 
         for key in expected:
-            assert address(expected[key][0]) in proxy
+            assert address_of(expected[key][0]) in proxy
 
         for key in expected:
-            assert proxy[address(expected[key][0])] == expected[key][1]
+            assert proxy[address_of(expected[key][0])] == expected[key][1]
 
         for key in expected:
             found_value = fetch(expected[key][0], proxy)
             assert key == found_value, f"{key} vs {found_value}"
 
         for key in expected:
-            found = proxy.like(address(expected[key][0]))
-            assert address(expected[key][0]) in found, f"{address(expected[key][0])} vs {found}"
+            found = proxy.like(address_of(expected[key][0]))
+            assert address_of(expected[key][0]) in found, f"{address_of(expected[key][0])} vs {found}"
             assert len(found) <= 7, found
             max_found = max(max_found, len(found))
 
@@ -78,17 +79,17 @@ def test_errors():
         proxy['/hello'] = b'oh, no'
         storage = {}
         url1, _ = store(b'hello', storage, encrypt=False)
-        assert address(url1) not in proxy, f"{address(url1)} <- {url1}"
-        assert proxy.get(address(url1)) is None
+        assert address_of(url1) not in proxy, f"{address_of(url1)} <- {url1}"
+        assert proxy.get(address_of(url1)) is None
         try:
-            value = proxy[address(url1)]
+            value = proxy[address_of(url1)]
             assert False, f"We got {value} but should not have"
         except KeyError:
             pass
         url2, _ = store(b'hello', proxy, encrypt=False)
         assert url1 == url2
-        assert address(url1) in proxy, address(url1)
-        assert address(url2) in proxy, address(url2)
+        assert address_of(url1) in proxy, address_of(url1)
+        assert address_of(url2) in proxy, address_of(url2)
         proxy.shutdown()
         proxy.join()  # wait for any pending messages to be sent
         server.kill()
