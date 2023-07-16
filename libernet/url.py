@@ -10,7 +10,7 @@ from libernet.hash import IDENTIFIER_SIZE
 # URL parts
 SHA256 = "sha256"
 AES256 = "aes256"
-PASSWORD = "password"
+PASSWORD = "passphrase"
 LIKE = "like"  # /sha256/*like*/{identifier}
 ENCRYPTION_TYPES = [AES256, PASSWORD]
 

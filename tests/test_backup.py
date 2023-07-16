@@ -75,158 +75,158 @@ def test_arg_processor():
     environment={}
     keychain = Keyring()
 
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', password='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user='John', password='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user='John', password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user='John', password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user='John', passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=False), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
 
     keychain = Keyring()
     environment[ENV_USER] = 'John'
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, password='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, password='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
 
     keychain = Keyring()
     environment[ENV_PASS] = 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
 
     keychain = Keyring()
     del environment[ENV_USER]
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user='John', password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user='John', passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user='John', password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user='John', passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user='John', password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
+    assert args.passphrase == 'Setec Astronomy'
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user='John', passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=False, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
 
     keychain = Keyring()
     del environment[ENV_PASS]
     libernet.backup.USER_INPUT = lambda _:'John'
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, password='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John', keychain.get_password(KEY_SERVICE, KEY_USER)
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, password='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, password='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, passphrase='Setec Astronomy', machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
 
     keychain = Keyring()
     libernet.backup.PASSWORD_INPUT = lambda _:'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user=None, passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
 
     keychain = Keyring()
     libernet.backup.USER_INPUT = lambda _:'bad user'
-    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user='John', passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user='John', passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user='John', password=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='remove', months=12, user='John', passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user='John', password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='backup', months=12, user='John', passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
-    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user='John', password=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
+    args = libernet.backup.process_args(SimpleNamespace(action='restore', months=12, user='John', passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.password == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy'
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
 
@@ -237,14 +237,14 @@ def test_arg_processor():
 def test_main():
     proxy = Store()
     other = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
     print(f"{'='*40} adding first time {'='*40}")
     libernet.backup.main(add_args, proxy)
     print(f"{'='*40} adding second time {'='*40}")
     libernet.backup.main(add_args, proxy)
     print(f"{'='*40} done {'='*40}")
     libernet.backup.main(add_args, other)
-    backup_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
     print(f"{'='*40} backup B1 {'='*40}")
     libernet.backup.main(backup_args, other)
     print(f"{'='*40} backup A1 {'='*40}")
@@ -273,9 +273,9 @@ def test_random_data():
         b'{"type": "backup", "timestamp": 0, "user": "John", "password": "Setec Astronomy"}',
     ]
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
     libernet.backup.main(add_args, proxy)
-    backup_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
     libernet.backup.main(backup_args, proxy)
     match_identifier = libernet.backup.get_similar_identifier(add_args)
 
@@ -290,10 +290,10 @@ def test_random_data():
 
 def test_add_remove():
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
     libernet.backup.main(add_args, proxy)
     libernet.backup.main(add_args, proxy)
-    remove_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='remove', source=['libernet'], yes=True)
+    remove_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='remove', source=['libernet'], yes=True)
     libernet.backup.main(remove_args, proxy)
     libernet.backup.main(remove_args, proxy)
     libernet.backup.main(add_args, proxy)
@@ -301,17 +301,17 @@ def test_add_remove():
 
 def test_list():
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
     libernet.backup.main(add_args, proxy)
-    backup_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
     libernet.backup.main(backup_args, proxy)
-    list_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='list', source=[], yes=True)
+    list_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='list', source=[], yes=True)
     libernet.backup.main(list_args, proxy)
 
 
 def test_no():
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=False, no=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=False, no=True)
     libernet.backup.main(add_args, proxy)
 
 
@@ -320,12 +320,12 @@ def test_input():
 
     libernet.backup.USER_INPUT = lambda _:'yes'
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=False, no=False)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=False, no=False)
     libernet.backup.main(add_args, proxy)
 
     libernet.backup.USER_INPUT = lambda _:'no'
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=False, no=False)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=False, no=False)
     try:
         libernet.backup.main(add_args, proxy)
         assert False, "We were supposed to fail"
@@ -341,9 +341,9 @@ def test_max_like():
     libernet.disk.MAX_LIKE = 5
 
     proxy = Store()
-    add_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
+    add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet'], yes=True)
     libernet.backup.main(add_args, proxy)
-    backup_args = SimpleNamespace(months=12, user='John', password='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
+    backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
     match_identifier = libernet.backup.get_similar_identifier(add_args)
     start_match_score = libernet.backup.target_match_score(match_identifier, proxy)
 

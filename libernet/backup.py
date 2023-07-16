@@ -48,14 +48,14 @@ TYPE = "type"
 BACKUP = "backup"
 TIMESTAMP = "timestamp"
 USER = "user"
-PASSWORD = "password"
+PASSWORD = "passphrase"
 PREVIOUS = "previous"
 
 
 def __load_settings_data(url: str, proxy, args) -> dict:
     try:
         data = libernet.block.fetch(
-            url, proxy, was_similar=True, password=args.password
+            url, proxy, was_similar=True, password=args.passphrase
         )
         uncompressed = zlib.decompress(data) if data else None
         results = json.loads(uncompressed) if uncompressed else {}
@@ -64,8 +64,8 @@ def __load_settings_data(url: str, proxy, args) -> dict:
         assert isinstance(results[TIMESTAMP], (float, int)), [results[TIMESTAMP]]
         assert results[USER] == args.user, f"{results[USER]} vs {args.user}"
         assert (
-            results[PASSWORD] == args.password
-        ), f"{results[PASSWORD]} vs {args.password}"
+            results[PASSWORD] == args.passphrase
+        ), f"{results[PASSWORD]} vs {args.passphrase}"
 
     except (
         AssertionError,
@@ -168,7 +168,7 @@ def __load_settings(args, proxy) -> dict:
         TYPE: BACKUP,
         TIMESTAMP: create_timestamp(),
         USER: args.user,
-        PASSWORD: args.password,
+        PASSWORD: args.passphrase,
     }
 
 
@@ -234,7 +234,7 @@ def __save_backup(args, settings: dict, proxy):
     similar = get_similar_identifier(args)
     score = target_match_score(similar, proxy)
     libernet.block.store(
-        compressed, proxy, encrypt=args.password, similar=similar, score=score
+        compressed, proxy, encrypt=args.passphrase, similar=similar, score=score
     )
 
 
@@ -373,7 +373,7 @@ def main(args, proxy=None):
 
 def process_args(args, environment=None, key=keyring):
     """
-    priority for username/password
+    priority for username/passphrase
     1. command line
     2. environment (if specified)
     3. keychain (if specified)
@@ -411,18 +411,18 @@ def process_args(args, environment=None, key=keyring):
     key_user = KEY_USER + "_" + args.user
     key_pass = key.get_password(KEY_SERVICE, key_user) if args.keychain else None
 
-    if args.password is None and args.environment:
-        args.password = environment.get(ENV_PASS, None)
+    if args.passphrase is None and args.environment:
+        args.passphrase = environment.get(ENV_PASS, None)
 
-    if args.password is None and args.keychain:
-        args.password = key.get_password(KEY_SERVICE, key_user)
+    if args.passphrase is None and args.keychain:
+        args.passphrase = key.get_password(KEY_SERVICE, key_user)
 
-    if args.password is None:
-        args.password = PASSWORD_INPUT("Libernet account pass phrase: ")
-        assert args.password, "You must specify a pass phrase"
+    if args.passphrase is None:
+        args.passphrase = PASSWORD_INPUT("Libernet account pass phrase: ")
+        assert args.passphrase, "You must specify a pass phrase"
 
     if args.keychain and key_pass is None:
-        key.set_password(KEY_SERVICE, key_user, args.password)
+        key.set_password(KEY_SERVICE, key_user, args.passphrase)
 
     return args
 
@@ -466,8 +466,8 @@ def get_arg_parser():
     )
     parser.add_argument(
         "-p",
-        "--password",
-        help="Account password",
+        "--passphrase",
+        help="Account passphrase",
     )
     parser.add_argument(
         "-y",
@@ -495,12 +495,12 @@ def get_arg_parser():
     parser.add_argument(
         "--keychain",
         action="store_true",
-        help="Get Account username/password from keychain (or store if not there)",
+        help="Get Account username/passphrase from keychain (or store if not there)",
     )
     parser.add_argument(
         "--environment",
         action="store_true",
-        help=f"Get Account username/password from {ENV_USER} and {ENV_PASS}",
+        help=f"Get Account username/passphrase from {ENV_USER} and {ENV_PASS}",
     )
     parser.add_argument("action", help="add, remove, list, backup, restore")
     return parser
