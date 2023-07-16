@@ -35,7 +35,7 @@ An identifier matches the most characters at the beginning match.
 ## addresses
 
 | type | pattern | notes |
-|======|=========|=======|
+|---|---|---|
 | data block | /sha256/{hash} | hash matches either contents or zlib decompress of contents |
 | contents encrypted | /sha256/{hash}/eas256/{hash} | second hash is both the aes256 key for decrypting the data block and the hash of the unencrypted contents |
 
