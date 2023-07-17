@@ -66,6 +66,14 @@ class Store:
         return str(self.data)
 
 
+def create_file(directory:str, name:str, contents:str):
+    with open(os.path.join(directory, name), 'w') as file:
+        file.write(contents)
+
+def validate_file(directory:str, name:str, contents:str) -> bool:
+    with open(os.path.join(directory, name), 'r') as file:
+        return contents == file.read()
+
 def test_arg_parser():
     parser = libernet.backup.get_arg_parser()
     assert parser is not None
@@ -374,9 +382,146 @@ def test_no_dir():
     libernet.backup.main(list_args, proxy)
 
 
+def test_restore_simple():
+    proxy = Store()
+
+    with TemporaryDirectory() as working_dir:
+        source_dir_1 = os.path.join(working_dir, 'dir1')
+        os.makedirs(source_dir_1)
+        create_file(source_dir_1, 'file1.txt', 'file1 contents')
+        create_file(source_dir_1, 'file2.txt', 'file2 contents')
+
+        dest_dir_1 = os.path.join(working_dir, 'restored1')
+
+        add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=[source_dir_1], yes=True)
+        backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[])
+        restore_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='restore', source=[], destination=dest_dir_1)
+
+        libernet.backup.main(add_args, proxy)
+        libernet.backup.main(restore_args, proxy)
+        assert not os.path.isdir(dest_dir_1)
+        libernet.backup.main(backup_args, proxy)
+        libernet.backup.main(restore_args, proxy)
+
+        assert validate_file(dest_dir_1, 'file1.txt', 'file1 contents')
+        assert validate_file(dest_dir_1, 'file2.txt', 'file2 contents')
+
+
+def test_restore_to_source():
+    proxy = Store()
+
+    with TemporaryDirectory() as working_dir:
+        source_dir_1 = os.path.join(working_dir, 'dir1')
+        os.makedirs(source_dir_1)
+        create_file(source_dir_1, 'file1.txt', 'file1 contents')
+        create_file(source_dir_1, 'file2.txt', 'file2 contents')
+        add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=[source_dir_1], yes=True)
+        libernet.backup.main(add_args, proxy)
+        backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[])
+        libernet.backup.main(backup_args, proxy)
+        create_file(source_dir_1, 'file1.txt', 'file1 bad contents')
+        create_file(source_dir_1, 'file2.txt', 'file2 bad contents')
+        restore_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='restore', source=[], destination=None)
+        libernet.backup.main(restore_args, proxy)
+        assert validate_file(source_dir_1, 'file1.txt', 'file1 contents')
+        assert validate_file(source_dir_1, 'file2.txt', 'file2 contents')
+
+
+def test_restore_2_dirs():
+    proxy = Store()
+
+    with TemporaryDirectory() as working_dir:
+        source_dir_1 = os.path.join(working_dir, 'test', 'dir1')
+        source_dir_2 = os.path.join(working_dir, 'john', 'dir2')
+        source_dir_3 = os.path.join(working_dir, 'what', 'dir3')
+        os.makedirs(source_dir_1)
+        os.makedirs(source_dir_2)
+        dest_dir_1 = os.path.join(working_dir, 'restored1')
+        create_file(source_dir_1, 'file1.txt', 'file1 contents')
+        create_file(source_dir_2, 'file2.txt', 'file2 contents')
+        add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=[source_dir_1, source_dir_2], yes=True)
+        libernet.backup.main(add_args, proxy)
+        backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[])
+        libernet.backup.main(backup_args, proxy)
+        restore_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='restore', source=[], destination=dest_dir_1)
+        libernet.backup.main(restore_args, proxy)
+        assert validate_file(os.path.join(dest_dir_1, 'dir1'), 'file1.txt', 'file1 contents')
+        assert validate_file(os.path.join(dest_dir_1, 'dir2'), 'file2.txt', 'file2 contents')
+        restore_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='restore', source=[source_dir_3], destination=dest_dir_1)
+        libernet.backup.main(restore_args, proxy)
+
+
+def test_restore_2_dirs_same_name():
+    proxy = Store()
+
+    with TemporaryDirectory() as working_dir:
+        source_dir_1 = os.path.join(working_dir, 'test', 'dir')
+        source_dir_2 = os.path.join(working_dir, 'john', 'dir')
+        os.makedirs(source_dir_1)
+        os.makedirs(source_dir_2)
+        dest_dir_1 = os.path.join(working_dir, 'restored1')
+        create_file(source_dir_1, 'file1.txt', 'file1 contents')
+        create_file(source_dir_2, 'file2.txt', 'file2 contents')
+        add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=[source_dir_1, source_dir_2], yes=True)
+        libernet.backup.main(add_args, proxy)
+        backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[])
+        libernet.backup.main(backup_args, proxy)
+        restore_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='restore', source=[], destination=dest_dir_1)
+        libernet.backup.main(restore_args, proxy)
+        file1_dir = None
+        file2_dir = None
+
+        for root, dirs, files in os.walk(dest_dir_1):
+            if 'file1.txt' in files:
+                validate_file(root, 'file1.txt', 'file1 contents')
+                file1_dir = root
+
+            if 'file2.txt' in files:
+                validate_file(root, 'file2.txt', 'file2 contents')
+                file2_dir = root
+
+        assert os.path.split(file1_dir)[1] == os.path.split(file2_dir)[1]
+        file1_dir_dir_dir = os.path.split(os.path.split(file1_dir)[0])[0]
+        file2_dir_dir_dir = os.path.split(os.path.split(file2_dir)[0])[0]
+        assert file1_dir_dir_dir == file2_dir_dir_dir, f"{file1_dir_dir_dir}\nvs\n{file2_dir_dir_dir}"
+
+
+
+def test_restore_missing_blocks():
+    proxy = Store()
+
+    with TemporaryDirectory() as working_dir:
+        source_dir_1 = os.path.join(working_dir, 'dir1')
+        os.makedirs(source_dir_1)
+        create_file(source_dir_1, 'file1.txt', 'file1 contents')
+        create_file(source_dir_1, 'file2.txt', 'file2 contents')
+
+        dest_dir_1 = os.path.join(working_dir, 'restored1')
+
+        add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=[source_dir_1], yes=True)
+        backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[])
+        restore_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='restore', source=[], destination=dest_dir_1)
+
+        libernet.backup.main(add_args, proxy)
+        keepers = {k[:11] for k in proxy.data}  # keep the settings files
+        libernet.backup.main(backup_args, proxy)
+
+        for block in list(proxy.data.keys()):
+            if block[:11] not in keepers:
+                del proxy.data[block]
+
+        libernet.backup.main(restore_args, proxy)
+        assert not os.path.isdir(dest_dir_1)
+
+
 if __name__ == "__main__":
+    test_restore_missing_blocks()
+    assert False
+    test_restore_simple()
+    test_restore_2_dirs()
+    test_restore_2_dirs_same_name()
+    test_restore_to_source()
     test_main()
-    """
     test_arg_parser()
     test_arg_processor()
     test_random_data()
@@ -386,4 +531,3 @@ if __name__ == "__main__":
     test_input()
     test_max_like()
     test_no_dir()
-"""

@@ -145,7 +145,8 @@ def __load_settings(args, proxy) -> dict:
     bye.extend(i for c, p in possibilities.items() if p for i in p.get(PREVIOUS, []))
 
     for identifier in bye:
-        del possibilities[identifier]
+        if identifier in possibilities:
+            del possibilities[identifier]
 
     found = __merge_backups(possibilities)
 
@@ -280,6 +281,57 @@ def __backup(settings: dict, proxy, args, message_center) -> bool:
     return changed
 
 
+def __dest_path(source: str, destination: str, sources: [str]) -> str:
+    """determine the output destination path"""
+    if destination is None:  # no destination specified, restore to the source directory
+        return source
+
+    real_dest = os.path.realpath(destination)
+
+    # if there is only 1 source, restore it to destination
+    if real_dest and len(sources) == 1:
+        return real_dest
+
+    names = {os.path.split(s)[1] for s in sources}
+
+    if len(names) == len(sources):  # if the source directory names are unique, use them
+        return os.path.join(real_dest, os.path.split(source)[1])
+
+    # us the full source path appended to the end of the destination
+    return os.path.join(real_dest, source.strip("\\/").replace(":\\", "\\"))
+
+
+def __get_src_dst(sources: dict, args) -> [(str, str)]:
+    source_dirs = args.source if args.source else sources.keys()
+    missing = [d for d in args.source if d not in sources] if args.source else []
+    backedup = [d for d in source_dirs if d in sources] if args.source else source_dirs
+
+    if missing:
+        print("ERROR: The following were specified but were not scheduled for backup")
+        print("\t" + "\n\t".join(missing))
+
+    return [(s, __dest_path(s, args.destination, backedup)) for s in backedup]
+
+
+def __restore(settings: dict, proxy, args, message_center):
+    sources = settings.get(BACKUP, {}).get(args.machine, {})
+    restore_list = __get_src_dst(sources, args)
+
+    for source, destination in restore_list:
+        message_center.send(("source", source))
+        source_url = sources[source].get("url", None) if sources[source] else None
+
+        if source_url is None:
+            print(f"ERROR: not backed up yet: {source}")
+            continue
+
+        missing = libernet.bundle.restore(source_url, destination, proxy)
+
+        if missing:
+            print("ERROR: The following blocks are missing:")
+            print("\t" + "\n\t".join(missing))
+
+
 def __progress(message_center):
     channel = message_center.new_channel()
     need_newline = False
@@ -316,7 +368,7 @@ def __progress(message_center):
             need_newline = False
 
         if time.time() - last_update > PROGRESS_UPDATE_PERIOD_IN_SECONDS:
-            if last_file != last_printed_file:  # NOT TESTED
+            if last_file != last_printed_file:
                 sys.stderr.write("\n" if need_newline else "")
                 need_newline = False
                 sys.stderr.write(f"\t {last_file}\n")
@@ -356,6 +408,9 @@ def main(args, proxy=None):
 
     elif args.action == "backup":
         changed = __backup(settings, proxy, args, message_center)
+
+    elif args.action == "restore":
+        __restore(settings, proxy, args, message_center)
 
     if changed:
         __save_backup(args, settings, proxy)

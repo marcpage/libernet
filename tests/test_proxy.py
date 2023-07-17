@@ -30,7 +30,6 @@ def test_basics():
     ]
 
     with TemporaryDirectory() as working_dir:
-        working_dir = "/tmp/testing_server"
         server = Process(target=serve,
                 args=(SimpleNamespace(storage=working_dir, port=SERVER_PORT, debug=False),))
         server.start()

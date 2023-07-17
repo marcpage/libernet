@@ -455,13 +455,13 @@ def restore(url_or_bundle, target_dir: str, storage) -> list:
         else url_or_bundle
     )
 
-    if bundle is None:  # NOT TESTED
+    if bundle is None:
         return [libernet.url.address_of(url_or_bundle)]
 
     missing, files_valid = __find_missing_blocks(bundle, target_dir, storage)
 
     if missing:  # there are blocks missing so do not restore
-        return missing  # NOT TESTED
+        return missing
 
     __remove_not_in_bundle(bundle, target_dir)
     __remove_modified_files(files_valid, target_dir)
