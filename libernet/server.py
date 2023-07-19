@@ -58,7 +58,7 @@ def create_app(storage: Storage):
     return app
 
 
-def serve(args):  # NOT TESTED - no running server during tests
+def serve(args):  # NOT TESTED (not reported as tested, tested in tests/test_proxy.py)
     """Start the libernet web server"""
     log_path = os.path.join(args.storage, "log.txt")
     os.makedirs(os.path.split(log_path)[0], exist_ok=True)
