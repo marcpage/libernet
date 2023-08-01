@@ -135,3 +135,36 @@ The `url` contains the address to get the raw data and the size of the stored fi
 The `size` is the size of the original data.
 The sum of all block `size`s should be the file `size`.
 This allows for building files as pieces come in.
+
+
+# Random Stats
+
+## Snapshot taken of Libernet data directory after some backups
+
+### August 1, 2023
+
+| Instances | Block Size |
+| -- | -- |
+| 7,534 | 1.0M |
+| 5,130 | 4.0k |
+| 1,001 | 8.0k - 256k |
+|  229 | 260k - 512k |
+|  89 | 516k - 768k |
+| 222 | 772k - 996k |
+
+| Instances | Blocks grouped by first 3 hex digits |
+| -- | -- |
+| 446 | 1 |
+| 741 | 2 |
+| 872 | 3 |
+| 795 | 4 |
+| 526 | 5 |
+| 328 | 6 |
+| 143 | 7 |
+|  62 | 8 |
+|  25 | 9 |
+|   9 | 10 |
+|   2 | 11 |
+|   1 | 12 |
+|   1 | 36 |
+
