@@ -69,6 +69,33 @@ def serve(args):  # NOT TESTED (not reported as tested, tested in tests/test_pro
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
 
+def load_settings(args, input_func=input):
+    """Update settings file from arguments and arguments from settings"""
+    settings_path = os.path.join(args.storage, "settings.json")
+    os.makedirs(args.storage, exist_ok=True)
+
+    try:
+        with open(settings_path, "r", encoding="utf-8") as settings_file:
+            settings = json.load(settings_file)
+
+    except FileNotFoundError:
+        settings = {}
+
+    if not args.port and settings.get("port", None) is None:
+        args.port = int(input_func("Port to listen on (--port): "))
+
+    if args.port is None and settings.get("port", DEFAULT_PORT):
+        args.port = settings.get("port", DEFAULT_PORT)
+
+    elif args.port:
+        settings["port"] = args.port
+
+        with open(settings_path, "w", encoding="utf-8") as settings_file:
+            json.dump(settings, settings_file)
+
+    return args
+
+
 def get_arg_parser():
     """Describe the command line arguments"""
     parser = argparse.ArgumentParser(description="Libernet server")
@@ -76,7 +103,6 @@ def get_arg_parser():
         "-p",
         "--port",
         type=int,
-        default=DEFAULT_PORT,
         help=f"The port to listen on (default {DEFAULT_PORT})",
     )
     parser.add_argument(
@@ -92,4 +118,4 @@ def get_arg_parser():
 
 
 if __name__ == "__main__":
-    serve(get_arg_parser().parse_args())  # NOT TESTED - no running server during tests
+    serve(load_settings(get_arg_parser().parse_args()))  # NOT TESTED

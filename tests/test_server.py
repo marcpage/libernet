@@ -105,6 +105,22 @@ def test_app():
     libernet.disk.MAX_LIKE = max_like
 
 
+def test_load_settings():
+    with tempfile.TemporaryDirectory() as storage:
+        args = SimpleNamespace(storage=storage, port=None)
+        output = libernet.server.load_settings(args, input_func=lambda _:'1234')
+        assert output.port == 1234, output.port
+        output = libernet.server.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 1234, output.port
+        args.port = 8087
+        output = libernet.server.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 8087, output.port
+        args.port = None
+        output = libernet.server.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 8087, output.port
+
+
 if __name__ == "__main__":
     test_arg_parser()
     test_app()
+    test_load_settings()
