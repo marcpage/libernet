@@ -17,6 +17,7 @@ from libernet.disk import Storage
 from libernet.url import SHA256, LIKE
 
 DATA_MIMETYPE = "application/octet-stream"
+SETTINGS_NAME = "settings.json"
 JSON_MIMETYPE = "application/json"
 DEFAULT_PORT = 8042
 DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
@@ -69,29 +70,57 @@ def serve(args):  # NOT TESTED (not reported as tested, tested in tests/test_pro
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
 
-def load_settings(args, input_func=input):
-    """Update settings file from arguments and arguments from settings"""
-    settings_path = os.path.join(args.storage, "settings.json")
+def load_settings_file(args, name):
+    """Load settings file with the given filename"""
     os.makedirs(args.storage, exist_ok=True)
-
+    settings_path = os.path.join(args.storage, name)
     try:
         with open(settings_path, "r", encoding="utf-8") as settings_file:
-            settings = json.load(settings_file)
+            return json.load(settings_file)
 
     except FileNotFoundError:
-        settings = {}
+        return {}
 
-    if not args.port and settings.get("port", None) is None:
-        args.port = int(input_func("Port to listen on (--port): "))
 
-    if args.port is None and settings.get("port", DEFAULT_PORT):
-        args.port = settings.get("port", DEFAULT_PORT)
+def save_settings_file(args, name, settings):
+    """Save settings file with the given filename"""
+    settings_path = os.path.join(args.storage, name)
 
-    elif args.port:
-        settings["port"] = args.port
+    with open(settings_path, "w", encoding="utf-8") as settings_file:
+        json.dump(settings, settings_file)
 
-        with open(settings_path, "w", encoding="utf-8") as settings_file:
-            json.dump(settings, settings_file)
+
+# pylint: disable=too-many-arguments
+def check_arg(value, key, default, value_type, prompt, settings, input_func):
+    """Check an argument against settings"""
+    if not value and settings.get(key, None) is None:
+        value = value_type(input_func(prompt)) if default is None else default
+
+    if value is None:
+        value = settings.get(key, default)
+
+    elif value:
+        settings[key] = value
+        return True, value
+
+    return False, value
+
+
+def load_settings(args, input_func=input):
+    """Update settings file from arguments and arguments from settings"""
+    settings = load_settings_file(args, SETTINGS_NAME)
+    save_settings, args.port = check_arg(
+        args.port,
+        "port",
+        DEFAULT_PORT,
+        int,
+        "Port to listen on (--port): ",
+        settings,
+        input_func,
+    )
+
+    if save_settings:
+        save_settings_file(args, SETTINGS_NAME, settings)
 
     return args
 

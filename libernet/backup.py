@@ -24,7 +24,8 @@ import libernet.block
 import libernet.message
 import libernet.disk
 
-from libernet.server import DEFAULT_PORT
+from libernet.server import DEFAULT_PORT, SETTINGS_NAME, DEFAULT_STORAGE
+from libernet.server import load_settings_file, save_settings_file, check_arg
 from libernet.hash import sha256_data_identifier, identifier_match_score
 from libernet.bundle import create_timestamp
 from libernet.block import MATCH, COMPRESS_LEVEL
@@ -43,6 +44,14 @@ ONE_MONTH_IN_SECONDS = 365 * 24 * 60 * 60 / 12
 USER_INPUT = input
 PASSWORD_INPUT = getpass
 PROGRESS_UPDATE_PERIOD_IN_SECONDS = 0.500  # 500 milliseconds
+
+# Settings keys
+SERVER = "server"
+LAST = "last"
+PORT = "port"
+DAYS = "days"
+MONTHS = "months"
+MACHINE = "machine"
 
 # keys
 TYPE = "type"
@@ -476,9 +485,99 @@ def process_args(args, environment=None, key=keyring):
     return args
 
 
+def load_settings(args, input_func=input):
+    """Update settings file from arguments and arguments from settings"""
+    backup_name = "backup.json"
+    settings = load_settings_file(args, backup_name)
+    server_settings = load_settings_file(args, SETTINGS_NAME)
+    settings[SERVER] = settings.get(SERVER, {})
+    save_settings = False
+    reset_last = any(
+        k == LAST for s, i in settings[SERVER].items() for k, v in i.items()
+    )
+
+    if args.server is None:
+        last_server = [k for k, v in settings[SERVER].items() if v.get(LAST, False)]
+        args.server = last_server[0] if last_server else DEFAULT_SERVER
+        save_settings = save_settings or args.server not in settings[SERVER]
+        settings[SERVER][args.server] = settings[SERVER].get(args.server, {})
+        reset_last = len(last_server) != 1 or settings[SERVER][args.server].get(
+            LAST, False
+        )
+
+    settings[SERVER][args.server] = settings[SERVER].get(args.server, {})
+
+    if reset_last:
+        for server in settings[SERVER]:
+            settings[SERVER][server] = {
+                k: v for k, v in settings[SERVER][server].items() if k != LAST
+            }
+
+        settings[SERVER][args.server][LAST] = True
+        save_settings = True
+
+    default_port = server_settings.get(
+        PORT, DEFAULT_PORT
+    )  # TODO: Only if server is local
+    still_save, args.port = check_arg(
+        args.port,
+        PORT,
+        default_port,
+        int,
+        "Port to connect on (--port): ",
+        settings[SERVER][args.server],
+        input_func,
+    )
+    save_settings = save_settings or still_save
+
+    still_save, args.days = check_arg(
+        args.days,
+        DAYS,
+        DEFAULT_DAYS,
+        int,
+        "Warn if not backup in days (--days): ",
+        settings,
+        input_func,
+    )
+    save_settings = save_settings or still_save
+
+    still_save, args.months = check_arg(
+        args.months,
+        MONTHS,
+        DEFAULT_MONTHS,
+        int,
+        "Months to search for previous backup (--months): ",
+        settings,
+        input_func,
+    )
+    save_settings = save_settings or still_save
+
+    still_save, args.machine = check_arg(
+        args.machine,
+        MACHINE,
+        None,
+        str,
+        "This machine's name (--machine): ",
+        settings,
+        input_func,
+    )
+    assert args.machine is not None, f"Must specify --machine for {args.storage}"
+    save_settings = save_settings or still_save
+
+    if save_settings:
+        save_settings_file(args, backup_name, settings)
+
+    return args
+
+
 def get_arg_parser():
     """Describe the command line arguments"""
     parser = argparse.ArgumentParser(description="Libernet backup tool")
+    parser.add_argument(
+        "--storage",
+        default=DEFAULT_STORAGE,
+        help=f"Directory to store data (default {DEFAULT_STORAGE})",
+    )
     parser.add_argument(
         "--server",
         default=DEFAULT_SERVER,
@@ -505,7 +604,6 @@ def get_arg_parser():
     parser.add_argument(
         "--machine",
         type=str,
-        required=True,
         help="The name of this machine",
     )
     parser.add_argument(
@@ -544,7 +642,7 @@ def get_arg_parser():
     parser.add_argument(
         "--keychain",
         action="store_true",
-        help="Get Account username/passphrase from keychain (or store if not there)",
+        help="Store Account username/passphrase from keychain (or store if not there)",
     )
     parser.add_argument(
         "--environment",
@@ -556,4 +654,4 @@ def get_arg_parser():
 
 
 if __name__ == "__main__":
-    main(process_args(get_arg_parser().parse_args()))  # NOT TESTED
+    main(load_settings(process_args(get_arg_parser().parse_args())))  # NOT TESTED

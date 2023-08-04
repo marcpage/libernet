@@ -109,9 +109,9 @@ def test_load_settings():
     with tempfile.TemporaryDirectory() as storage:
         args = SimpleNamespace(storage=storage, port=None)
         output = libernet.server.load_settings(args, input_func=lambda _:'1234')
-        assert output.port == 1234, output.port
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
         output = libernet.server.load_settings(args, input_func=lambda _:'5678')
-        assert output.port == 1234, output.port
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
         args.port = 8087
         output = libernet.server.load_settings(args, input_func=lambda _:'5678')
         assert output.port == 8087, output.port

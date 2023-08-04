@@ -4,6 +4,7 @@
 import os
 import time
 import pprint
+import tempfile
 
 from types import SimpleNamespace
 from random import randbytes
@@ -11,6 +12,7 @@ from tempfile import TemporaryDirectory
 
 import libernet.block
 import libernet.backup
+import libernet.server
 import libernet.disk
 
 from libernet.backup import ENV_USER, ENV_PASS, KEY_SERVICE, KEY_USER
@@ -486,7 +488,6 @@ def test_restore_2_dirs_same_name():
         assert file1_dir_dir_dir == file2_dir_dir_dir, f"{file1_dir_dir_dir}\nvs\n{file2_dir_dir_dir}"
 
 
-
 def test_restore_missing_blocks():
     proxy = Store()
 
@@ -514,9 +515,99 @@ def test_restore_missing_blocks():
         assert not os.path.isdir(dest_dir_1)
 
 
+def test_load_settings_port():
+    with tempfile.TemporaryDirectory() as storage:
+        args = SimpleNamespace(storage=storage, port=None, server=None, days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'1234')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        output = libernet.backup.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        args.port = 8087
+        output = libernet.backup.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 8087, output.port
+        args.port = None
+        output = libernet.backup.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 8087, output.port
+
+    with tempfile.TemporaryDirectory() as storage:
+        args = SimpleNamespace(storage=storage, port=None, server=None, days=None, months=None, machine=None)
+        output = libernet.server.load_settings(args, input_func=lambda _:'1234')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        output = libernet.backup.load_settings(args, input_func=lambda _:'4321')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        output = libernet.backup.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        args.port = 8087
+        output = libernet.backup.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 8087, output.port
+        args.port = None
+        output = libernet.backup.load_settings(args, input_func=lambda _:'5678')
+        assert output.port == 8087, output.port
+
+
+def test_load_settings_server():
+    with tempfile.TemporaryDirectory() as storage:
+        args = SimpleNamespace(storage=storage, port=None, server=None, days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        assert output.server == libernet.backup.DEFAULT_SERVER, f"{output.server} vs {libernet.backup.DEFAULT_SERVER}"
+        assert output.machine == '88', output.machine
+        assert output.days == libernet.backup.DEFAULT_DAYS, f"{output.days} vs {libernet.backup.DEFAULT_DAYS}"
+        assert output.months == libernet.backup.DEFAULT_MONTHS, f"{output.months} vs {libernet.backup.DEFAULT_MONTHS}"
+
+        args = SimpleNamespace(storage=storage, port=92, server="testing", days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == 92, f"{output.port} vs {92}"
+        assert output.server == 'testing', output.server
+        assert output.machine == '88', output.machine
+        assert output.days == libernet.backup.DEFAULT_DAYS, f"{output.days} vs {libernet.backup.DEFAULT_DAYS}"
+        assert output.months == libernet.backup.DEFAULT_MONTHS, f"{output.months} vs {libernet.backup.DEFAULT_MONTHS}"
+
+        args = SimpleNamespace(storage=storage, port=None, server=None, days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == 92, output.port
+        assert output.server == "testing", output.server
+        assert output.machine == '88', output.machine
+        assert output.days == libernet.backup.DEFAULT_DAYS, f"{output.days} vs {libernet.backup.DEFAULT_DAYS}"
+        assert output.months == libernet.backup.DEFAULT_MONTHS, f"{output.months} vs {libernet.backup.DEFAULT_MONTHS}"
+
+        args = SimpleNamespace(storage=storage, port=None, server="testing", days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == 92, f"{output.port} vs {92}"
+        assert output.server == 'testing', output.server
+        assert output.machine == '88', output.machine
+        assert output.days == libernet.backup.DEFAULT_DAYS, f"{output.days} vs {libernet.backup.DEFAULT_DAYS}"
+
+
+def test_load_settings():
+    with tempfile.TemporaryDirectory() as storage:
+        args = SimpleNamespace(storage=storage, port=None, server=None, days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == libernet.server.DEFAULT_PORT, f"{output.port} vs {libernet.server.DEFAULT_PORT}"
+        assert output.server == libernet.backup.DEFAULT_SERVER, f"{output.server} vs {libernet.backup.DEFAULT_SERVER}"
+        assert output.machine == '88', output.machine
+        assert output.days == libernet.backup.DEFAULT_DAYS, f"{output.days} vs {libernet.backup.DEFAULT_DAYS}"
+
+        args = SimpleNamespace(storage=storage, port=55, server="testing", days=3, months=12, machine="lolipop")
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == 55, output.port
+        assert output.server == "testing", output.server
+        assert output.machine == 'lolipop', output.machine
+        assert output.days == 3, output.days
+
+        args = SimpleNamespace(storage=storage, port=None, server=None, days=None, months=None, machine=None)
+        output = libernet.backup.load_settings(args, input_func=lambda _:'88')
+        assert output.port == 55, output.port
+        assert output.server == "testing", output.server
+        assert output.machine == 'lolipop', output.machine
+        assert output.days == 3, output.days
+
+
 if __name__ == "__main__":
+    test_load_settings_server()
+    test_load_settings()
+    test_load_settings_port()
     test_restore_missing_blocks()
-    assert False
     test_restore_simple()
     test_restore_2_dirs()
     test_restore_2_dirs_same_name()
