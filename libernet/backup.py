@@ -429,7 +429,30 @@ def main(args, proxy=None):
     rpt.join()
 
 
-def process_args(args, environment=None, key=keyring):
+# pylint: disable=too-many-arguments
+def __prioritize(value, env_key, ring_key, prompt, environ, key, in_f) -> (str, bool):
+    """prioritize username/password
+    returns value, from_keychain
+    if not from_keychain and --keychain then store in keychain
+    """
+    if value is not None:
+        return value, False
+
+    value = environ.get(env_key, None)
+
+    if value is not None:
+        return value, False
+
+    value = key.get_password(KEY_SERVICE, ring_key)
+
+    if value is not None:
+        return value, True
+
+    value = in_f(prompt)
+    return value, False
+
+
+def process_args(args, environment: dict = None, key=keyring):
     """
     priority for username/passphrase
     1. command line
@@ -451,35 +474,34 @@ def process_args(args, environment=None, key=keyring):
         args.action not in ("add", "remove") or args.source
     ), "You must specify --source"
     assert args.action == "restore" or args.destination is None
-    key_user = key.get_password(KEY_SERVICE, KEY_USER) if args.keychain else None
 
-    if args.user is None and args.environment:
-        args.user = environment.get(ENV_USER, None)
+    args.user, user_from_keychain = __prioritize(
+        args.user,
+        ENV_USER,
+        KEY_USER,
+        "Libernet account username: ",
+        environment,
+        key,
+        USER_INPUT,
+    )
+    assert args.user, "You must specify a username"
 
-    if args.user is None and args.keychain:
-        args.user = key.get_password("libernet", "username")
-
-    if args.user is None:
-        args.user = USER_INPUT("Libernet account username: ")
-        assert args.user, "You must specify a username"
-
-    if args.keychain and key_user is None:
+    if args.keychain and not user_from_keychain:
         key.set_password(KEY_SERVICE, KEY_USER, args.user)
 
     key_user = KEY_USER + "_" + args.user
-    key_pass = key.get_password(KEY_SERVICE, key_user) if args.keychain else None
+    args.passphrase, pass_from_keychain = __prioritize(
+        args.passphrase,
+        ENV_PASS,
+        key_user,
+        "Libernet account pass phrase: ",
+        environment,
+        key,
+        PASSWORD_INPUT,
+    )
+    assert args.passphrase, "You must specify a username"
 
-    if args.passphrase is None and args.environment:
-        args.passphrase = environment.get(ENV_PASS, None)
-
-    if args.passphrase is None and args.keychain:
-        args.passphrase = key.get_password(KEY_SERVICE, key_user)
-
-    if args.passphrase is None:
-        args.passphrase = PASSWORD_INPUT("Libernet account pass phrase: ")
-        assert args.passphrase, "You must specify a pass phrase"
-
-    if args.keychain and key_pass is None:
+    if args.keychain and not pass_from_keychain:
         key.set_password(KEY_SERVICE, key_user, args.passphrase)
 
     return args
@@ -640,12 +662,7 @@ def get_arg_parser():
     parser.add_argument(
         "--keychain",
         action="store_true",
-        help="Store Account username/passphrase from keychain (or store if not there)",
-    )
-    parser.add_argument(
-        "--environment",
-        action="store_true",
-        help=f"Get Account username/passphrase from {ENV_USER} and {ENV_PASS}",
+        help="Store Account username/passphrase in keychain (if not there)",
     )
     parser.add_argument("action", help="add, remove, list, backup, restore")
     return parser

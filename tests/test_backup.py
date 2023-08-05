@@ -30,6 +30,9 @@ class Keyring:
         self.data[n1] = self.data.get(n1, {})
         self.data[n1][n2] = p
 
+    def __str__(self):
+        return str(self.data)
+
 
 class Store:
     def __init__(self):
@@ -192,7 +195,7 @@ def test_arg_processor():
     libernet.backup.PASSWORD_INPUT = lambda _:'Setec Astronomy'
     args = libernet.backup.process_args(SimpleNamespace(action='add', months=12, user=None, passphrase=None, machine='localhost', source=['libernet'], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
     assert args.user == 'John'
-    assert args.passphrase == 'Setec Astronomy'
+    assert args.passphrase == 'Setec Astronomy', args.passphrase
     assert keychain.get_password(KEY_SERVICE, KEY_USER) == 'John'
     assert keychain.get_password(KEY_SERVICE, KEY_USER+'_John') == 'Setec Astronomy'
     args = libernet.backup.process_args(SimpleNamespace(action='list', months=12, user=None, passphrase=None, machine='localhost', source=[], yes=True, destination=None, no=False, keychain=True, environment=True), environment=environment, key=keychain)
@@ -604,6 +607,7 @@ def test_load_settings():
 
 
 if __name__ == "__main__":
+    test_arg_processor()
     test_load_settings_server()
     test_load_settings()
     test_load_settings_port()
@@ -614,7 +618,6 @@ if __name__ == "__main__":
     test_restore_to_source()
     test_main()
     test_arg_parser()
-    test_arg_processor()
     test_random_data()
     test_add_remove()
     test_list()
