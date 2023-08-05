@@ -87,19 +87,19 @@ def save_settings_file(args, name, settings):
     settings_path = os.path.join(args.storage, name)
 
     with open(settings_path, "w", encoding="utf-8") as settings_file:
-        json.dump(settings, settings_file)
+        json.dump(settings, settings_file, indent=2)
 
 
 # pylint: disable=too-many-arguments
 def check_arg(value, key, default, value_type, prompt, settings, input_func):
     """Check an argument against settings"""
-    if not value and settings.get(key, None) is None:
+    if value is None and settings.get(key, None) is None:
         value = value_type(input_func(prompt)) if default is None else default
 
     if value is None:
         value = settings.get(key, default)
 
-    elif value:
+    elif value and settings[key] != value:
         settings[key] = value
         return True, value
 

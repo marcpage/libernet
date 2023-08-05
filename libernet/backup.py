@@ -501,7 +501,7 @@ def load_settings(args, input_func=input):
         args.server = last_server[0] if last_server else DEFAULT_SERVER
         save_settings = save_settings or args.server not in settings[SERVER]
         settings[SERVER][args.server] = settings[SERVER].get(args.server, {})
-        reset_last = len(last_server) != 1 or settings[SERVER][args.server].get(
+        reset_last = len(last_server) != 1 or not settings[SERVER][args.server].get(
             LAST, False
         )
 
@@ -580,13 +580,11 @@ def get_arg_parser():
     )
     parser.add_argument(
         "--server",
-        default=DEFAULT_SERVER,
         help=f"Libernet server to connect to (default {DEFAULT_SERVER})",
     )
     parser.add_argument(
         "--port",
         help=f"The port to listen on (default {DEFAULT_PORT})",
-        default=DEFAULT_PORT,
         type=int,
     )
     parser.add_argument(
