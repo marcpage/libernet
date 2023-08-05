@@ -99,7 +99,7 @@ def check_arg(value, key, default, value_type, prompt, settings, input_func):
     if value is None:
         value = settings.get(key, default)
 
-    elif value and settings[key] != value:
+    elif value and settings.get(key, None) != value:
         settings[key] = value
         return True, value
 

@@ -434,7 +434,7 @@ def process_args(args, environment=None, key=keyring):
     priority for username/passphrase
     1. command line
     2. environment (if specified)
-    3. keychain (if specified)
+    3. keychain (if exists)
     4. prompt
     If keychain specified but not found in keychain, it is added
     """
