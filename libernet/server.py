@@ -12,6 +12,7 @@ import json
 import flask
 
 import libernet.url
+import libernet.message
 
 from libernet.disk import Storage
 from libernet.url import SHA256, LIKE
@@ -23,7 +24,7 @@ DEFAULT_PORT = 8042
 DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
 
 
-def create_app(storage: Storage):
+def create_app(storage: Storage, messages: libernet.message.Center):
     """Creates the Flask app"""
     app = flask.Flask(__name__)
 
@@ -34,26 +35,74 @@ def create_app(storage: Storage):
         identifier, key, _, kind = libernet.url.parse(flask.request.path)
         assert key is None, flask.request.path
         data_block_url = libernet.url.for_data_block(identifier, kind == LIKE)
+        node_identifier = None  # TODO: add node identifier  # pylint: disable=fixme
+        node_inet_address = None  # TODO: add inet address  # pylint: disable=fixme
 
         if kind == LIKE:
             found = storage.like(data_block_url)
             response = flask.Response(json.dumps(found), mimetype=JSON_MIMETYPE)
             response.status = 200 if len(found) > 0 else 404
+            messages.send(
+                {
+                    "type": "request",
+                    "style": "like",
+                    "method": SHA256,
+                    "identifier": identifier,
+                    "found": len(found),
+                    "node": node_identifier,
+                    "address": node_inet_address,
+                }
+            )
             return response
 
         contents = storage.get(data_block_url)
 
         if contents is None:
+            messages.send(
+                {
+                    "type": "request",
+                    "style": "data",
+                    "method": SHA256,
+                    "identifier": identifier,
+                    "found": False,
+                    "node": node_identifier,
+                    "address": node_inet_address,
+                }
+            )
             return "Data not currently on node", 504
 
         response = flask.Response(contents, mimetype=DATA_MIMETYPE)
         response.status = 200
+        messages.send(
+            {
+                "type": "request",
+                "style": "data",
+                "method": SHA256,
+                "identifier": identifier,
+                "found": True,
+                "node": node_identifier,
+                "address": node_inet_address,
+            }
+        )
         return response
 
     @app.route(f"/{SHA256}/<identifier>", methods=["PUT"])
     def put_sha256(identifier: str):
         """Return the requested data"""
         storage[libernet.url.for_data_block(identifier)] = flask.request.data
+        node_identifier = None  # TODO: add node identifier  # pylint: disable=fixme
+        node_inet_address = None  # TODO: add inet address  # pylint: disable=fixme
+        messages.send(
+            {
+                "type": "provide",
+                "style": "data",
+                "method": SHA256,
+                "identifier": identifier,
+                "valid": True,  # TODO: Validate the data  # pylint: disable=fixme
+                "node": node_identifier,
+                "address": node_inet_address,
+            }
+        )
         return "data received", 200
 
     return app
@@ -66,7 +115,8 @@ def serve(args):  # NOT TESTED (not reported as tested, tested in tests/test_pro
     log_level = logging.DEBUG if args.debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
     storage = Storage(args.storage)
-    app = create_app(storage)
+    messages = libernet.message.Center()
+    app = create_app(storage, messages)
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
 

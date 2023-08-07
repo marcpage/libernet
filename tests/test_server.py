@@ -17,6 +17,7 @@ import requests
 
 import libernet.server
 import libernet.disk
+import libernet.message
 
 from libernet.disk import Storage
 from libernet.hash import sha256_data_identifier, identifier_match_score
@@ -52,7 +53,7 @@ def test_app():
     debug = False
 
     with tempfile.TemporaryDirectory() as storage:
-        instance = libernet.server.create_app(Storage(storage))
+        instance = libernet.server.create_app(Storage(storage), libernet.message.Center())
         test_set = [
             b'',
             b'hello',
