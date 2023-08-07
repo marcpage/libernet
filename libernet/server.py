@@ -9,8 +9,9 @@ import logging
 import argparse
 import json
 import time
+import zipfile
 
-from zipfile import ZipFile, ZipInfo, ZIP_LZMA
+from zipfile import ZipFile, ZipInfo
 
 import flask
 
@@ -122,18 +123,14 @@ def rotate(path):
     zip_path = f"{path}_{time.strftime('%Y-%b')}.zip"
     name, extension = os.path.splitext(os.path.basename(path))
     name_in_archive = f"{name}_{time.strftime('%Y-%m-%d %H:%M:%S')}{extension}"
-    archive_entry = ZipInfo(
-        name_in_archive,
-        (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec),
-    )
+    archive_entry = ZipInfo.from_file(path, name_in_archive)
     force64 = os.path.getsize(path) > ONE_GIGABYTE
 
-    with (
-        ZipFile(zip_path, "a", ZIP_LZMA, compresslevel=9) as archive_file,
-        open(path, "rb") as log_file,
-        archive_file.open(archive_entry, "w", force_zip64=force64) as entry,
-    ):
-        entry.write(log_file.read())
+    with open(path, "rb") as log_file:
+        log_contents = log_file.read()
+
+    with ZipFile(zip_path, "a") as zip_file:
+        zip_file.write(path, name_in_archive, zipfile.ZIP_DEFLATED, 9)
 
     os.remove(path)
     return zip_path
