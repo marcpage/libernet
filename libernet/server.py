@@ -11,7 +11,7 @@ import json
 import time
 import zipfile
 
-from zipfile import ZipFile, ZipInfo
+from zipfile import ZipFile
 
 import flask
 
@@ -122,13 +122,8 @@ def rotate(path):
     file_time = os.path.getmtime(path)
     zip_path = f"{path}_{time.strftime('%Y-%b', time.localtime(file_time))}.zip"
     name, extension = os.path.splitext(os.path.basename(path))
-    file_time_string = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(file_time))
+    file_time_string = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(file_time))
     name_in_archive = f"{name}_{file_time_string}{extension}"
-    archive_entry = ZipInfo.from_file(path, name_in_archive)
-    force64 = os.path.getsize(path) > ONE_GIGABYTE
-
-    with open(path, "rb") as log_file:
-        log_contents = log_file.read()
 
     with ZipFile(zip_path, "a") as zip_file:
         zip_file.write(path, name_in_archive, zipfile.ZIP_DEFLATED, 9)

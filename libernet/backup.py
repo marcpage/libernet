@@ -13,7 +13,6 @@ import zlib
 import threading
 import sys
 import queue
-import sys
 
 from getpass import getpass
 
