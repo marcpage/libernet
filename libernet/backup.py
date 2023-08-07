@@ -410,7 +410,7 @@ def main(args, proxy=None):
         print(f"ERROR: Unable to connect to server: {args.server}:{args.port}")
         message_center.shutdown()
         proxy.shutdown()
-        sys.exit(1)
+        return 1
 
     changed = False
     rpt = threading.Thread(target=__progress, args=[message_center], daemon=True)
@@ -437,6 +437,7 @@ def main(args, proxy=None):
     proxy.shutdown()
     message_center.shutdown()
     rpt.join()
+    return 0
 
 
 # pylint: disable=too-many-arguments
@@ -678,5 +679,5 @@ def get_arg_parser():
     return parser
 
 
-if __name__ == "__main__":
-    main(load_settings(process_args(get_arg_parser().parse_args())))  # NOT TESTED
+if __name__ == "__main__":  # NOT TESTED
+    sys.exit(main(load_settings(process_args(get_arg_parser().parse_args()))))

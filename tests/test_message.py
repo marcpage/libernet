@@ -4,8 +4,11 @@
 import threading
 import time
 import queue
+import logging
 
-from libernet.message import Center
+import libernet.message
+
+from libernet.message import Center, Logger
 
 
 THREADS = 100
@@ -68,6 +71,7 @@ def test_high_threading():
     except AssertionError:
         pass
 
+
 def test_channel_close():
     message_center = Center()
     main_channel = message_center.new_channel()
@@ -84,7 +88,24 @@ def test_channel_close():
         pass
 
 
+def test_logger():
+    timeout = libernet.message.LOGGING_TIMEOUT_SECONDS
+    libernet.message.LOGGING_TIMEOUT_SECONDS = 0.001
+    logging.basicConfig(level=logging.INFO)
+    message_center = Center()
+    logger = Logger(message_center)
+    message_center.send({'message': 'testing'})
+    time.sleep(0.050)
+    message_center.shutdown()
+
+    while message_center.active():
+        time.sleep(0.050)
+
+    libernet.message.LOGGING_TIMEOUT_SECONDS = timeout
+
+
 
 if __name__ == "__main__":
+    test_logger()
     test_channel_close()
     test_high_threading()

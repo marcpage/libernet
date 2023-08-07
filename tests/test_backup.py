@@ -264,7 +264,8 @@ def test_main():
                 big_file.write(randbytes(2 * 1024 * 1024))  # 2 MiB file of random data
 
         add_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet', 'tests', working_dir], yes=True)
-        libernet.backup.main(add_args, proxy)
+        ret_value = libernet.backup.main(add_args, proxy)
+        assert ret_value == 0, ret_value
         libernet.backup.main(add_args, proxy)
         libernet.backup.main(add_args, other)
         backup_args = SimpleNamespace(months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='backup', source=[], yes=True)
@@ -606,7 +607,14 @@ def test_load_settings():
         assert output.days == 3, output.days
 
 
+def test_no_server():
+    with tempfile.TemporaryDirectory() as storage:
+        add_args = SimpleNamespace(storage=storage, server='localhost', port=1, months=12, user='John', passphrase='Setec Astronomy', machine='localhost', action='add', source=['libernet', 'tests'], yes=True)
+        ret_value = libernet.backup.main(add_args)
+        assert ret_value
+
 if __name__ == "__main__":
+    test_no_server()
     test_arg_processor()
     test_load_settings_server()
     test_load_settings()

@@ -10,6 +10,10 @@
 
 import threading
 import queue
+import logging
+
+
+LOGGING_TIMEOUT_SECONDS = 0.500
 
 
 class Center(threading.Thread):
@@ -34,7 +38,6 @@ class Center(threading.Thread):
             out.put(message)
 
     def run(self):
-        """the main thread"""
         while self.active():
             message = self.__input.get()
 
@@ -77,3 +80,26 @@ class Center(threading.Thread):
         assert self.__running, "Message center shutdown, cannot send message"
         assert message is not None
         self.__input.put(message)
+
+
+class Logger(threading.Thread):
+    """Logs all messages from a message center"""
+
+    def __init__(self, messages: Center):
+        self.__messages = messages
+        threading.Thread.__init__(self)
+        self.daemon = True
+        self.start()
+
+    def run(self):
+        channel = self.__messages.new_channel()
+
+        while self.__messages.active():
+            try:
+                message = channel.get(timeout=LOGGING_TIMEOUT_SECONDS)
+                logging.info("Message received: %s", message)
+
+            except queue.Empty:
+                pass
+
+        self.__messages.close_channel(channel)

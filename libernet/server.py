@@ -140,6 +140,7 @@ def serve(args):  # NOT TESTED (not reported as tested, tested in tests/test_pro
     logging.basicConfig(filename=log_path, level=log_level)
     storage = Storage(args.storage)
     messages = libernet.message.Center()
+    libernet.message.Logger(messages)
     app = create_app(storage, messages)
     app.run(host="0.0.0.0", debug=args.debug, port=args.port)
 
