@@ -119,10 +119,11 @@ def rotate(path):
         os.makedirs(os.path.split(path)[0], exist_ok=True)
         return None
 
-    now = time.gmtime()
-    zip_path = f"{path}_{time.strftime('%Y-%b')}.zip"
+    file_time = os.path.getmtime(path)
+    zip_path = f"{path}_{time.strftime('%Y-%b', time.localtime(file_time))}.zip"
     name, extension = os.path.splitext(os.path.basename(path))
-    name_in_archive = f"{name}_{time.strftime('%Y-%m-%d %H:%M:%S')}{extension}"
+    file_time_string = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(file_time))
+    name_in_archive = f"{name}_{file_time_string}{extension}"
     archive_entry = ZipInfo.from_file(path, name_in_archive)
     force64 = os.path.getsize(path) > ONE_GIGABYTE
 
