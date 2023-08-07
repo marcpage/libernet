@@ -13,10 +13,12 @@ import zlib
 import threading
 import sys
 import queue
+import sys
 
 from getpass import getpass
 
 import keyring
+import requests
 
 import libernet.proxy
 import libernet.bundle
@@ -401,7 +403,16 @@ def main(args, proxy=None):
     """main backup entry point"""
     proxy = libernet.proxy.Storage(args.server, args.port) if proxy is None else proxy
     message_center = libernet.message.Center()
-    settings = __load_settings(args, proxy)
+
+    try:
+        settings = __load_settings(args, proxy)
+
+    except requests.exceptions.ConnectionError:
+        print(f"ERROR: Unable to connect to server: {args.server}:{args.port}")
+        message_center.shutdown()
+        proxy.shutdown()
+        sys.exit(1)
+
     changed = False
     rpt = threading.Thread(target=__progress, args=[message_center], daemon=True)
     rpt.start()
