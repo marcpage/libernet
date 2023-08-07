@@ -12,6 +12,7 @@ import json
 
 from random import randbytes
 from types import SimpleNamespace
+from zipfile import ZipFile
 
 import requests
 
@@ -121,7 +122,37 @@ def test_load_settings():
         assert output.port == 8087, output.port
 
 
+def test_rotate():
+    with tempfile.TemporaryDirectory() as storage:
+        log_path = os.path.join(storage, 'log.txt')
+        do_nothing = libernet.server.rotate(log_path)
+        assert do_nothing is None, do_nothing
+        log_contents = randbytes(1 * 1024 * 1024 + 5)
+
+        with open(log_path, 'wb') as log_file:
+            log_file.write(log_contents)
+
+        zip_path = libernet.server.rotate(log_path)
+        assert os.path.splitext(zip_path)[1].lower() == '.zip', zip_path
+        assert not os.path.isfile(log_path)
+        assert os.path.isfile(zip_path)
+        assert zip_path != log_path
+        assert os.path.dirname(zip_path) == os.path.dirname(log_path)
+
+        with ZipFile(zip_path) as zip_file:
+            zip_contents = zip_file.infolist()
+            assert len(zip_contents) == 1
+            assert zip_contents[0].filename.startswith('log_')
+            assert zip_contents[0].filename.endswith('.txt')
+
+            with zip_file.open(zip_contents[0]) as log_file:
+                contents = log_file.read()
+
+        assert contents == log_contents
+
+
 if __name__ == "__main__":
+    test_rotate()
     test_arg_parser()
     test_app()
     test_load_settings()

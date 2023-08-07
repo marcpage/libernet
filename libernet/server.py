@@ -8,6 +8,9 @@ import os
 import logging
 import argparse
 import json
+import time
+
+from zipfile import ZipFile, ZipInfo, ZIP_LZMA
 
 import flask
 
@@ -22,6 +25,7 @@ SETTINGS_NAME = "settings.json"
 JSON_MIMETYPE = "application/json"
 DEFAULT_PORT = 8042
 DEFAULT_STORAGE = os.path.join(os.environ["HOME"], ".libernet")
+ONE_GIGABYTE = 1024 * 1024 * 1024
 
 
 def create_app(storage: Storage, messages: libernet.message.Center):
@@ -108,10 +112,37 @@ def create_app(storage: Storage, messages: libernet.message.Center):
     return app
 
 
+def rotate(path):
+    """zips up any existing file and then deletes the file if it exists"""
+    if not os.path.isfile(path):
+        os.makedirs(os.path.split(path)[0], exist_ok=True)
+        return None
+
+    now = time.gmtime()
+    zip_path = f"{path}_{time.strftime('%Y-%b')}.zip"
+    name, extension = os.path.splitext(os.path.basename(path))
+    name_in_archive = f"{name}_{time.strftime('%Y-%m-%d %H:%M:%S')}{extension}"
+    archive_entry = ZipInfo(
+        name_in_archive,
+        (now.tm_year, now.tm_mon, now.tm_mday, now.tm_hour, now.tm_min, now.tm_sec),
+    )
+    force64 = os.path.getsize(path) > ONE_GIGABYTE
+
+    with (
+        ZipFile(zip_path, "a", ZIP_LZMA, compresslevel=9) as archive_file,
+        open(path, "rb") as log_file,
+        archive_file.open(archive_entry, "w", force_zip64=force64) as entry,
+    ):
+        entry.write(log_file.read())
+
+    os.remove(path)
+    return zip_path
+
+
 def serve(args):  # NOT TESTED (not reported as tested, tested in tests/test_proxy.py)
     """Start the libernet web server"""
     log_path = os.path.join(args.storage, "log.txt")
-    os.makedirs(os.path.split(log_path)[0], exist_ok=True)
+    rotate(log_path)
     log_level = logging.DEBUG if args.debug else logging.WARNING
     logging.basicConfig(filename=log_path, level=log_level)
     storage = Storage(args.storage)
