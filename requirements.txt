@@ -1,5 +1,5 @@
 Flask==3.0.2
 requests==2.31.0
-urllib3==2.2.1  # due to https://github.com/urllib3/urllib3/issues/3020
+urllib3==1.26.16  # due to https://github.com/urllib3/urllib3/issues/3020
 pycryptodome==3.20.0
 keyring==24.3.1
