@@ -38,11 +38,7 @@ def parse(url: str) -> (str, str, str, str):
     kind = (
         SHA256
         if is_just_data
-        else LIKE
-        if is_like
-        else AES256
-        if is_contents_encrypted
-        else PASSWORD
+        else LIKE if is_like else AES256 if is_contents_encrypted else PASSWORD
     )
     return (address, key, contents, kind)
 

@@ -28,7 +28,7 @@ venv: $(VENV_DIR)/touchfile
 # https://stackoverflow.com/questions/28297497/python-code-coverage-and-multiprocessing
 $(COVERAGE_FILE): $(VENV_DIR)/touchfile $(SOURCES) $(TESTS)
 	@mkdir -p objects
-	@$(SET_ENV); $(VENV_PIP) install -q coverage pytest
+	@$(SET_ENV); $(VENV_PIP) install -q -r requirements-infra.txt
 	@$(SET_ENV); env $(COVERAGE) $(VENV_PYTHON) -m coverage run  --source libernet -m pytest
 
 test: $(COVERAGE_FILE)
@@ -43,14 +43,14 @@ serve: venv
 	$(SET_ENV); $(VENV_PYTHON) -m libernet.server --port 8000
 
 $(FORMAT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
-	@$(SET_ENV); $(VENV_PIP) install -q black
+	@$(SET_ENV); $(VENV_PIP) install -q -r requirements-infra.txt
 	@$(SET_ENV); $(VENV_PYTHON) -m black libernet &> $@
 
 format: $(FORMAT_FILE)
 	@cat $^
 
 $(LINT_FILE): $(VENV_DIR)/touchfile $(SOURCES)
-	@$(SET_ENV); $(VENV_PIP) install -q pylint
+	@$(SET_ENV); $(VENV_PIP) install -q -r requirements-infra.txt
 	-@$(SET_ENV); $(VENV_PYTHON) -m pylint libernet &> $@
 	-@$(SET_ENV); $(VENV_PYTHON) -m black libernet --check >> $@  2>&1
 
