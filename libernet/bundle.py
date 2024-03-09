@@ -225,9 +225,11 @@ def __create_raw_bundle(source_path: str, storage, previous: dict, messages) -> 
         description[FILES].update(dict([entry]))
 
     description[DIRECTORIES] = {
-        d: os.readlink(os.path.join(source_path, d))
-        if os.path.islink(os.path.join(source_path, d))
-        else None
+        d: (
+            os.readlink(os.path.join(source_path, d))
+            if os.path.islink(os.path.join(source_path, d))
+            else None
+        )
         for d in empty_dirs
     }
 
